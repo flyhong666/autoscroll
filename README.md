@@ -1,4 +1,4 @@
-# 自动刷视频 APP 使用说明
+# 自动刷视频 APP
 
 ## 功能特点
 
@@ -10,13 +10,14 @@
 
 ## APP截图
 
-![应用截图](autoscroll.jpg "应用截图")
+<img src="autoscroll.jpg" alt="应用截图" width="400" />
 
 ## APP操作视频
 
-操作视频网盘下载地址：[自动刷视频](hthttps://www.guangyapan.com/s/1905450688040321110_aerIxeS_zVounKdp#/share "自动刷视频")
+操作视频网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/1905450688040321110_aerIxeS_zVounKdp#/share "自动刷视频")
 
-![操作视频](autoscroll.gif "操作视频")
+
+<img src="autoscroll.gif" alt="操作视频" width="400" />
 
 ## 使用步骤
 
@@ -32,9 +33,9 @@
 
 APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/1905445185801343001_aerIxeS_zVounKdp#/share "自动刷视频")
 
-APK安装包下载地址：[自动刷视频](自动刷视频.apk "自动刷视频")
+APK安装包：项目根目录下的 自动刷视频.apk 文件
 
-将生成或下载的 APK 安装到手机上。
+将生成或下载的 APK 安装到手机上，即可使用。
 
 ### 2. 权限配置
 
