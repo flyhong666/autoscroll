@@ -8,6 +8,16 @@
 4. **悬浮窗控制**：点击悬浮球即可开始/停止自动刷视频
 5. **支持应用**：抖音、快手、TikTok 等所有短视频应用
 
+## APP截图
+
+![应用截图](autoscroll.jpg "应用截图")
+
+## APP操作视频
+
+操作视频网盘下载地址：[自动刷视频](hthttps://www.guangyapan.com/s/1905450688040321110_aerIxeS_zVounKdp#/share "自动刷视频")
+
+![操作视频](autoscroll.gif "操作视频")
+
 ## 使用步骤
 
 ### 1. 编译和安装
@@ -20,7 +30,11 @@
 # APK 文件位置：app/build/outputs/apk/debug/app-debug.apk
 ```
 
-将生成的 APK 安装到手机上。
+APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/1905445185801343001_aerIxeS_zVounKdp#/share "自动刷视频")
+
+APK安装包下载地址：[自动刷视频](自动刷视频.apk "自动刷视频")
+
+将生成或下载的 APK 安装到手机上。
 
 ### 2. 权限配置
 
