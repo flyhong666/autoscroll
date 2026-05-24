@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">自动刷视频</string>
+    <string name="accessibility_service_description">此服务用于模拟用户滑动操作，自动刷短视频。请确保只在需要时使用此功能。</string>
+    <string name="start_service">开始服务</string>
+    <string name="stop_service">停止服务</string>
+    <string name="accessibility_enabled">无障碍服务已启用</string>
+    <string name="accessibility_disabled">无障碍服务未启用</string>
+    <string name="overlay_permission_required">需要悬浮窗权限</string>
+    <string name="grant_permission">授予权限</string>
+    <string name="service_running">服务运行中</string>
+    <string name="service_stopped">服务已停止</string>
+    <string name="click_to_start">点击开始自动刷视频</string>
+    <string name="click_to_stop">点击停止自动刷视频</string>
+    <string name="settings">设置</string>
+    <string name="scroll_interval">滑动间隔（秒）</string>
+    <string name="min_interval">最小间隔</string>
+    <string name="max_interval">最大间隔</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+</resources>
