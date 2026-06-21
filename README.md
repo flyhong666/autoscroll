@@ -33,6 +33,8 @@
 
 APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/1905445185801343001_aerIxeS_zVounKdp#/share "自动刷视频")
 
+APK安装包网盘下载地址：[自动刷视频（快速刷）](https://www.guangyapan.com/s/1915616617208500243_aerIxeS_zVounKdp#/share "自动刷视频（快速刷）")
+
 APK安装包：[自动刷视频](https://github.com/qqbn2027/autoscroll/releases "自动刷视频")
 
 将生成或下载的 APK 安装到手机上，即可使用。
