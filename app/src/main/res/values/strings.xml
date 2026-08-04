@@ -1,21 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 应用基础 -->
     <string name="app_name">自动刷视频</string>
-    <string name="accessibility_service_description">此服务用于模拟用户滑动操作，自动刷短视频。请确保只在需要时使用此功能。</string>
-    <string name="start_service">开始服务</string>
+    <string name="accessibility_service_description">此服务用于模拟用户滑动、点赞、关闭广告等操作，自动刷短视频/新闻/小说/社交/直播等内容。请确保只在需要时使用此功能。</string>
+
+    <!-- 主界面标题与说明 -->
+    <string name="app_headline">自动刷刷刷</string>
+    <string name="app_subtitle">短视频 · 新闻 · 小说 · 社交 · 直播 · 全场景自动滚动</string>
+    <string name="guide_title">使用说明</string>
+    <string name="guide_content">1. 在「场景」页选择要刷的内容类型\n2. 在「任务」页开启需要的扩展功能\n3. 回到「控制」页授予无障碍 + 悬浮窗权限\n4. 点击「启动服务」→ 单击悬浮球开始\n5. 再次单击悬浮球停止</string>
+    <string name="status_title">运行状态</string>
+    <string name="settings_title">基础参数</string>
+
+    <!-- Tab 标题 -->
+    <string name="tab_control">控制</string>
+    <string name="tab_scene">场景</string>
+    <string name="tab_task">任务</string>
+
+    <!-- 状态文本 -->
+    <string name="status_accessibility_enabled">无障碍服务：已启用</string>
+    <string name="status_accessibility_disabled">无障碍服务：未启用</string>
+    <string name="status_overlay_enabled">悬浮窗权限：已授予</string>
+    <string name="status_overlay_disabled">悬浮窗权限：未授予</string>
+    <string name="status_service_running">悬浮窗服务：运行中</string>
+    <string name="status_service_stopped">悬浮窗服务：已停止</string>
+    <string name="status_scroll_running">自动滚动：运行中</string>
+    <string name="status_scroll_stopped">自动滚动：已停止</string>
+    <string name="status_remaining_time">剩余时长：%1$s</string>
+    <string name="status_scene">当前场景：%1$s</string>
+
+    <!-- 按钮 -->
+    <string name="btn_accessibility_on">无障碍服务已启用</string>
+    <string name="btn_accessibility_off">开启无障碍服务</string>
+    <string name="btn_overlay_on">悬浮窗权限已授予</string>
+    <string name="btn_overlay_off">授予悬浮窗权限</string>
+    <string name="start_service">启动服务</string>
     <string name="stop_service">停止服务</string>
-    <string name="accessibility_enabled">无障碍服务已启用</string>
-    <string name="accessibility_disabled">无障碍服务未启用</string>
-    <string name="overlay_permission_required">需要悬浮窗权限</string>
-    <string name="grant_permission">授予权限</string>
-    <string name="service_running">服务运行中</string>
-    <string name="service_stopped">服务已停止</string>
     <string name="click_to_start">点击开始自动刷视频</string>
-    <string name="click_to_stop">点击停止自动刷视频</string>
-    <string name="settings">设置</string>
-    <string name="scroll_interval">滑动间隔（秒）</string>
+    <string name="save">保存参数</string>
+    <string name="apply_recommend">应用推荐参数</string>
+
+    <!-- 基础参数 -->
     <string name="min_interval">最小间隔</string>
     <string name="max_interval">最大间隔</string>
-    <string name="save">保存</string>
-    <string name="cancel">取消</string>
+    <string name="min_duration">最小时长</string>
+    <string name="max_duration">最大时长</string>
+    <string name="filter_app_title">仅在当前场景应用中生效</string>
+    <string name="filter_app_summary">非当前场景的应用自动跳过，避免误操作</string>
+    <string name="params_saved">参数已保存</string>
+
+    <!-- 场景 -->
+    <string name="scene_title">选择场景</string>
+    <string name="scene_subtitle">点击卡片选择要自动滚动的内容类型</string>
+    <string name="scene_short_video">短视频</string>
+    <string name="scene_short_video_desc">抖音、快手、TikTok 等竖屏滑动视频</string>
+    <string name="scene_news">新闻资讯</string>
+    <string name="scene_news_desc">今日头条、腾讯新闻、网易新闻等</string>
+    <string name="scene_novel">小说阅读</string>
+    <string name="scene_novel_desc">番茄小说、起点读书等长文阅读</string>
+    <string name="scene_social">社交动态</string>
+    <string name="scene_social_desc">微博、小红书、知乎等动态流</string>
+    <string name="scene_live">直播挂机</string>
+    <string name="scene_live_desc">抖音直播、虎牙、斗鱼等长时间挂机</string>
+    <string name="scene_custom">自定义通用</string>
+    <string name="scene_custom_desc">所有可滑动应用通用</string>
+    <string name="scene_selected">已选择</string>
+
+    <!-- 任务功能 -->
+    <string name="task_title">扩展任务</string>
+    <string name="task_subtitle">开启后随滚动一并执行</string>
+
+    <string name="task_auto_like">自动点赞（双击屏幕）</string>
+    <string name="task_auto_like_summary">每次滑动后按概率双击屏幕中央，模拟点赞行为</string>
+    <string name="task_like_probability">点赞概率</string>
+
+    <string name="task_ad_block">自动关闭广告弹窗</string>
+    <string name="task_ad_block_summary">检测「跳过/关闭/知道了」等按钮自动点击</string>
+
+    <string name="task_timed_stop">定时停止</string>
+    <string name="task_timed_stop_summary">运行指定时间后自动停止</string>
+    <string name="task_timed_stop_minutes">停止时间（分钟）</string>
+
+    <string name="task_app_rotation">多 APP 轮换</string>
+    <string name="task_app_rotation_summary">在当前场景的多个 APP 间定时切换</string>
+    <string name="task_rotation_minutes">轮换间隔（分钟）</string>
+
+    <string name="task_keep_screen_on">屏幕常亮</string>
+    <string name="task_keep_screen_on_summary">防止自动锁屏导致服务中断</string>
+
+    <!-- Toast 提示 -->
+    <string name="toast_accessibility_guide">请找到「自动刷视频」并开启服务</string>
+    <string name="toast_accessibility_open_failed">无法打开无障碍设置</string>
+    <string name="toast_overlay_request_failed">无法请求悬浮窗权限</string>
+    <string name="toast_permission_missing">请先授予所有必要权限</string>
+    <string name="toast_floating_started">悬浮窗已启动</string>
+    <string name="toast_service_stopped">服务已停止</string>
+    <string name="toast_overlay_permission_missing">缺少悬浮窗权限</string>
+    <string name="toast_scroll_started">已开始自动滚动</string>
+    <string name="toast_scroll_stopped">已停止自动滚动</string>
+    <string name="toast_accessibility_disconnected">无障碍服务未启用，请先开启</string>
+    <string name="toast_scene_changed">场景已切换</string>
+    <string name="toast_task_saved">任务设置已保存</string>
+    <string name="toast_timed_stop_triggered">定时停止已触发</string>
+    <string name="toast_app_rotation">轮换切换：%1$s</string>
+    <string name="toast_ad_blocked">已关闭广告弹窗</string>
+    <string name="toast_liked">已自动点赞</string>
+
+    <!-- 通知 -->
+    <string name="notif_channel_name">悬浮窗控制</string>
+    <string name="notif_channel_desc">用于显示悬浮窗控制按钮</string>
+    <string name="notif_title">自动刷刷刷</string>
+    <string name="notif_content">点击控制按钮开始/停止自动滚动</string>
+    <string name="notif_content_running">运行中 · 剩余 %1$s</string>
 </resources>

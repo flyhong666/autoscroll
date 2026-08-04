@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/bg_page">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="36dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/task_title"
+            android:textAppearance="@style/TextAppearance.Title"
+            android:textSize="18sp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/task_subtitle"
+            android:textAppearance="@style/TextAppearance.Body"
+            android:textSize="13sp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 自动点赞 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchAutoLike"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_auto_like"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_auto_like_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:id="@+id/likeProbabilityContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/task_like_probability"
+                            android:textAppearance="@style/TextAppearance.Body"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvLikeProbability"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/purple_700"
+                            android:textStyle="bold"
+                            android:textSize="15sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderLikeProbability"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="0"
+                        android:valueTo="100"
+                        android:stepSize="5"
+                        app:tickColor="@color/purple_200"
+                        app:tickColorActive="@color/purple_500"
+                        app:thumbColor="@color/purple_500"
+                        app:trackColorActive="@color/purple_500"
+                        app:trackColorInactive="@color/divider" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 广告屏蔽 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchAdBlock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_ad_block"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_ad_block_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 定时停止 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchTimedStop"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_timed_stop"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_timed_stop_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:id="@+id/timedStopContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/task_timed_stop_minutes"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvTimedStopMinutes"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/purple_700"
+                        android:textStyle="bold"
+                        android:textSize="15sp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderTimedStopMinutes"
+                        android:layout_width="160dp"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="1"
+                        android:valueTo="180"
+                        android:stepSize="1"
+                        app:tickColor="@color/purple_200"
+                        app:tickColorActive="@color/purple_500"
+                        app:thumbColor="@color/purple_500"
+                        app:trackColorActive="@color/purple_500"
+                        app:trackColorInactive="@color/divider" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 多 APP 轮换 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchAppRotation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_app_rotation"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_app_rotation_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:id="@+id/rotationContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/task_rotation_minutes"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvRotationMinutes"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/purple_700"
+                        android:textStyle="bold"
+                        android:textSize="15sp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderRotationMinutes"
+                        android:layout_width="160dp"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="1"
+                        android:valueTo="60"
+                        android:stepSize="1"
+                        app:tickColor="@color/teal_200"
+                        app:tickColorActive="@color/teal_700"
+                        app:thumbColor="@color/teal_700"
+                        app:trackColorActive="@color/teal_700"
+                        app:trackColorInactive="@color/divider" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 屏幕常亮 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchKeepScreenOn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_keep_screen_on"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_keep_screen_on_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 保存按钮 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveTasks"
+            style="@style/AutoScrollButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/save"
+            app:backgroundTint="@color/teal_700"
+            app:cornerRadius="16dp" />
+
+    </LinearLayout>
+</ScrollView>

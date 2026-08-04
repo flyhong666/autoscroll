@@ -7,13 +7,13 @@
     <!-- 前台服务权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- 无障碍服务权限 -->
-    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" 
-        tools:ignore="ProtectedPermissions" />
-    <!-- 网络权限 -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <!-- 振动权限 -->
+    <!-- 振动（悬浮窗长按反馈） -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 屏幕常亮（WakeLock） -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 查询其他应用（包名检测、轮换启动） -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:allowBackup="true"
@@ -25,9 +25,9 @@
 
         <!-- 主界面 -->
         <activity
-            android:name=".MainActivity"
+            android:name="cn.ggdoc.autoscroll.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.AutoScroll">
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -36,7 +36,7 @@
 
         <!-- 无障碍服务 -->
         <service
-            android:name=".service.AutoScrollAccessibilityService"
+            android:name="cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -47,9 +47,9 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- 悬浮窗服务 -->
+        <!-- 悬浮窗前台服务 -->
         <service
-            android:name=".service.FloatingWindowService"
+            android:name="cn.ggdoc.autoscroll.service.FloatingWindowService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -58,5 +58,4 @@
         </service>
 
     </application>
-
-    </manifest>
+</manifest>

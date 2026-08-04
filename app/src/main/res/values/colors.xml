@@ -1,24 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.AutoScroll" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_700</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-    </style>
+<resources>
+    <!-- 主色系：清爽科技蓝（保留旧资源名做别名，兼容原有引用） -->
+    <color name="purple_200">#B3D8FF</color>
+    <color name="purple_500">#2F6BFF</color>
+    <color name="purple_700">#1E4FD8</color>
 
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
+    <!-- 辅助色：青绿色 -->
+    <color name="teal_200">#6EE7D0</color>
+    <color name="teal_700">#0FA38B</color>
+
+    <!-- 中性色 -->
     <color name="white">#FFFFFFFF</color>
+    <color name="bg_page">#F5F7FB</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="text_primary">#1A1F36</color>
+    <color name="text_secondary">#5A6278</color>
+    <color name="text_hint">#98A1B8</color>
+    <color name="border">#E2E7F2</color>
+    <color name="divider">#ECEFF7</color>
+    <color name="success">#10B981</color>
+    <color name="warn">#F59E0B</color>
+
+    <!-- 悬浮窗 -->
+    <color name="floating_bg">#CC2F6BFF</color>
+    <color name="floating_stroke">#FFFFFF</color>
 </resources>
