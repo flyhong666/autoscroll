@@ -58,11 +58,12 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
-      # 提取版本号：tag 触发用 tag 名（v3.0.0 -> 3.0.0）；其它情况用短 SHA
-      - name: Extract version
+      # 提取版本号 + 重命名 APK（合并为一步，全用 shell 变量，避免跨步骤表达式插值）
+      - name: Extract version and rename APK
         id: version
         shell: bash
         run: |
+          mkdir -p output
           SHORT_SHA="${GITHUB_SHA::7}"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
@@ -73,17 +74,13 @@ jobs:
           fi
           # 防止文件名包含路径分隔符
           VERSION="${VERSION//\//-}"
+          # 用 shell 变量拷贝（不经过 ${{ }} 插值，规避 secret 脱敏干扰）
+          cp app/build/outputs/apk/release/app-release.apk \
+             "output/autoscroll-${VERSION}.apk"
+          ls -la output/
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION (tag=$TAG)"
-
-      - name: Rename APK
-        shell: bash
-        run: |
-          mkdir -p output
-          cp app/build/outputs/apk/release/app-release.apk \
-             "output/autoscroll-${{ steps.version.outputs.version }}.apk"
-          ls -la output/
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
