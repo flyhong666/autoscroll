@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_control"
+        android:enabled="true"
+        android:icon="@drawable/ic_tab_control"
+        android:title="@string/tab_control" />
+    <item
+        android:id="@+id/nav_scene"
+        android:enabled="true"
+        android:icon="@drawable/ic_tab_scene"
+        android:title="@string/tab_scene" />
+    <item
+        android:id="@+id/nav_task"
+        android:enabled="true"
+        android:icon="@drawable/ic_tab_task"
+        android:title="@string/tab_task" />
+</menu>

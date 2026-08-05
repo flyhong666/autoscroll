@@ -22,11 +22,10 @@ import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
 import cn.ggdoc.autoscroll.service.FloatingWindowService
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.slider.Slider
-import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.card.MaterialCardView
 
 /**
- * 控制页：状态展示 + 基础参数 + 权限引导 + 服务启停
+ * 控制页：状态展示 + 设置入口（基础参数在底部弹窗配置）+ 权限引导 + 服务启停
  */
 class ControlFragment : Fragment() {
 
@@ -38,22 +37,13 @@ class ControlFragment : Fragment() {
     private lateinit var tvStatusScrolling: TextView
     private lateinit var tvStatusScene: TextView
     private lateinit var tvStatusRemaining: TextView
+    private lateinit var tvParamSummary: TextView
 
     private lateinit var btnAccessibility: MaterialButton
     private lateinit var btnOverlay: MaterialButton
     private lateinit var btnStartService: MaterialButton
-    private lateinit var btnApplyRecommend: MaterialButton
-    private lateinit var btnSaveSettings: MaterialButton
-
-    private lateinit var sliderMinInterval: Slider
-    private lateinit var sliderMaxInterval: Slider
-    private lateinit var sliderMinDuration: Slider
-    private lateinit var sliderMaxDuration: Slider
-    private lateinit var tvMinInterval: TextView
-    private lateinit var tvMaxInterval: TextView
-    private lateinit var tvMinDuration: TextView
-    private lateinit var tvMaxDuration: TextView
-    private lateinit var switchFilterApp: SwitchMaterial
+    private lateinit var cardSettingsEntry: MaterialCardView
+    private lateinit var cardRecorderEntry: MaterialCardView
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -74,9 +64,9 @@ class ControlFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         bindViews(view)
-        setupSliders()
         setupClickListeners()
-        loadSettingsToUI()
+        refreshUI()
+        refreshParamSummary()
     }
 
     override fun onResume() {
@@ -97,54 +87,13 @@ class ControlFragment : Fragment() {
         tvStatusScrolling = v.findViewById(R.id.tvStatusScrolling)
         tvStatusScene = v.findViewById(R.id.tvStatusScene)
         tvStatusRemaining = v.findViewById(R.id.tvStatusRemaining)
+        tvParamSummary = v.findViewById(R.id.tvParamSummary)
 
         btnAccessibility = v.findViewById(R.id.btnAccessibility)
         btnOverlay = v.findViewById(R.id.btnOverlay)
         btnStartService = v.findViewById(R.id.btnStartService)
-        btnApplyRecommend = v.findViewById(R.id.btnApplyRecommend)
-        btnSaveSettings = v.findViewById(R.id.btnSaveSettings)
-
-        sliderMinInterval = v.findViewById(R.id.sliderMinInterval)
-        sliderMaxInterval = v.findViewById(R.id.sliderMaxInterval)
-        sliderMinDuration = v.findViewById(R.id.sliderMinDuration)
-        sliderMaxDuration = v.findViewById(R.id.sliderMaxDuration)
-        tvMinInterval = v.findViewById(R.id.tvMinInterval)
-        tvMaxInterval = v.findViewById(R.id.tvMaxInterval)
-        tvMinDuration = v.findViewById(R.id.tvMinDuration)
-        tvMaxDuration = v.findViewById(R.id.tvMaxDuration)
-        switchFilterApp = v.findViewById(R.id.switchFilterApp)
-    }
-
-    private fun setupSliders() {
-        sliderMinInterval.addOnChangeListener { _, value, _ ->
-            tvMinInterval.text = "${value.toInt()}s"
-        }
-        sliderMaxInterval.addOnChangeListener { _, value, _ ->
-            tvMaxInterval.text = "${value.toInt()}s"
-        }
-        sliderMinDuration.addOnChangeListener { _, value, _ ->
-            tvMinDuration.text = "${value.toInt()}ms"
-        }
-        sliderMaxDuration.addOnChangeListener { _, value, _ ->
-            tvMaxDuration.text = "${value.toInt()}ms"
-        }
-    }
-
-    private fun loadSettingsToUI() {
-        val ctx = requireContext()
-        sliderMinInterval.value = AppConfig.getMinInterval(ctx).toFloat()
-            .coerceIn(sliderMinInterval.valueFrom, sliderMinInterval.valueTo)
-        sliderMaxInterval.value = AppConfig.getMaxInterval(ctx).toFloat()
-            .coerceIn(sliderMaxInterval.valueFrom, sliderMaxInterval.valueTo)
-        sliderMinDuration.value = AppConfig.getMinDuration(ctx).toFloat()
-            .coerceIn(sliderMinDuration.valueFrom, sliderMinDuration.valueTo)
-        sliderMaxDuration.value = AppConfig.getMaxDuration(ctx).toFloat()
-            .coerceIn(sliderMaxDuration.valueFrom, sliderMaxDuration.valueTo)
-        tvMinInterval.text = "${sliderMinInterval.value.toInt()}s"
-        tvMaxInterval.text = "${sliderMaxInterval.value.toInt()}s"
-        tvMinDuration.text = "${sliderMinDuration.value.toInt()}ms"
-        tvMaxDuration.text = "${sliderMaxDuration.value.toInt()}ms"
-        switchFilterApp.isChecked = AppConfig.isFilterShortVideoApp(ctx)
+        cardSettingsEntry = v.findViewById(R.id.cardSettingsEntry)
+        cardRecorderEntry = v.findViewById(R.id.cardRecorderEntry)
     }
 
     private fun setupClickListeners() {
@@ -154,26 +103,27 @@ class ControlFragment : Fragment() {
             if (FloatingWindowService.isRunning()) stopFloatingService()
             else startFloatingService()
         }
-        btnSaveSettings.setOnClickListener { saveSettings() }
-        btnApplyRecommend.setOnClickListener { applyRecommendParams() }
+        cardSettingsEntry.setOnClickListener { openSettingsSheet() }
+        cardRecorderEntry.setOnClickListener {
+            startActivity(Intent(requireContext(), ScriptActivity::class.java))
+        }
     }
 
-    private fun applyRecommendParams() {
-        val sceneId = AppConfig.getCurrentScene(requireContext())
-        val scene = SceneConfig.getScene(sceneId)
-        sliderMinInterval.value = scene.recommendMinInterval.toFloat()
-            .coerceIn(sliderMinInterval.valueFrom, sliderMinInterval.valueTo)
-        sliderMaxInterval.value = scene.recommendMaxInterval.toFloat()
-            .coerceIn(sliderMaxInterval.valueFrom, sliderMaxInterval.valueTo)
-        sliderMinDuration.value = scene.recommendMinDuration.toFloat()
-            .coerceIn(sliderMinDuration.valueFrom, sliderMinDuration.valueTo)
-        sliderMaxDuration.value = scene.recommendMaxDuration.toFloat()
-            .coerceIn(sliderMaxDuration.valueFrom, sliderMaxDuration.valueTo)
-        tvMinInterval.text = "${sliderMinInterval.value.toInt()}s"
-        tvMaxInterval.text = "${sliderMaxInterval.value.toInt()}s"
-        tvMinDuration.text = "${sliderMinDuration.value.toInt()}ms"
-        tvMaxDuration.text = "${sliderMaxDuration.value.toInt()}ms"
-        Toast.makeText(requireContext(), R.string.params_saved, Toast.LENGTH_SHORT).show()
+    private fun openSettingsSheet() {
+        val sheet = SettingsBottomSheet()
+        sheet.onSaved = { refreshParamSummary() }
+        sheet.show(childFragmentManager, "SettingsBottomSheet")
+    }
+
+    private fun refreshParamSummary() {
+        val ctx = requireContext()
+        val minI = AppConfig.getMinInterval(ctx)
+        val maxI = AppConfig.getMaxInterval(ctx)
+        val minD = AppConfig.getMinDuration(ctx)
+        val maxD = AppConfig.getMaxDuration(ctx)
+        tvParamSummary.text = getString(
+            R.string.settings_summary, minI, maxI, minD, maxD
+        )
     }
 
     private fun openAccessibilitySettings() {
@@ -234,28 +184,6 @@ class ControlFragment : Fragment() {
             return false
         }
         return true
-    }
-
-    private fun saveSettings() {
-        val ctx = requireContext()
-        var minI = sliderMinInterval.value.toInt()
-        var maxI = sliderMaxInterval.value.toInt()
-        var minD = sliderMinDuration.value.toInt()
-        var maxD = sliderMaxDuration.value.toInt()
-        if (minI >= maxI) maxI = minI + 1
-        if (minD >= maxD) maxD = minD + 50
-        val (valid, msg) = AppConfig.validate(minI, maxI, minD, maxD)
-        if (!valid) {
-            Toast.makeText(ctx, "参数错误：$msg", Toast.LENGTH_SHORT).show()
-            return
-        }
-        AppConfig.setMinInterval(ctx, minI)
-        AppConfig.setMaxInterval(ctx, maxI)
-        AppConfig.setMinDuration(ctx, minD)
-        AppConfig.setMaxDuration(ctx, maxD)
-        AppConfig.setFilterShortVideoApp(ctx, switchFilterApp.isChecked)
-        AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
-        Toast.makeText(ctx, R.string.params_saved, Toast.LENGTH_SHORT).show()
     }
 
     private fun registerReceiver() {

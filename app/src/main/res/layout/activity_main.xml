@@ -6,53 +6,33 @@
     android:orientation="vertical"
     android:background="@color/bg_page">
 
-    <!-- 顶部标题栏 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
-        android:paddingTop="28dp"
-        android:paddingBottom="12dp">
+    <!-- 顶部标题已移除，内容由各 fragment 自行控制顶部留白 -->
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_headline"
-            android:textAppearance="@style/TextAppearance.Headline"
-            android:textSize="24sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/app_subtitle"
-            android:textAppearance="@style/TextAppearance.Body"
-            android:textSize="12sp" />
-    </LinearLayout>
-
-    <!-- Tab 栏 -->
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginBottom="4dp"
-        app:tabIndicatorColor="@color/purple_500"
-        app:tabSelectedTextColor="@color/purple_700"
-        app:tabTextColor="@color/text_secondary"
-        app:tabRippleColor="@color/divider"
-        app:tabMode="fixed"
-        app:tabGravity="fill"
-        app:tabBackground="@drawable/tab_background"
-        app:tabIndicatorHeight="0dp" />
-
-    <!-- 内容区 -->
+    <!-- 内容区：ViewPager 占据剩余空间 -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- 底边分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/border" />
+
+    <!-- 底部导航栏 -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        app:menu="@menu/bottom_nav_menu"
+        app:itemIconTint="@color/bottom_nav_text"
+        app:itemTextColor="@color/bottom_nav_text"
+        app:itemIconSize="22dp"
+        app:itemRippleColor="@color/purple_200"
+        app:labelVisibilityMode="labeled"
+        style="@style/Widget.MaterialComponents.BottomNavigationView" />
 
 </LinearLayout>

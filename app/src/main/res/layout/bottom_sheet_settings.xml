@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bottom_sheet_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="24dp">
+
+        <!-- 拖拽手柄 -->
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="14dp"
+            android:background="@drawable/scene_icon_bg"
+            android:backgroundTint="@color/border" />
+
+        <!-- 标题行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="18dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_title"
+                android:textAppearance="@style/TextAppearance.Title"
+                android:textSize="18sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApplyRecommend"
+                style="@style/AutoScrollButton.Outline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/apply_recommend"
+                android:textSize="12sp"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/purple_500"
+                android:textColor="@color/purple_700" />
+        </LinearLayout>
+
+        <!-- 最小间隔 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/min_interval"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/tvMinInterval"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/purple_700"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:paddingLeft="8dp" />
+            </LinearLayout>
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderMinInterval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="1"
+                android:valueTo="30"
+                android:stepSize="1"
+                app:tickColor="@color/purple_200"
+                app:tickColorActive="@color/purple_500"
+                app:thumbColor="@color/purple_500"
+                app:trackColorActive="@color/purple_500"
+                app:trackColorInactive="@color/divider" />
+        </LinearLayout>
+
+        <!-- 最大间隔 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/max_interval"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/tvMaxInterval"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/purple_700"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:paddingLeft="8dp" />
+            </LinearLayout>
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderMaxInterval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="2"
+                android:valueTo="60"
+                android:stepSize="1"
+                app:tickColor="@color/purple_200"
+                app:tickColorActive="@color/purple_500"
+                app:thumbColor="@color/purple_500"
+                app:trackColorActive="@color/purple_500"
+                app:trackColorInactive="@color/divider" />
+        </LinearLayout>
+
+        <!-- 最小时长 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/min_duration"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/tvMinDuration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/purple_700"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:paddingLeft="8dp" />
+            </LinearLayout>
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderMinDuration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="100"
+                android:valueTo="1500"
+                android:stepSize="50"
+                app:tickColor="@color/teal_200"
+                app:tickColorActive="@color/teal_700"
+                app:thumbColor="@color/teal_700"
+                app:trackColorActive="@color/teal_700"
+                app:trackColorInactive="@color/divider" />
+        </LinearLayout>
+
+        <!-- 最大时长 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/max_duration"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/tvMaxDuration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/purple_700"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:paddingLeft="8dp" />
+            </LinearLayout>
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderMaxDuration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="200"
+                android:valueTo="3000"
+                android:stepSize="50"
+                app:tickColor="@color/teal_200"
+                app:tickColorActive="@color/teal_700"
+                app:thumbColor="@color/teal_700"
+                app:trackColorActive="@color/teal_700"
+                app:trackColorInactive="@color/divider" />
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardAllowedApps"
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:rippleColor="@color/purple_200">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_apps"
+                    app:tint="@color/purple_500"
+                    android:background="@drawable/scene_icon_bg" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/allowed_apps_title"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/tvAllowedAppsSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="12.5sp"
+                        android:textColor="@color/text_hint" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_hint" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ad_keywords_title"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/ad_keywords_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12.5sp"
+                    android:textColor="@color/text_hint" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:boxStrokeColor="@color/purple_500">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etAdKeywords"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minLines="2"
+                        android:maxLines="4"
+                        android:gravity="top"
+                        android:inputType="text"
+                        android:textSize="13sp"
+                        android:hint="@string/ad_keywords_hint" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveSettings"
+            style="@style/AutoScrollButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/save"
+            app:backgroundTint="@color/teal_700"
+            app:cornerRadius="16dp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

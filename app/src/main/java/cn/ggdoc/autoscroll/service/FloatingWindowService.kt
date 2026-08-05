@@ -200,7 +200,7 @@ class FloatingWindowService : Service() {
             getString(R.string.notif_content)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notif_title))
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(contentText)
             .setSmallIcon(R.drawable.ic_notification_small)
             .setContentIntent(pi)

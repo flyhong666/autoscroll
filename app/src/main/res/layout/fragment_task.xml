@@ -31,6 +31,179 @@
             android:textSize="13sp"
             android:layout_marginBottom="16dp" />
 
+        <!-- 统计看板 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/stats_dashboard"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="14dp"
+                    android:text="@string/stats_dashboard_subtitle"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:paddingVertical="6dp">
+
+                        <TextView
+                            android:id="@+id/tvStatScroll"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/purple_700" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/stats_scroll"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:paddingVertical="6dp">
+
+                        <TextView
+                            android:id="@+id/tvStatLike"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/teal_700" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/stats_like"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:paddingVertical="6dp">
+
+                        <TextView
+                            android:id="@+id/tvStatAdBlock"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/purple_700" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/stats_ad_block"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:paddingVertical="6dp">
+
+                        <TextView
+                            android:id="@+id/tvStatAdReward"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/danger" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/stats_ad_reward"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:id="@+id/tvStatTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="00:00"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/stats_running_time"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_hint" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 自动点赞 -->
         <com.google.android.material.card.MaterialCardView
             style="@style/AutoScrollCard"
@@ -316,6 +489,377 @@
                     android:textAppearance="@style/TextAppearance.Body"
                     android:textSize="12sp"
                     android:textColor="@color/text_hint" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchSchedule"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_schedule"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_schedule_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:id="@+id/scheduleTimeContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/task_schedule_start"
+                            android:textAppearance="@style/TextAppearance.Body"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+
+                        <TextView
+                            android:id="@+id/tvScheduleStart"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="72dp"
+                            android:gravity="center"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:textStyle="bold"
+                            android:textSize="18sp"
+                            android:textColor="@color/purple_700"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/task_schedule_end"
+                            android:textAppearance="@style/TextAppearance.Body"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+
+                        <TextView
+                            android:id="@+id/tvScheduleEnd"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="72dp"
+                            android:gravity="center"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:textStyle="bold"
+                            android:textSize="18sp"
+                            android:textColor="@color/purple_700"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 低电量暂停 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchBatteryGuard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_battery_guard"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_battery_guard_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:id="@+id/batteryThresholdContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/task_battery_threshold"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvBatteryThreshold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/purple_700"
+                        android:textStyle="bold"
+                        android:textSize="15sp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderBatteryThreshold"
+                        android:layout_width="160dp"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="5"
+                        android:valueTo="50"
+                        android:stepSize="5"
+                        app:tickColor="@color/purple_200"
+                        app:tickColorActive="@color/purple_500"
+                        app:thumbColor="@color/purple_500"
+                        app:trackColorActive="@color/purple_500"
+                        app:trackColorInactive="@color/divider" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 仅 Wi-Fi 运行 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchWifiOnly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_wifi_only"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_wifi_only_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 看广告得金币（高风险） -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchAdReward"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_ad_reward"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tvAdRewardSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_ad_reward_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/danger" />
+
+                <!-- 风险确认 -->
+                <LinearLayout
+                    android:id="@+id/adRewardAckContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="10dp">
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/checkAdRewardAck"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="@string/task_ad_reward_ack"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_primary" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvAdRewardAckWarn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_ad_reward_ack_warn"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/danger" />
+
+                <!-- 风险详细说明 -->
+                <TextView
+                    android:id="@+id/tvAdRewardRisk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@color/danger_bg"
+                    android:padding="12dp"
+                    android:text="@string/task_ad_reward_risk"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary" />
+
+                <!-- 间隔 -->
+                <LinearLayout
+                    android:id="@+id/adRewardIntervalContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/task_ad_reward_interval"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvAdRewardInterval"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/purple_700"
+                        android:textStyle="bold"
+                        android:textSize="15sp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderAdRewardInterval"
+                        android:layout_width="160dp"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="2"
+                        android:valueTo="60"
+                        android:stepSize="1"
+                        app:tickColor="@color/purple_200"
+                        app:tickColorActive="@color/purple_500"
+                        app:thumbColor="@color/purple_500"
+                        app:trackColorActive="@color/purple_500"
+                        app:trackColorInactive="@color/divider" />
+                </LinearLayout>
+
+                <!-- 关键词 -->
+                <LinearLayout
+                    android:id="@+id/adRewardKeywordsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_ad_reward_keywords"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/task_ad_reward_keywords_summary"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_hint" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etAdRewardKeywords"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:hint="@string/task_ad_reward_keywords_hint"
+                            android:textSize="13sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

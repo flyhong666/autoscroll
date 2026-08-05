@@ -4,13 +4,12 @@
     <string name="app_name">自动刷视频</string>
     <string name="accessibility_service_description">此服务用于模拟用户滑动、点赞、关闭广告等操作，自动刷短视频/新闻/小说/社交/直播等内容。请确保只在需要时使用此功能。</string>
 
-    <!-- 主界面标题与说明 -->
-    <string name="app_headline">自动刷刷刷</string>
-    <string name="app_subtitle">短视频 · 新闻 · 小说 · 社交 · 直播 · 全场景自动滚动</string>
+    <!-- 主界面说明 -->
     <string name="guide_title">使用说明</string>
-    <string name="guide_content">1. 在「场景」页选择要刷的内容类型\n2. 在「任务」页开启需要的扩展功能\n3. 回到「控制」页授予无障碍 + 悬浮窗权限\n4. 点击「启动服务」→ 单击悬浮球开始\n5. 再次单击悬浮球停止</string>
+    <string name="guide_content">选好场景、开好权限，点「启动服务」后单击悬浮球即可开始，再点一次停止。</string>
     <string name="status_title">运行状态</string>
     <string name="settings_title">基础参数</string>
+    <string name="settings_summary">间隔 %1$ds–%2$ds · 时长 %3$dms–%4$dms</string>
 
     <!-- Tab 标题 -->
     <string name="tab_control">控制</string>
@@ -39,14 +38,25 @@
     <string name="click_to_start">点击开始自动刷视频</string>
     <string name="save">保存参数</string>
     <string name="apply_recommend">应用推荐参数</string>
+    <string name="apply_recommend_done">已应用推荐参数，点击保存后生效</string>
 
     <!-- 基础参数 -->
     <string name="min_interval">最小间隔</string>
     <string name="max_interval">最大间隔</string>
     <string name="min_duration">最小时长</string>
     <string name="max_duration">最大时长</string>
-    <string name="filter_app_title">仅在当前场景应用中生效</string>
-    <string name="filter_app_summary">非当前场景的应用自动跳过，避免误操作</string>
+    <string name="allowed_apps_title">生效应用</string>
+    <string name="allowed_apps_count">已选择 %1$d 个应用</string>
+    <string name="allowed_apps_empty">未限制（对所有应用生效）</string>
+
+    <!-- 应用选择器 -->
+    <string name="app_picker_title">选择生效应用</string>
+    <string name="app_picker_search_hint">搜索应用</string>
+    <string name="app_picker_done">完成</string>
+    <string name="app_picker_empty">未找到匹配的应用</string>
+    <string name="app_picker_select_all">全选</string>
+    <string name="app_picker_clear">清空</string>
+
     <string name="params_saved">参数已保存</string>
 
     <!-- 场景 -->
@@ -77,6 +87,10 @@
     <string name="task_ad_block">自动关闭广告弹窗</string>
     <string name="task_ad_block_summary">检测「跳过/关闭/知道了」等按钮自动点击</string>
 
+    <string name="ad_keywords_title">广告关闭关键词</string>
+    <string name="ad_keywords_summary">匹配到这些文案时自动点击关闭。逗号/顿号分隔，可自由增删</string>
+    <string name="ad_keywords_hint">跳过,关闭,广告,立即领取,知道了…</string>
+
     <string name="task_timed_stop">定时停止</string>
     <string name="task_timed_stop_summary">运行指定时间后自动停止</string>
     <string name="task_timed_stop_minutes">停止时间（分钟）</string>
@@ -87,6 +101,21 @@
 
     <string name="task_keep_screen_on">屏幕常亮</string>
     <string name="task_keep_screen_on_summary">防止自动锁屏导致服务中断</string>
+
+    <string name="task_schedule">定时运行</string>
+    <string name="task_schedule_summary">仅在指定时间段内自动滚动，到点自动开始 / 停止</string>
+    <string name="task_schedule_start">开始时间</string>
+    <string name="task_schedule_end">结束时间</string>
+
+    <string name="task_battery_guard">低电量暂停</string>
+    <string name="task_battery_guard_summary">电量低于阈值且未充电时暂停滚动，充电恢复后继续</string>
+    <string name="task_battery_threshold">暂停电量阈值（%）</string>
+
+    <string name="task_wifi_only">仅 Wi-Fi 运行</string>
+    <string name="task_wifi_only_summary">非 Wi-Fi 网络时不滚动，避免消耗移动流量</string>
+
+    <string name="toast_schedule_set">已设置定时运行，到点自动启停</string>
+    <string name="toast_schedule_cancelled">已取消定时运行</string>
 
     <!-- Toast 提示 -->
     <string name="toast_accessibility_guide">请找到「自动刷视频」并开启服务</string>
@@ -105,11 +134,83 @@
     <string name="toast_app_rotation">轮换切换：%1$s</string>
     <string name="toast_ad_blocked">已关闭广告弹窗</string>
     <string name="toast_liked">已自动点赞</string>
+    <string name="toast_ad_reward">正在观看激励视频：%1$s</string>
+
+    <!-- ========== 看广告得金币（高风险独立任务） ========== -->
+    <string name="task_ad_reward">看广告得金币（高风险）</string>
+    <string name="task_ad_reward_summary">扫描「看广告得金币」等入口并自动观看激励视频。可能被平台判定为脚本/异常导致限流或封号，请自行评估风险。</string>
+    <string name="task_ad_reward_risk">该任务会模拟点击进入激励视频，并在观看期自动点掉「关闭/跳过/领取」按钮。平台可能识别为机器人操作，导致账号限流、收益清零甚至封号。仅建议在小号或测试号上使用。</string>
+    <string name="task_ad_reward_ack">我已了解封号风险并愿意自担</string>
+    <string name="task_ad_reward_ack_warn">未勾选风险确认前无法开启此任务</string>
+    <string name="task_ad_reward_interval">尝试间隔（分钟）</string>
+    <string name="task_ad_reward_keywords">激励入口关键词</string>
+    <string name="task_ad_reward_keywords_summary">当前页面出现这些文案时，将尝试点击进入激励视频。逗号/顿号分隔，可自由增删</string>
+    <string name="task_ad_reward_keywords_hint">看广告得金币,领金币,得金币,免费领取,领取奖励…</string>
+
+    <!-- ========== 统计看板 ========== -->
+    <string name="stats_dashboard">统计看板</string>
+    <string name="stats_dashboard_subtitle">本次自动滚动累计数据，下次开始时清零</string>
+    <string name="stats_scroll">滚动次数</string>
+    <string name="stats_like">点赞次数</string>
+    <string name="stats_ad_block">关闭广告</string>
+    <string name="stats_ad_reward">看广告激励</string>
+    <string name="stats_running_time">运行时长</string>
+
+    <!-- ========== 操作记录器 ========== -->
+    <string name="script_title">操作记录器</string>
+    <string name="script_subtitle">录制你的点击 / 长按 / 滑动，生成可回放脚本</string>
+    <string name="script_tip">点「开始录制」后本页会自动退到后台，切换到目标 APP 正常操作即可；屏幕上会出现录制悬浮条，点一下它结束录制并保存脚本。\n注意：录制依赖无障碍事件，部分自绘界面（游戏、Flutter/Canvas 页面）可能捕获不到。</string>
+    <string name="script_empty">还没有脚本，点下方按钮开始录制</string>
+    <string name="script_start_record">开始录制</string>
+    <string name="script_back">返回</string>
+    <string name="script_run">运行</string>
+    <string name="script_more">更多操作</string>
+    <string name="script_meta">%1$d 步 · 约 %2$d 秒 · %3$s</string>
+
+    <string name="script_record_confirm_title">开始录制</string>
+    <string name="script_record_confirm_msg">确认后本页退到后台，请切到要录制的 APP 正常操作。\n\n· 点击、长按、列表滑动会被记录\n· 最多记录 300 步\n· 点击悬浮条上的「结束」保存脚本</string>
+    <string name="script_record_start_now">立即开始</string>
+
+    <string name="script_loops">循环次数</string>
+    <string name="script_loops_value">循环 %1$d 次</string>
+    <string name="script_speed">回放倍速</string>
+    <string name="script_speed_value">%1$.2f 倍速</string>
+    <string name="script_play_hint">回放时会自动打开录制时的目标 APP，请勿手动操作屏幕。点击悬浮条可随时终止。</string>
+
+    <string name="script_menu_detail">查看步骤</string>
+    <string name="script_menu_rename">重命名</string>
+    <string name="script_menu_export">导出</string>
+    <string name="script_menu_delete">删除</string>
+    <string name="script_detail_header">目标应用：%1$s\n步骤数：%2$d\n预计耗时：约 %3$d 秒</string>
+    <string name="script_export_done">已导出到：\n%1$s</string>
+    <string name="script_delete_confirm">确定删除脚本「%1$s」？此操作不可撤销。</string>
+
+    <!-- 录制 / 回放悬浮条 -->
+    <string name="recorder_status_recording">录制中 · 已记录 %1$d 步</string>
+    <string name="recorder_status_playing">回放中 · %1$d/%2$d 步 · 第 %3$d/%4$d 次</string>
+    <string name="recorder_stop">结束</string>
+    <string name="recorder_stop_play">终止</string>
+
+    <!-- 记录器 Toast -->
+    <string name="toast_record_started">已开始录制，请切换到目标 APP 操作</string>
+    <string name="toast_record_already">正在录制中</string>
+    <string name="toast_record_empty">没有捕获到任何操作，已放弃本次录制</string>
+    <string name="toast_record_saved">已保存脚本「%1$s」，共 %2$d 步</string>
+    <string name="toast_script_already_playing">已有脚本在回放中</string>
+    <string name="toast_script_load_failed">脚本读取失败或内容为空</string>
+    <string name="toast_script_play_starting">准备回放，请勿操作屏幕…</string>
+    <string name="toast_script_play_finished">脚本回放完成</string>
+    <string name="toast_script_play_stopped">已终止回放</string>
+    <string name="toast_script_name_empty">名称不能为空</string>
+    <string name="toast_script_rename_failed">重命名失败</string>
+    <string name="toast_script_export_failed">导出失败</string>
+    <string name="toast_script_delete_failed">删除失败</string>
 
     <!-- 通知 -->
     <string name="notif_channel_name">悬浮窗控制</string>
     <string name="notif_channel_desc">用于显示悬浮窗控制按钮</string>
-    <string name="notif_title">自动刷刷刷</string>
     <string name="notif_content">点击控制按钮开始/停止自动滚动</string>
     <string name="notif_content_running">运行中 · 剩余 %1$s</string>
+    <string name="notif_recorder_channel_name">操作记录器</string>
+    <string name="notif_recorder_content">录制 / 回放进行中，点击查看脚本</string>
 </resources>

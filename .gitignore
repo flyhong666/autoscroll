@@ -32,3 +32,9 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+.workbuddy/
+.gradle_local/
+.gradle_user_home/
+local.properties
+.kotlin/

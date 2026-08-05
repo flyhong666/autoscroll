@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="24dp"
+    android:paddingTop="12dp"
+    android:paddingRight="24dp"
+    android:paddingBottom="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/script_loops"
+            android:textAppearance="@style/TextAppearance.Body"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tvPlayLoops"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/purple_700"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/sliderPlayLoops"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stepSize="1"
+        android:value="1"
+        android:valueFrom="1"
+        android:valueTo="50"
+        app:thumbColor="@color/purple_500"
+        app:trackColorActive="@color/purple_500"
+        app:trackColorInactive="@color/divider" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/script_speed"
+            android:textAppearance="@style/TextAppearance.Body"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tvPlaySpeed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/teal_700"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/sliderPlaySpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stepSize="0.25"
+        android:value="1.0"
+        android:valueFrom="0.5"
+        android:valueTo="3.0"
+        app:thumbColor="@color/teal_700"
+        app:trackColorActive="@color/teal_700"
+        app:trackColorInactive="@color/divider" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/script_play_hint"
+        android:textColor="@color/text_hint"
+        android:textSize="12sp" />
+</LinearLayout>

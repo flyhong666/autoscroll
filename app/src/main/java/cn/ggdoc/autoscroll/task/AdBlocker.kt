@@ -3,7 +3,7 @@ package cn.ggdoc.autoscroll.task
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
-import cn.ggdoc.autoscroll.config.SceneConfig
+import cn.ggdoc.autoscroll.config.AppConfig
 
 /**
  * 广告弹窗自动关闭工具
@@ -26,6 +26,8 @@ object AdBlocker {
     fun scanAndClose(service: AccessibilityService): Int {
         var closed = 0
         try {
+            val keywords = AppConfig.getAdKeywords(service)
+            if (keywords.isEmpty()) return 0
             val root = service.rootInActiveWindow ?: return 0
             val candidates = mutableListOf<AccessibilityNodeInfo>()
 
@@ -37,7 +39,7 @@ object AdBlocker {
                 val desc = node.contentDescription?.toString().orEmpty()
                 val combined = "$text $desc"
 
-                if (SceneConfig.AD_BLOCK_KEYWORDS.any { combined.contains(it) }) {
+                if (keywords.any { combined.contains(it) }) {
                     // 找到目标节点，逐级向上找可点击的祖先，再执行点击
                     val clickTarget = findClickableAncestor(node) ?: node
                     val clicked = performClick(clickTarget)

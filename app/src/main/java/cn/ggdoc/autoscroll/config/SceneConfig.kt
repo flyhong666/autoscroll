@@ -97,13 +97,8 @@ object SceneConfig {
     )
 
     /**
-     * 广告 / 弹窗常见关闭文本（用于 AdBlocker）
+     * 广告关闭关键词已下放至设置（AppConfig.getAdKeywords），不再写死于此。
      */
-    val AD_BLOCK_KEYWORDS = listOf(
-        "跳过", "关闭", "广告", "立即领取", "知道了", "确定",
-        "Skip", "skip", "Close", "close", "Ad", "Got it",
-        "不再提醒", "暂不", "取消", "稍后", "No thanks"
-    )
 
     /**
      * 获取所有场景列表

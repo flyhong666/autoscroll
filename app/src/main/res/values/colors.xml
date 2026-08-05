@@ -4,6 +4,9 @@
     <color name="purple_200">#B3D8FF</color>
     <color name="purple_500">#2F6BFF</color>
     <color name="purple_700">#1E4FD8</color>
+    <!-- 启动按钮禁用态：干净的暗调蓝底 + 非纯白文字 -->
+    <color name="purple_disabled">#5C76A8</color>
+    <color name="white_80">#CCFFFFFF</color>
 
     <!-- 辅助色：青绿色 -->
     <color name="teal_200">#6EE7D0</color>
@@ -20,6 +23,8 @@
     <color name="divider">#ECEFF7</color>
     <color name="success">#10B981</color>
     <color name="warn">#F59E0B</color>
+    <color name="danger">#EF4444</color>
+    <color name="danger_bg">#FFF1F0</color>
 
     <!-- 悬浮窗 -->
     <color name="floating_bg">#CC2F6BFF</color>

@@ -13,7 +13,7 @@
         android:paddingLeft="20dp"
         android:paddingRight="20dp"
         android:paddingTop="8dp"
-        android:paddingBottom="36dp">
+        android:paddingBottom="28dp">
 
         <!-- 使用说明卡片 -->
         <com.google.android.material.card.MaterialCardView
@@ -124,261 +124,124 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 基础参数卡片 -->
+        <!-- 基础参数：设置入口卡片（点击打开设置面板） -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardSettingsEntry"
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:rippleColor="@color/purple_200">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/purple_500"
+                    android:background="@drawable/scene_icon_bg" />
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="14dp">
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="12dp">
 
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_title"
-                        android:textAppearance="@style/TextAppearance.Title"
-                        android:textSize="16sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnApplyRecommend"
-                        style="@style/AutoScrollButton.Outline"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/apply_recommend"
-                        android:textSize="12sp"
-                        android:paddingLeft="12dp"
-                        android:paddingRight="12dp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        app:cornerRadius="12dp" />
+                        android:text="@string/settings_title"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/tvParamSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="12.5sp"
+                        android:textColor="@color/text_hint" />
                 </LinearLayout>
 
-                <!-- 最小间隔 -->
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_hint" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 操作记录器入口 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardRecorderEntry"
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:rippleColor="@color/purple_200">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_record"
+                    app:tint="@color/danger"
+                    android:background="@drawable/scene_icon_bg" />
+
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:layout_marginBottom="12dp">
+                    android:layout_marginStart="12dp">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
+                        android:text="@string/script_title"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="15sp" />
 
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/min_interval"
-                            android:textAppearance="@style/TextAppearance.Body"
-                            android:textSize="13.5sp" />
-
-                        <TextView
-                            android:id="@+id/tvMinInterval"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/purple_700"
-                            android:textStyle="bold"
-                            android:textSize="15sp"
-                            android:paddingLeft="8dp" />
-                    </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/sliderMinInterval"
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:id="@+id/tvRecorderSummary"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:valueFrom="1"
-                        android:valueTo="30"
-                        android:stepSize="1"
-                        app:tickColor="@color/purple_200"
-                        app:tickColorActive="@color/purple_500"
-                        app:thumbColor="@color/purple_500"
-                        app:trackColorActive="@color/purple_500"
-                        app:trackColorInactive="@color/divider" />
+                        android:layout_marginTop="3dp"
+                        android:text="@string/script_subtitle"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="12.5sp"
+                        android:textColor="@color/text_hint" />
                 </LinearLayout>
 
-                <!-- 最大间隔 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_marginBottom="12dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/max_interval"
-                            android:textAppearance="@style/TextAppearance.Body"
-                            android:textSize="13.5sp" />
-
-                        <TextView
-                            android:id="@+id/tvMaxInterval"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/purple_700"
-                            android:textStyle="bold"
-                            android:textSize="15sp"
-                            android:paddingLeft="8dp" />
-                    </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/sliderMaxInterval"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:valueFrom="2"
-                        android:valueTo="60"
-                        android:stepSize="1"
-                        app:tickColor="@color/purple_200"
-                        app:tickColorActive="@color/purple_500"
-                        app:thumbColor="@color/purple_500"
-                        app:trackColorActive="@color/purple_500"
-                        app:trackColorInactive="@color/divider" />
-                </LinearLayout>
-
-                <!-- 最小时长 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_marginBottom="12dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/min_duration"
-                            android:textAppearance="@style/TextAppearance.Body"
-                            android:textSize="13.5sp" />
-
-                        <TextView
-                            android:id="@+id/tvMinDuration"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/purple_700"
-                            android:textStyle="bold"
-                            android:textSize="15sp"
-                            android:paddingLeft="8dp" />
-                    </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/sliderMinDuration"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:valueFrom="100"
-                        android:valueTo="1500"
-                        android:stepSize="50"
-                        app:tickColor="@color/teal_200"
-                        app:tickColorActive="@color/teal_700"
-                        app:thumbColor="@color/teal_700"
-                        app:trackColorActive="@color/teal_700"
-                        app:trackColorInactive="@color/divider" />
-                </LinearLayout>
-
-                <!-- 最大时长 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_marginBottom="12dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/max_duration"
-                            android:textAppearance="@style/TextAppearance.Body"
-                            android:textSize="13.5sp" />
-
-                        <TextView
-                            android:id="@+id/tvMaxDuration"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/purple_700"
-                            android:textStyle="bold"
-                            android:textSize="15sp"
-                            android:paddingLeft="8dp" />
-                    </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/sliderMaxDuration"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:valueFrom="200"
-                        android:valueTo="3000"
-                        android:stepSize="50"
-                        app:tickColor="@color/teal_200"
-                        app:tickColorActive="@color/teal_700"
-                        app:thumbColor="@color/teal_700"
-                        app:trackColorActive="@color/teal_700"
-                        app:trackColorInactive="@color/divider" />
-                </LinearLayout>
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/switchFilterApp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/filter_app_title"
-                    android:textAppearance="@style/TextAppearance.Body"
-                    android:textSize="13.5sp"
-                    app:useMaterialThemeColors="true" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginStart="4dp"
-                    android:text="@string/filter_app_summary"
-                    android:textAppearance="@style/TextAppearance.Body"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_hint" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSaveSettings"
-                    style="@style/AutoScrollButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/save"
-                    app:backgroundTint="@color/teal_700"
-                    app:cornerRadius="16dp" />
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_hint" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -409,7 +272,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/start_service"
-            app:backgroundTint="@color/purple_500"
+            android:textColor="@color/btn_start_text"
+            app:backgroundTint="@color/btn_start_bg"
             app:cornerRadius="18dp" />
 
     </LinearLayout>
