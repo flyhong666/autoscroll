@@ -93,6 +93,9 @@ class RecorderOverlayService : Service() {
     /** 用户主动点按停止（用于区分「自然播完」与「手动终止」的提示文案） */
     private var manualStop = false
 
+    /** 回放模式下由本服务获取的 WakeLock 标记，销毁时只释放自己获取的 */
+    private var playWakeLockAcquired = false
+
     private val handler = Handler(Looper.getMainLooper())
 
     private val longPressRunnable = Runnable {
@@ -159,8 +162,26 @@ class RecorderOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_RECORD
+        if (mode == MODE_PLAY) enableKeepScreenForPlay()
         refreshStatus()
         return START_NOT_STICKY
+    }
+
+    /** 回放期间用户不触屏，需主动保持屏幕常亮 + CPU 不休眠，否则手势会中断 */
+    private fun enableKeepScreenForPlay() {
+        if (::params.isInitialized && isAdded) {
+            if ((params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) == 0) {
+                params.flags = params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                try {
+                    windowManager.updateViewLayout(overlayView, params)
+                } catch (_: Exception) {
+                }
+            }
+        }
+        if (!cn.ggdoc.autoscroll.task.KeepAliveManager.isHeld()) {
+            cn.ggdoc.autoscroll.task.KeepAliveManager.acquire(this)
+            playWakeLockAcquired = true
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -367,6 +388,11 @@ class RecorderOverlayService : Service() {
         }
         handler.removeCallbacks(longPressRunnable)
         handler.removeCallbacks(blinkRunnable)
+        // 回放期间获取的 WakeLock 在此释放（只释放自己获取的，避免误释放滚动任务的锁）
+        if (playWakeLockAcquired) {
+            cn.ggdoc.autoscroll.task.KeepAliveManager.release()
+            playWakeLockAcquired = false
+        }
         // 服务被系统杀掉时保证不残留录制 / 回放状态
         if (ActionRecorder.isRecording) ActionRecorder.cancel(this)
         if (ScriptPlayer.isPlaying) ScriptPlayer.stop()

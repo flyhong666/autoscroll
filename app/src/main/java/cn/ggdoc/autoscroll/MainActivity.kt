@@ -1,5 +1,8 @@
 package cn.ggdoc.autoscroll
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -27,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        requestNotificationPermission()
 
         bottomNav = findViewById(R.id.bottomNav)
         viewPager = findViewById(R.id.viewPager)
@@ -60,5 +65,15 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    /** Android 13+ 需要运行时授予通知权限，否则前台服务通知不会显示 */
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
     }
 }

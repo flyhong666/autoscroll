@@ -13,6 +13,16 @@ package cn.ggdoc.autoscroll.config
  */
 object SceneConfig {
 
+    // ===== 场景操作方式（流类型） =====
+    /** 全屏上滑（短视频、自定义通用） */
+    const val FLOW_SWIPE = "swipe"
+    /** 列表详情流：顺序点开 → 浏览 → 返回（新闻、社交） */
+    const val FLOW_DETAIL = "detail"
+    /** 点按屏幕右侧翻页（小说阅读） */
+    const val FLOW_PAGE_TAP = "page_tap"
+    /** 只挂机不操作（直播） */
+    const val FLOW_IDLE = "idle"
+
     data class Scene(
         val id: String,
         val nameRes: Int,
@@ -23,7 +33,8 @@ object SceneConfig {
         val recommendMaxInterval: Int,
         val recommendMinDuration: Int,
         val recommendMaxDuration: Int,
-        val supportAutoLike: Boolean
+        val supportAutoLike: Boolean,
+        val flow: String = FLOW_SWIPE
     )
 
     val SHORT_VIDEO_PACKAGES = listOf(
@@ -127,7 +138,8 @@ object SceneConfig {
             recommendMaxInterval = 25,
             recommendMinDuration = 350,
             recommendMaxDuration = 600,
-            supportAutoLike = false
+            supportAutoLike = false,
+            flow = FLOW_DETAIL
         ),
         Scene(
             id = AppConfig.SCENE_NOVEL,
@@ -139,7 +151,8 @@ object SceneConfig {
             recommendMaxInterval = 30,
             recommendMinDuration = 400,
             recommendMaxDuration = 800,
-            supportAutoLike = false
+            supportAutoLike = false,
+            flow = FLOW_PAGE_TAP
         ),
         Scene(
             id = AppConfig.SCENE_SOCIAL,
@@ -151,7 +164,8 @@ object SceneConfig {
             recommendMaxInterval = 18,
             recommendMinDuration = 320,
             recommendMaxDuration = 550,
-            supportAutoLike = true
+            supportAutoLike = true,
+            flow = FLOW_DETAIL
         ),
         Scene(
             id = AppConfig.SCENE_LIVE,
@@ -163,7 +177,8 @@ object SceneConfig {
             recommendMaxInterval = 90,
             recommendMinDuration = 0,
             recommendMaxDuration = 0,
-            supportAutoLike = true
+            supportAutoLike = true,
+            flow = FLOW_IDLE
         ),
         Scene(
             id = AppConfig.SCENE_CUSTOM,
@@ -185,4 +200,15 @@ object SceneConfig {
 
     fun getScenePackages(sceneId: String): List<String> =
         getScene(sceneId).packages
+
+    /** 场景对应的操作方式 */
+    fun getSceneFlow(sceneId: String): String = getScene(sceneId).flow
+
+    /** 流类型对应的展示文案资源 */
+    fun flowLabelRes(flow: String): Int = when (flow) {
+        FLOW_DETAIL -> cn.ggdoc.autoscroll.R.string.flow_detail
+        FLOW_PAGE_TAP -> cn.ggdoc.autoscroll.R.string.flow_page_tap
+        FLOW_IDLE -> cn.ggdoc.autoscroll.R.string.flow_idle
+        else -> cn.ggdoc.autoscroll.R.string.flow_swipe
+    }
 }

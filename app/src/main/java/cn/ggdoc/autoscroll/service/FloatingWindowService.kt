@@ -70,6 +70,9 @@ class FloatingWindowService : Service() {
     private var x = 0
     private var y = 100
 
+    /** 上一次对外广播时的滚动状态，避免 STATE_CHANGED 广播自循环 */
+    private var lastNotifiedScrolling: Boolean? = null
+
     private val handler = Handler(Looper.getMainLooper())
     private var isDragging = false
     private var longPressTriggered = false
@@ -378,7 +381,11 @@ class FloatingWindowService : Service() {
             nm.notify(NOTIFICATION_ID, createNotification())
         } catch (_: Exception) {
         }
-        notifyStateChanged(this)
+        // 仅在状态真正变化时对外广播，否则会形成「收到广播→再发广播」的死循环
+        if (lastNotifiedScrolling != scrolling) {
+            lastNotifiedScrolling = scrolling
+            notifyStateChanged(this)
+        }
     }
 
     /**
@@ -392,6 +399,28 @@ class FloatingWindowService : Service() {
             tvCountdown.text = formatTime(remaining)
         } else {
             tvCountdown.visibility = View.GONE
+        }
+        syncKeepScreenFlag()
+    }
+
+    /**
+     * 「屏幕常亮」的真正实现：运行中且开启常亮时给悬浮窗加 FLAG_KEEP_SCREEN_ON。
+     * WakeLock（PARTIAL）只保证 CPU 不休眠，屏幕是否常亮取决于窗口标志。
+     */
+    private fun syncKeepScreenFlag() {
+        if (!::params.isInitialized || !isAdded) return
+        val need = AutoScrollAccessibilityService.isScrolling &&
+                AutoScrollAccessibilityService.keepScreenOn
+        val has = (params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0
+        if (need == has) return
+        params.flags = if (need) {
+            params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        } else {
+            params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+        }
+        try {
+            windowManager.updateViewLayout(floatingView, params)
+        } catch (_: Exception) {
         }
     }
 

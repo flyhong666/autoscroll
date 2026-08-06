@@ -5,8 +5,10 @@ import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.content.Intent
 import android.graphics.Path
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.DisplayMetrics
 import android.util.Log
 import java.lang.ref.WeakReference
 
@@ -79,6 +81,23 @@ object ScriptPlayer {
         val dm = service.resources.displayMetrics
         screenW = dm.widthPixels
         screenH = dm.heightPixels
+        // displayMetrics 不含状态栏/导航栏区域，改用真实屏幕尺寸，避免边缘坐标被裁切
+        try {
+            val wm = service.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val bounds = wm.currentWindowMetrics.bounds
+                screenW = bounds.width()
+                screenH = bounds.height()
+            } else {
+                val real = DisplayMetrics()
+                @Suppress("DEPRECATION")
+                wm.defaultDisplay.getRealMetrics(real)
+                screenW = real.widthPixels
+                screenH = real.heightPixels
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "获取真实屏幕尺寸失败，使用 displayMetrics", e)
+        }
 
         isPlaying = true
         Log.i(TAG, "开始回放「${script.name}」：$stepTotal 步 × $loopTotal 次，${speed}x")

@@ -45,6 +45,12 @@ object AppConfig {
     private const val KEY_BATTERY_THRESHOLD = "battery_threshold"
     private const val KEY_WIFI_ONLY = "wifi_only"
 
+    // ===== 详情流（新闻 / 社交场景：点开→浏览→返回） =====
+    private const val KEY_DETAIL_DWELL_MIN = "detail_dwell_min_seconds"
+    private const val KEY_DETAIL_DWELL_MAX = "detail_dwell_max_seconds"
+    private const val KEY_DETAIL_READ_ALL_PROBABILITY = "detail_read_all_probability"
+    private const val KEY_DETAIL_MAX_SCROLLS = "detail_max_scrolls"
+
     // ===== 默认值 =====
     const val DEFAULT_MIN_INTERVAL = 3
     const val DEFAULT_MAX_INTERVAL = 20
@@ -68,6 +74,13 @@ object AppConfig {
     const val DEFAULT_AD_REWARD_INTERVAL = 5          // 分钟
     const val MIN_AD_REWARD_INTERVAL = 2
     const val MAX_AD_REWARD_INTERVAL = 60
+
+    // 详情流默认值
+    const val DEFAULT_DETAIL_DWELL_MIN = 6            // 秒：详情页最短停留
+    const val DEFAULT_DETAIL_DWELL_MAX = 30           // 秒：详情页最长停留
+    const val DEFAULT_DETAIL_READ_ALL_PROBABILITY = 60 // %：进入详情页后「完整读完」的概率
+    const val DEFAULT_DETAIL_MAX_SCROLLS = 8          // 单篇详情最多滚动次数
+    const val MAX_DETAIL_MAX_SCROLLS = 20
 
     /** 「看广告得金币」入口默认关键词（可在任务页自行增删） */
     val DEFAULT_AD_REWARD_KEYWORDS: Set<String> = setOf(
@@ -194,6 +207,30 @@ object AppConfig {
         prefs(context).getBoolean(KEY_WIFI_ONLY, DEFAULT_WIFI_ONLY)
     fun setWifiOnly(context: Context, value: Boolean) =
         prefs(context).edit().putBoolean(KEY_WIFI_ONLY, value).apply()
+
+    // ---------- 详情流（新闻 / 社交） ----------
+    fun getDetailDwellMin(context: Context): Int =
+        prefs(context).getInt(KEY_DETAIL_DWELL_MIN, DEFAULT_DETAIL_DWELL_MIN)
+    fun setDetailDwellMin(context: Context, value: Int) =
+        prefs(context).edit().putInt(KEY_DETAIL_DWELL_MIN, value).apply()
+
+    fun getDetailDwellMax(context: Context): Int =
+        prefs(context).getInt(KEY_DETAIL_DWELL_MAX, DEFAULT_DETAIL_DWELL_MAX)
+    fun setDetailDwellMax(context: Context, value: Int) =
+        prefs(context).edit().putInt(KEY_DETAIL_DWELL_MAX, value).apply()
+
+    fun getDetailReadAllProbability(context: Context): Int =
+        prefs(context).getInt(KEY_DETAIL_READ_ALL_PROBABILITY, DEFAULT_DETAIL_READ_ALL_PROBABILITY)
+    fun setDetailReadAllProbability(context: Context, value: Int) =
+        prefs(context).edit().putInt(KEY_DETAIL_READ_ALL_PROBABILITY, value).apply()
+
+    fun getDetailMaxScrolls(context: Context): Int =
+        prefs(context).getInt(KEY_DETAIL_MAX_SCROLLS, DEFAULT_DETAIL_MAX_SCROLLS)
+            .coerceIn(1, MAX_DETAIL_MAX_SCROLLS)
+    fun setDetailMaxScrolls(context: Context, value: Int) =
+        prefs(context).edit()
+            .putInt(KEY_DETAIL_MAX_SCROLLS, value.coerceIn(1, MAX_DETAIL_MAX_SCROLLS))
+            .apply()
 
     fun getAllowedApps(context: Context): Set<String> =
         prefs(context).getStringSet(KEY_ALLOWED_APPS, emptySet()) ?: emptySet()

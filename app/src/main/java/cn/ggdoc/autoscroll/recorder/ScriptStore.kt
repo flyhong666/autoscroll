@@ -9,7 +9,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 脚本文件存储：App 私有目录 files/scripts/*.json
+ * 脚本文件存储：App 私有目录 files/scripts/ 下的 .json 文件
  * 导出目录：Android/data/<pkg>/files/scripts/（文件管理器可直接访问，无需存储权限）
  */
 object ScriptStore {

@@ -16,6 +16,8 @@
         tools:ignore="QueryAllPackagesPermission" />
     <!-- 精确闹钟（定时运行） -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 通知权限（Android 13+ 前台服务通知可见性） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"

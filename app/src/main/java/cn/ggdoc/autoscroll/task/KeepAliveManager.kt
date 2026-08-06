@@ -27,15 +27,17 @@ object KeepAliveManager {
         try {
             val pm = context.applicationContext
                 .getSystemService(Context.POWER_SERVICE) as PowerManager
-            // SCREEN_BRIGHT_WAKE_LOCK：保持屏幕常亮 + CPU 运行（已 deprecated 但兼容性最好）
-            @Suppress("DEPRECATION")
+            // SCREEN_BRIGHT_WAKE_LOCK 自 API 17 起对屏幕已无实际效果，
+            // 这里仅用 PARTIAL_WAKE_LOCK 保持 CPU 不休眠；
+            // 真正的「屏幕常亮」由悬浮窗的 FLAG_KEEP_SCREEN_ON 实现
+            // （见 FloatingWindowService.syncKeepScreenFlag）。
             wakeLock = pm.newWakeLock(
-                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
+                PowerManager.PARTIAL_WAKE_LOCK,
                 WAKE_LOCK_TAG
             )
             wakeLock?.setReferenceCounted(false)
             wakeLock?.acquire()
-            Log.i(TAG, "WakeLock 已获取，屏幕常亮")
+            Log.i(TAG, "WakeLock 已获取（CPU 保持运行）")
         } catch (e: Exception) {
             Log.e(TAG, "获取 WakeLock 失败", e)
         }

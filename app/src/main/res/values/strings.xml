@@ -87,6 +87,20 @@
     <string name="task_ad_block">自动关闭广告弹窗</string>
     <string name="task_ad_block_summary">检测「跳过/关闭/知道了」等按钮自动点击</string>
 
+    <!-- 详情流（新闻 / 社交场景） -->
+    <string name="task_detail_flow">详情流（新闻 / 社交场景）</string>
+    <string name="task_detail_flow_summary">模拟真人浏览：从上到下顺序点开列表条目 → 进详情页浏览 → 返回列表继续，可见条目点完自动上滑一屏</string>
+    <string name="task_detail_dwell_min">详情页最短停留</string>
+    <string name="task_detail_dwell_max">详情页最长停留</string>
+    <string name="task_detail_read_all">完整读完概率</string>
+    <string name="task_detail_max_scrolls">单篇最多翻页</string>
+
+    <!-- 场景操作方式标签 -->
+    <string name="flow_swipe">全屏滑动</string>
+    <string name="flow_detail">详情流</string>
+    <string name="flow_page_tap">点按翻页</string>
+    <string name="flow_idle">只挂机</string>
+
     <string name="ad_keywords_title">广告关闭关键词</string>
     <string name="ad_keywords_summary">匹配到这些文案时自动点击关闭。逗号/顿号分隔，可自由增删</string>
     <string name="ad_keywords_hint">跳过,关闭,广告,立即领取,知道了…</string>

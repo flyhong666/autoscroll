@@ -30,7 +30,6 @@ import cn.ggdoc.autoscroll.task.AdRewardTask
 import cn.ggdoc.autoscroll.task.KeepAliveManager
 import java.lang.ref.WeakReference
 import java.util.Calendar
-import java.util.LinkedList
 import kotlin.math.max
 import kotlin.random.Random
 
@@ -118,6 +117,16 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         var adRewardMinutes: Int = AppConfig.DEFAULT_AD_REWARD_INTERVAL
             private set
 
+        // 详情流（新闻 / 社交）
+        var detailDwellMin: Int = AppConfig.DEFAULT_DETAIL_DWELL_MIN
+            private set
+        var detailDwellMax: Int = AppConfig.DEFAULT_DETAIL_DWELL_MAX
+            private set
+        var detailReadAllProbability: Int = AppConfig.DEFAULT_DETAIL_READ_ALL_PROBABILITY
+            private set
+        var detailMaxScrolls: Int = AppConfig.DEFAULT_DETAIL_MAX_SCROLLS
+            private set
+
         /** 正处于激励视频观看期：此期间暂停滚动，避免打断广告 */
         @Volatile
         var isWatchingAdReward = false
@@ -157,6 +166,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     /** 当前场景的 APP 包名列表（用于轮换） */
     private val rotationList = mutableListOf<String>()
     private var rotationIndex = 0
+
+    /** 详情流控制器（新闻 / 社交场景） */
+    private val detailFlow = DetailFlowController(this)
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -229,6 +241,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         wifiOnly = AppConfig.isWifiOnly(this)
         adReward = AppConfig.isAdReward(this)
         adRewardMinutes = AppConfig.getAdRewardInterval(this)
+        detailDwellMin = AppConfig.getDetailDwellMin(this)
+        detailDwellMax = AppConfig.getDetailDwellMax(this)
+        detailReadAllProbability = AppConfig.getDetailReadAllProbability(this)
+        detailMaxScrolls = AppConfig.getDetailMaxScrolls(this)
 
         // 重建轮换列表：若用户设置了生效应用清单，则在其范围内轮换
         rotationList.clear()
@@ -272,6 +288,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         adBlockCount = 0
         adRewardCount = 0
         isWatchingAdReward = false
+        detailFlow.resetCursor()
         Log.i(TAG, "开始自动滚动，场景=$currentScene")
 
         // 屏幕常亮
@@ -305,6 +322,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         if (!isScrolling) return
         isScrolling = false
         isWatchingAdReward = false
+        detailFlow.cancel()
         scrollTask?.let { handler.removeCallbacks(it); scrollTask = null }
         timedStopRunnable?.let { handler.removeCallbacks(it); timedStopRunnable = null }
         rotationRunnable?.let { handler.removeCallbacks(it); rotationRunnable = null }
@@ -334,8 +352,13 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
 
         scrollTask = Runnable {
-            doScrollAndTasks()
-            scheduleNextScroll()
+            if (SceneConfig.getSceneFlow(currentScene) == SceneConfig.FLOW_DETAIL) {
+                // 详情流：一轮「点开→浏览→返回」结束后再安排下一轮间隔
+                detailFlow.startOneCycle { scheduleNextScroll() }
+            } else {
+                doScrollAndTasks()
+                scheduleNextScroll()
+            }
         }
         handler.postDelayed(scrollTask!!, delayMs)
     }
@@ -366,9 +389,13 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 1. 广告屏蔽
         tryAdBlock()
 
-        // 2. 滑动（直播场景不滑动，只挂机）
+        // 2. 翻页 / 滑动（直播场景不操作，只挂机）
         if (currentScene != AppConfig.SCENE_LIVE) {
-            performScroll()
+            if (SceneConfig.getSceneFlow(currentScene) == SceneConfig.FLOW_PAGE_TAP) {
+                performPageTurn()
+            } else {
+                performScroll()
+            }
             scrollCount++
         }
 
@@ -385,7 +412,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 performScreenGesture()
                 return
             }
-            val scrollableNode = findScrollableNode(rootNode)
+            val scrollableNode = NodeFinder.findScrollable(rootNode)
             if (scrollableNode != null) {
                 performGestureOnNode(scrollableNode)
             } else {
@@ -400,30 +427,14 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun findScrollableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val classes = listOf(
-            "androidx.recyclerview.widget.RecyclerView",
-            "android.support.v7.widget.RecyclerView",
-            "android.widget.ListView",
-            "android.widget.ScrollView",
-            "androidx.core.widget.NestedScrollView",
-            "android.webkit.WebView",
-            "android.support.v4.view.ViewPager",
-            "androidx.viewpager.widget.ViewPager",
-            "androidx.viewpager2.widget.ViewPager2"
-        )
-        val queue = LinkedList<AccessibilityNodeInfo>()
-        queue.offer(node)
-        while (queue.isNotEmpty()) {
-            val current = queue.poll() ?: continue
-            val className = current.className?.toString().orEmpty()
-            if (classes.any { className.contains(it, ignoreCase = true) }) return current
-            if (current.isScrollable) return current
-            for (i in 0 until current.childCount) {
-                current.getChild(i)?.let { queue.offer(it) }
-            }
-        }
-        return null
+    /** 小说场景：点按屏幕右侧翻下一页（多数阅读器右侧为前进区） */
+    private fun performPageTurn() {
+        val (w, h) = getScreenSize()
+        if (w <= 0 || h <= 0) return
+        val x = w * (0.72f + Random.nextFloat() * 0.18f)
+        val y = h * (0.30f + Random.nextFloat() * 0.40f)
+        tapScreen(x, y, 70L)
+        Log.d(TAG, "小说场景：点按翻页")
     }
 
     private fun performGestureOnNode(node: AccessibilityNodeInfo) {
@@ -490,31 +501,71 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 概率判定
         if (Random.nextInt(100) >= likeProbability) return
 
-        val (w, h) = getScreenSize()
-        if (w <= 0 || h <= 0) return
-
-        // 双击屏幕中央偏右下（模拟点赞位置）
-        val centerX = w * (0.5f + Random.nextFloat() * 0.2f - 0.1f)
-        val centerY = h * (0.55f + Random.nextFloat() * 0.2f - 0.1f)
-
-        handler.postDelayed({
-            performDoubleClick(centerX, centerY)
-            likeCount++
-            Log.d(TAG, "已自动点赞（累计 $likeCount）")
-            sendTaskEvent(EVENT_LIKE, getString(R.string.toast_liked))
-        }, 500)
+        handler.postDelayed({ performAutoLikeNow() }, 500)
     }
 
     private fun performDoubleClick(x: Float, y: Float) {
         val path = Path().apply { moveTo(x, y) }
-        // 双击：第一段 0-80ms，第二段 100-180ms
+        // 双击：第一段 0-80ms，第二段 100-180ms（duration = 80ms）
         val stroke1 = GestureDescription.StrokeDescription(path, 0L, 80L)
-        val stroke2 = GestureDescription.StrokeDescription(path, 100L, 180L)
+        val stroke2 = GestureDescription.StrokeDescription(path, 100L, 80L)
         val gesture = GestureDescription.Builder()
             .addStroke(stroke1)
             .addStroke(stroke2)
             .build()
         dispatchGesture(gesture, null, null)
+    }
+
+    // ========== 供详情流 / 翻页复用的手势接口 ==========
+
+    /** 单指点按 */
+    fun tapScreen(x: Float, y: Float, durationMs: Long = 60L) {
+        dispatchSwipe(x, y, x, y, durationMs, "tap")
+    }
+
+    /** 在指定节点区域内上滑；节点为空或不可用时全屏上滑 */
+    fun swipeUpOnNodeOrScreen(node: AccessibilityNodeInfo?) {
+        try {
+            if (node != null) {
+                val rect = Rect()
+                node.getBoundsInScreen(rect)
+                if (rect.width() > 0 && rect.height() > 0) {
+                    performGestureOnNode(node)
+                    return
+                }
+            }
+            performScreenGesture()
+        } catch (e: Exception) {
+            Log.e(TAG, "上滑手势失败", e)
+        }
+    }
+
+    /** 立即执行一次点赞双击（概率由调用方判定） */
+    fun performAutoLikeNow() {
+        val (w, h) = getScreenSize()
+        if (w <= 0 || h <= 0) return
+        val centerX = w * (0.5f + Random.nextFloat() * 0.2f - 0.1f)
+        val centerY = h * (0.55f + Random.nextFloat() * 0.2f - 0.1f)
+        performDoubleClick(centerX, centerY)
+        likeCount++
+        Log.d(TAG, "已自动点赞（累计 $likeCount）")
+        sendTaskEvent(EVENT_LIKE, getString(R.string.toast_liked))
+    }
+
+    /** 广告屏蔽入口（供详情流在周期节点调用） */
+    fun runAdBlockCheck() = tryAdBlock()
+
+    /** 保护策略 + 生效应用清单综合校验 */
+    fun isFlowAllowedToAct(): Boolean {
+        if (isBlockedByPolicy()) return false
+        val pkg = foregroundPackage
+        if (allowedApps.isNotEmpty() && pkg != null && !allowedApps.contains(pkg)) return false
+        return true
+    }
+
+    /** 详情流每点开一条计入「滚动次数」统计 */
+    fun countDetailBrowsed() {
+        scrollCount++
     }
 
     // ========== 广告屏蔽 ==========
@@ -722,17 +773,38 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     private fun scheduleAlarms() {
         cancelAlarms()
         val am = getSystemService(ALARM_SERVICE) as AlarmManager
-        am.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            nextAlarmMillis(scheduleStartMin),
-            makePendingIntent(ACTION_SCHEDULE_START)
-        )
-        am.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            nextAlarmMillis(scheduleEndMin),
-            makePendingIntent(ACTION_SCHEDULE_END)
-        )
-        Log.i(TAG, "定时闹钟已安排：${formatMinute(scheduleStartMin)} ~ ${formatMinute(scheduleEndMin)}")
+        // Android 12+ 用户可收回精确闹钟权限（Android 14 起新安装默认不授予），
+        // 未授权时 setExactAndAllowWhileIdle 会抛 SecurityException，降级为非精确闹钟
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+        try {
+            if (canExact) {
+                am.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    nextAlarmMillis(scheduleStartMin),
+                    makePendingIntent(ACTION_SCHEDULE_START)
+                )
+                am.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    nextAlarmMillis(scheduleEndMin),
+                    makePendingIntent(ACTION_SCHEDULE_END)
+                )
+            } else {
+                Log.w(TAG, "无精确闹钟权限，降级为普通闹钟")
+                am.set(
+                    AlarmManager.RTC_WAKEUP,
+                    nextAlarmMillis(scheduleStartMin),
+                    makePendingIntent(ACTION_SCHEDULE_START)
+                )
+                am.set(
+                    AlarmManager.RTC_WAKEUP,
+                    nextAlarmMillis(scheduleEndMin),
+                    makePendingIntent(ACTION_SCHEDULE_END)
+                )
+            }
+            Log.i(TAG, "定时闹钟已安排：${formatMinute(scheduleStartMin)} ~ ${formatMinute(scheduleEndMin)}")
+        } catch (e: Exception) {
+            Log.e(TAG, "安排定时闹钟失败", e)
+        }
     }
 
     private fun cancelAlarms() {
