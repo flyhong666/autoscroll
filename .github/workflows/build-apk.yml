@@ -74,7 +74,7 @@ jobs:
           fi
           # 防止文件名包含路径分隔符
           VERSION="${VERSION//\//-}"
-          # 用 shell 变量拷贝（不经过 ${{ }} 插值，规避 secret 脱敏干扰）
+          # 用 shell 变量拷贝（不经过工作流表达式插值，规避 secret 脱敏干扰）
           cp app/build/outputs/apk/release/app-release.apk \
              "output/autoscroll-${VERSION}.apk"
           ls -la output/
