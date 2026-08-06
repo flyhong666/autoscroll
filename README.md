@@ -88,11 +88,8 @@
 # 产物：app/build/outputs/apk/debug/app-debug.apk
 ```
 
-APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/1905445185801343001_aerIxeS_zVounKdp#/share "自动刷视频")
+APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/1932294827152785416_aerIxeS_zVounKdp "自动刷视频")
 
-APK安装包网盘下载地址：[自动刷视频（快速刷）](https://www.guangyapan.com/s/1915616617208500243_aerIxeS_zVounKdp#/share "自动刷视频（快速刷）")
-
-APK安装包：[自动刷视频](https://github.com/qqbn2027/autoscroll/releases "自动刷视频")
 
 ### 2. 配置
 
