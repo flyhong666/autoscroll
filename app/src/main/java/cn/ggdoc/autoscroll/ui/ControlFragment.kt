@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import cn.ggdoc.autoscroll.R
+import cn.ggdoc.autoscroll.MainActivity
 import cn.ggdoc.autoscroll.config.AppConfig
 import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
@@ -105,7 +106,7 @@ class ControlFragment : Fragment() {
         }
         cardSettingsEntry.setOnClickListener { openSettingsSheet() }
         cardRecorderEntry.setOnClickListener {
-            startActivity(Intent(requireContext(), ScriptActivity::class.java))
+            (requireActivity() as? MainActivity)?.selectRecorderTab()
         }
     }
 

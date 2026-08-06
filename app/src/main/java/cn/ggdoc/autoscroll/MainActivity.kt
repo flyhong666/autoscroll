@@ -11,10 +11,11 @@ import androidx.viewpager2.widget.ViewPager2
 import cn.ggdoc.autoscroll.ui.ControlFragment
 import cn.ggdoc.autoscroll.ui.SceneFragment
 import cn.ggdoc.autoscroll.ui.TaskFragment
+import cn.ggdoc.autoscroll.ui.RecorderFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
- * 主界面：底部导航（控制 / 场景 / 任务）+ ViewPager2 三页
+ * 主界面：底部导航（控制 / 场景 / 任务 / 记录器）+ ViewPager2 四页
  */
 class MainActivity : AppCompatActivity() {
 
@@ -24,7 +25,8 @@ class MainActivity : AppCompatActivity() {
     private val fragments: List<Fragment> = listOf(
         ControlFragment(),
         SceneFragment(),
-        TaskFragment()
+        TaskFragment(),
+        RecorderFragment()
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +50,7 @@ class MainActivity : AppCompatActivity() {
             viewPager.currentItem = when (item.itemId) {
                 R.id.nav_scene -> 1
                 R.id.nav_task -> 2
+                R.id.nav_recorder -> 3
                 else -> 0
             }
             true
@@ -58,6 +61,7 @@ class MainActivity : AppCompatActivity() {
                 val targetId = when (position) {
                     1 -> R.id.nav_scene
                     2 -> R.id.nav_task
+                    3 -> R.id.nav_recorder
                     else -> R.id.nav_control
                 }
                 if (bottomNav.selectedItemId != targetId) {
@@ -65,6 +69,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    /** 供其它 Fragment 调用：切换到「记录器」Tab */
+    fun selectRecorderTab() {
+        bottomNav.selectedItemId = R.id.nav_recorder
     }
 
     /** Android 13+ 需要运行时授予通知权限，否则前台服务通知不会显示 */

@@ -51,6 +51,13 @@ object AppConfig {
     private const val KEY_DETAIL_READ_ALL_PROBABILITY = "detail_read_all_probability"
     private const val KEY_DETAIL_MAX_SCROLLS = "detail_max_scrolls"
 
+    // ===== 自定义手势（自定义场景） =====
+    private const val KEY_CUSTOM_GESTURE_TYPE = "custom_gesture_type"
+    private const val KEY_CUSTOM_TAP_X = "custom_tap_x_pct"
+    private const val KEY_CUSTOM_TAP_Y = "custom_tap_y_pct"
+    private const val KEY_CUSTOM_SWIPE_DISTANCE = "custom_swipe_distance_pct"
+    private const val KEY_CUSTOM_GESTURE_SEQUENCE = "custom_gesture_sequence"
+
     // ===== 默认值 =====
     const val DEFAULT_MIN_INTERVAL = 3
     const val DEFAULT_MAX_INTERVAL = 20
@@ -81,6 +88,22 @@ object AppConfig {
     const val DEFAULT_DETAIL_READ_ALL_PROBABILITY = 60 // %：进入详情页后「完整读完」的概率
     const val DEFAULT_DETAIL_MAX_SCROLLS = 8          // 单篇详情最多滚动次数
     const val MAX_DETAIL_MAX_SCROLLS = 20
+
+    // 自定义手势默认值
+    const val DEFAULT_CUSTOM_GESTURE_TYPE = "swipe_up"
+    const val DEFAULT_CUSTOM_TAP_X = 50               // 屏幕宽度百分比
+    const val DEFAULT_CUSTOM_TAP_Y = 50               // 屏幕高度百分比
+    const val DEFAULT_CUSTOM_SWIPE_DISTANCE = 70      // 滑动距离占屏幕百分比
+    const val MIN_CUSTOM_PCT = 5
+    const val MAX_CUSTOM_PCT = 95
+
+    // 自定义手势类型常量
+    const val GESTURE_SWIPE_UP = "swipe_up"
+    const val GESTURE_SWIPE_DOWN = "swipe_down"
+    const val GESTURE_SWIPE_LEFT = "swipe_left"
+    const val GESTURE_SWIPE_RIGHT = "swipe_right"
+    const val GESTURE_TAP = "tap"
+    const val GESTURE_DOUBLE_TAP = "double_tap"
 
     /** 「看广告得金币」入口默认关键词（可在任务页自行增删） */
     val DEFAULT_AD_REWARD_KEYWORDS: Set<String> = setOf(
@@ -231,6 +254,68 @@ object AppConfig {
         prefs(context).edit()
             .putInt(KEY_DETAIL_MAX_SCROLLS, value.coerceIn(1, MAX_DETAIL_MAX_SCROLLS))
             .apply()
+
+    // ---------- 自定义手势 ----------
+    fun getCustomGestureType(context: Context): String =
+        prefs(context).getString(KEY_CUSTOM_GESTURE_TYPE, DEFAULT_CUSTOM_GESTURE_TYPE)
+            ?: DEFAULT_CUSTOM_GESTURE_TYPE
+
+    fun setCustomGestureType(context: Context, value: String) =
+        prefs(context).edit().putString(KEY_CUSTOM_GESTURE_TYPE, value).apply()
+
+    fun getCustomTapX(context: Context): Int =
+        prefs(context).getInt(KEY_CUSTOM_TAP_X, DEFAULT_CUSTOM_TAP_X)
+            .coerceIn(MIN_CUSTOM_PCT, MAX_CUSTOM_PCT)
+
+    fun setCustomTapX(context: Context, value: Int) =
+        prefs(context).edit()
+            .putInt(KEY_CUSTOM_TAP_X, value.coerceIn(MIN_CUSTOM_PCT, MAX_CUSTOM_PCT))
+            .apply()
+
+    fun getCustomTapY(context: Context): Int =
+        prefs(context).getInt(KEY_CUSTOM_TAP_Y, DEFAULT_CUSTOM_TAP_Y)
+            .coerceIn(MIN_CUSTOM_PCT, MAX_CUSTOM_PCT)
+
+    fun setCustomTapY(context: Context, value: Int) =
+        prefs(context).edit()
+            .putInt(KEY_CUSTOM_TAP_Y, value.coerceIn(MIN_CUSTOM_PCT, MAX_CUSTOM_PCT))
+            .apply()
+
+    fun getCustomSwipeDistance(context: Context): Int =
+        prefs(context).getInt(KEY_CUSTOM_SWIPE_DISTANCE, DEFAULT_CUSTOM_SWIPE_DISTANCE)
+            .coerceIn(20, 90)
+
+    fun setCustomSwipeDistance(context: Context, value: Int) =
+        prefs(context).edit()
+            .putInt(KEY_CUSTOM_SWIPE_DISTANCE, value.coerceIn(20, 90))
+            .apply()
+
+    // ---------- 自定义手势序列（可编排：手势 + 等待秒数 循环） ----------
+    fun getCustomGestureSequence(context: Context): List<CustomGestureStep> {
+        val raw = prefs(context).getString(KEY_CUSTOM_GESTURE_SEQUENCE, null)
+        val list = CustomGestureStep.deserialize(raw)
+        if (list.isNotEmpty()) return list
+        // 兼容旧版单手势配置：降级为「单步手势 + 默认 3 秒等待」
+        return listOf(
+            CustomGestureStep(
+                gesture = getCustomGestureType(context),
+                waitSec = 3,
+                xPct = getCustomTapX(context),
+                yPct = getCustomTapY(context),
+                distPct = getCustomSwipeDistance(context)
+            )
+        )
+    }
+
+    fun setCustomGestureSequence(context: Context, steps: List<CustomGestureStep>) {
+        prefs(context).edit()
+            .putString(KEY_CUSTOM_GESTURE_SEQUENCE, CustomGestureStep.serialize(steps))
+            .apply()
+    }
+
+    /** 序列是否为空（仅等待、无任何手势） */
+    fun hasCustomGestureSequence(context: Context): Boolean =
+        getCustomGestureSequence(context).any { !it.isWaitOnly() }
 
     fun getAllowedApps(context: Context): Set<String> =
         prefs(context).getStringSet(KEY_ALLOWED_APPS, emptySet()) ?: emptySet()

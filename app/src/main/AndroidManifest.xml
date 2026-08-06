@@ -18,6 +18,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- 通知权限（Android 13+ 前台服务通知可见性） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 读取网络状态（判断是否处于 WiFi） -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"

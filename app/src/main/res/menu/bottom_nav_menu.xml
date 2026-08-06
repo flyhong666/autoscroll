@@ -15,4 +15,9 @@
         android:enabled="true"
         android:icon="@drawable/ic_tab_task"
         android:title="@string/tab_task" />
+    <item
+        android:id="@+id/nav_recorder"
+        android:enabled="true"
+        android:icon="@drawable/ic_tab_recorder"
+        android:title="@string/tab_recorder" />
 </menu>

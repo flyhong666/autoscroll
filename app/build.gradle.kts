@@ -55,7 +55,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
-        viewBinding = false
+        viewBinding = true
         buildConfig = false
     }
 }

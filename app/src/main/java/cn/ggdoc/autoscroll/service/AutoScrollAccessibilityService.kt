@@ -23,6 +23,7 @@ import android.view.WindowManager
 import android.widget.Toast
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.config.AppConfig
+import cn.ggdoc.autoscroll.config.CustomGestureStep
 import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.task.AdBlocker
@@ -125,6 +126,20 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         var detailReadAllProbability: Int = AppConfig.DEFAULT_DETAIL_READ_ALL_PROBABILITY
             private set
         var detailMaxScrolls: Int = AppConfig.DEFAULT_DETAIL_MAX_SCROLLS
+            private set
+
+        // 自定义手势
+        var customGestureType: String = AppConfig.DEFAULT_CUSTOM_GESTURE_TYPE
+            private set
+        var customTapX: Int = AppConfig.DEFAULT_CUSTOM_TAP_X
+            private set
+        var customTapY: Int = AppConfig.DEFAULT_CUSTOM_TAP_Y
+            private set
+        var customSwipeDistance: Int = AppConfig.DEFAULT_CUSTOM_SWIPE_DISTANCE
+            private set
+
+        // 自定义手势序列（可编排：手势 + 等待秒数，循环执行）
+        var customGestureSequence: List<CustomGestureStep> = emptyList()
             private set
 
         /** 正处于激励视频观看期：此期间暂停滚动，避免打断广告 */
@@ -245,6 +260,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         detailDwellMax = AppConfig.getDetailDwellMax(this)
         detailReadAllProbability = AppConfig.getDetailReadAllProbability(this)
         detailMaxScrolls = AppConfig.getDetailMaxScrolls(this)
+        customGestureType = AppConfig.getCustomGestureType(this)
+        customTapX = AppConfig.getCustomTapX(this)
+        customTapY = AppConfig.getCustomTapY(this)
+        customSwipeDistance = AppConfig.getCustomSwipeDistance(this)
+        customGestureSequence = AppConfig.getCustomGestureSequence(this)
 
         // 重建轮换列表：若用户设置了生效应用清单，则在其范围内轮换
         rotationList.clear()
@@ -329,6 +349,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         tickRunnable?.let { handler.removeCallbacks(it); tickRunnable = null }
         adRewardRunnable?.let { handler.removeCallbacks(it); adRewardRunnable = null }
         adRewardWatchRunnable?.let { handler.removeCallbacks(it); adRewardWatchRunnable = null }
+        customSeqRunnable?.let { handler.removeCallbacks(it); customSeqRunnable = null }
 
         KeepAliveManager.release()
         Log.i(
@@ -348,12 +369,19 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             val lo = minIntervalSeconds
             val hi = maxIntervalSeconds
             val effectiveHi = if (hi > lo) hi else lo + 1
-            Random.nextInt(lo, effectiveHi).toLong() * 1000L
+            var base = Random.nextInt(lo, effectiveHi).toLong() * 1000L
+            // 自定义手势序列：外层节奏不得短于序列总时长，避免与序列内部循环抢拍
+            if (currentScene == AppConfig.SCENE_CUSTOM && customGestureSequence.isNotEmpty()) {
+                val seqTotal = customGestureSequence.sumOf { (it.waitSec.coerceAtLeast(0)).toLong() } * 1000L
+                if (seqTotal > base) base = seqTotal
+            }
+            base
         }
 
         scrollTask = Runnable {
-            if (SceneConfig.getSceneFlow(currentScene) == SceneConfig.FLOW_DETAIL) {
-                // 详情流：一轮「点开→浏览→返回」结束后再安排下一轮间隔
+            val scene = SceneConfig.getScene(currentScene)
+            // 新闻资讯：列表-详情拟人浏览（点开→浏览→返回），由详情流控制器接管本轮节奏
+            if (scene.id == "news") {
                 detailFlow.startOneCycle { scheduleNextScroll() }
             } else {
                 doScrollAndTasks()
@@ -389,76 +417,325 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 1. 广告屏蔽
         tryAdBlock()
 
-        // 2. 翻页 / 滑动（直播场景不操作，只挂机）
-        if (currentScene != AppConfig.SCENE_LIVE) {
-            if (SceneConfig.getSceneFlow(currentScene) == SceneConfig.FLOW_PAGE_TAP) {
-                performPageTurn()
-            } else {
-                performScroll()
+        // 2. 根据场景执行对应手势（按手势模式分派，更细粒度）
+        val scene = SceneConfig.getScene(currentScene)
+        when (scene.mode) {
+            SceneConfig.ScrollMode.IDLE -> {
+                // 直播挂机：偶尔微互动防止被判定为僵尸号，完全不滑动
+                performLiveKeepAlive()
             }
-            scrollCount++
+            SceneConfig.ScrollMode.PAGE -> {
+                // 小说：翻页 + 偶尔小幅上滑兜底
+                performPageTurn()
+                scrollCount++
+            }
+            SceneConfig.ScrollMode.DOUBLE_COLUMN -> {
+                // 社交动态：双列瀑布流交叉滑动（含点赞）
+                performDoubleColumnScroll()
+                scrollCount++
+            }
+            SceneConfig.ScrollMode.VERTICAL -> {
+                if (currentScene == AppConfig.SCENE_CUSTOM && customGestureSequence.isNotEmpty()) {
+                    // 自定义通用：按用户编排的手势序列逐步执行（含每步后的等待）
+                    performCustomSequence()
+                    scrollCount++
+                } else {
+                    // 短视频 / 新闻：整屏竖向滑动
+                    performScroll()
+                    scrollCount++
+                }
+            }
         }
 
-        // 3. 自动点赞
-        if (autoLike && currentScene != AppConfig.SCENE_LIVE) {
+        // 3. 自动点赞（直播 / 挂机场景除外）
+        if (autoLike && scene.mode != SceneConfig.ScrollMode.IDLE) {
             tryAutoLike()
         }
     }
 
     private fun performScroll() {
+        val scene = SceneConfig.getScene(currentScene)
         try {
             val rootNode = rootInActiveWindow
             if (rootNode == null) {
-                performScreenGesture()
+                performScreenGesture(scene)
                 return
             }
             val scrollableNode = NodeFinder.findScrollable(rootNode)
             if (scrollableNode != null) {
-                performGestureOnNode(scrollableNode)
+                performGestureOnNode(scrollableNode, scene)
             } else {
-                performScreenGesture()
+                performScreenGesture(scene)
             }
-            Log.d(TAG, "已执行滑动手势")
+            Log.d(TAG, "已执行滑动手势 (scene=${scene.id})")
         } catch (e: Exception) {
             Log.e(TAG, "滑动失败，回退屏幕手势", e)
-            try { performScreenGesture() } catch (e2: Exception) {
+            try { performScreenGesture(scene) } catch (e2: Exception) {
                 Log.e(TAG, "屏幕手势也失败", e2)
             }
         }
     }
 
-    /** 小说场景：点按屏幕右侧翻下一页（多数阅读器右侧为前进区） */
+    /**
+     * 社交动态：双列瀑布流交叉滑动。
+     * 左右两列交替命中——偶数轮略偏左（命中右列），奇数轮略偏右（命中左列），
+     * 配合场景中设定的上下滑动比例，模拟真人手指在信息流中上下扫动的手感。
+     */
+    private fun performDoubleColumnScroll() {
+        val scene = SceneConfig.getScene(currentScene)
+        try {
+            val (w, h) = getScreenSize()
+            if (w <= 0 || h <= 0) return
+            val cross = scene.swipeCrossXRatio
+            val centerX = if (doubleColumnToggle) {
+                // 偶数轮：起始点略偏左，终点回到中线右侧 -> 命中右列卡片
+                w * (0.5f - cross)
+            } else {
+                // 奇数轮：起始点略偏右，终点回到中线左侧 -> 命中左列卡片
+                w * (0.5f + cross)
+            }
+            doubleColumnToggle = !doubleColumnToggle
+            val startY = h * scene.swipeStartYRatio
+            val endY = h * scene.swipeEndYRatio
+            // 加入 ±6% 随机抖动，避免每次完全一致的轨迹
+            val jitterX = centerX + (Random.nextFloat() - 0.5f) * w * 0.12f
+            dispatchSwipe(
+                jitterX, startY, jitterX, endY,
+                randomDuration(minBias = 30L), "double_column"
+            )
+            Log.d(TAG, "社交双列滑动（${if (doubleColumnToggle) "左列" else "右列"}）")
+        } catch (e: Exception) {
+            Log.e(TAG, "双列滑动失败，回退普通滑动", e)
+            performScroll()
+        }
+    }
+
+    /** 双列交叉滑动的左右交替标志 */
+    @Volatile
+    private var doubleColumnToggle = false
+
+    /**
+     * 小说场景：点按屏幕翻页
+     * - 85% 概率点右侧翻下一页（多数阅读器右侧为前进区）
+     * - 10% 概率左滑翻页（兼容滑动翻页的阅读器）
+     * - 5% 概率点左侧翻回上一页（模拟偶尔回看）
+     */
     private fun performPageTurn() {
         val (w, h) = getScreenSize()
         if (w <= 0 || h <= 0) return
-        val x = w * (0.72f + Random.nextFloat() * 0.18f)
-        val y = h * (0.30f + Random.nextFloat() * 0.40f)
-        tapScreen(x, y, 70L)
-        Log.d(TAG, "小说场景：点按翻页")
+        val roll = Random.nextInt(100)
+        when {
+            roll < 85 -> {
+                // 点右侧翻下一页
+                val x = w * (0.72f + Random.nextFloat() * 0.18f)
+                val y = h * (0.30f + Random.nextFloat() * 0.40f)
+                tapScreen(x, y, 70L)
+                Log.d(TAG, "小说场景：点右侧翻页")
+            }
+            roll < 95 -> {
+                // 左滑翻页（兼容滑动翻页的阅读器）
+                val centerX = w * 0.5f
+                val startY = h * (0.35f + Random.nextFloat() * 0.30f)
+                val startX = centerX + w * 0.25f
+                val endX = centerX - w * 0.25f
+                dispatchSwipe(startX, startY, endX, startY, randomDuration(), "novel_swipe")
+                Log.d(TAG, "小说场景：左滑翻页")
+            }
+            else -> {
+                // 点左侧翻回上一页
+                val x = w * (0.05f + Random.nextFloat() * 0.20f)
+                val y = h * (0.30f + Random.nextFloat() * 0.40f)
+                tapScreen(x, y, 70L)
+                Log.d(TAG, "小说场景：点左侧翻回")
+            }
+        }
     }
 
-    private fun performGestureOnNode(node: AccessibilityNodeInfo) {
+    /**
+     * 直播挂机：偶尔进行微互动防止被判定为僵尸号
+     * 80% 概率不操作，20% 概率在屏幕中上方做一次轻触
+     */
+    private fun performLiveKeepAlive() {
+        if (Random.nextInt(100) >= 20) return
+        val (w, h) = getScreenSize()
+        if (w <= 0 || h <= 0) return
+        // 在屏幕上方 15%-25% 区域轻触，避免误触礼物/弹幕按钮
+        val x = w * (0.30f + Random.nextFloat() * 0.40f)
+        val y = h * (0.15f + Random.nextFloat() * 0.10f)
+        tapScreen(x, y, 50L)
+        Log.d(TAG, "直播挂机：微互动保活")
+    }
+
+    /**
+     * 自定义场景：执行用户配置的手势
+     * 支持：上滑/下滑/左滑/右滑/单击/双击
+     */
+    /**
+     * 自定义通用场景：按用户编排的手势序列逐步执行。
+     * 每一步执行后等待该步指定的秒数，再执行下一步；序列末尾自动从头循环。
+     * 序列为空时降级为旧版单手势 / 整屏上滑。
+     */
+    private fun performCustomSequence() {
+        val seq = customGestureSequence
+        if (seq.isEmpty()) {
+            performScroll()
+            return
+        }
+        // 取消可能仍在进行中的上一次序列
+        customSeqRunnable?.let { handler.removeCallbacks(it) }
+        customSeqStep = 0
+        runCustomStep(seq)
+    }
+
+    private var customSeqStep = 0
+    private var customSeqRunnable: Runnable? = null
+
+    private fun runCustomStep(seq: List<CustomGestureStep>) {
+        if (customSeqStep >= seq.size) customSeqStep = 0 // 循环
+        val step = seq[customSeqStep]
+        customSeqStep++
+
+        if (!step.isWaitOnly()) {
+            executeSingleGesture(step)
+        }
+
+        val waitMs = (step.waitSec.coerceAtLeast(0) * 1000).toLong()
+        if (customSeqStep < seq.size || true) {
+            // 序列末尾仍等待后从头循环（由下一轮 doScrollAndTasks 重新触发，
+            // 因此这里只等待本步间隔；最后一步的等待交给循环节律）
+        }
+        if (waitMs > 0) {
+            customSeqRunnable = Runnable {
+                // 仅当仍处于自定义场景且服务运行中才继续
+                if (currentScene == AppConfig.SCENE_CUSTOM && isScrolling) {
+                    runCustomStep(seq)
+                }
+            }
+            handler.postDelayed(customSeqRunnable!!, waitMs)
+        }
+    }
+
+    /** 执行序列中的单步手势 */
+    private fun executeSingleGesture(step: CustomGestureStep) {
+        val (w, h) = getScreenSize()
+        if (w <= 0 || h <= 0) return
+        val jitterX = (Random.nextFloat() - 0.5f) * 0.10f
+        val jitterY = (Random.nextFloat() - 0.5f) * 0.10f
+        val x = w * (step.xPct / 100f + jitterX).coerceIn(0.05f, 0.95f)
+        val y = h * (step.yPct / 100f + jitterY).coerceIn(0.05f, 0.95f)
+        val dist = step.distPct / 100f
+
+        when (step.gesture) {
+            CustomGestureStep.TYPE_TAP -> tapScreen(x, y, 60L)
+            CustomGestureStep.TYPE_DOUBLE_TAP -> performDoubleClick(x, y)
+            CustomGestureStep.TYPE_SWIPE_UP -> {
+                val startY = (y + h * dist / 2f).coerceIn(0.10f * h, 0.95f * h)
+                val endY = (startY - h * dist).coerceIn(0.05f * h, startY - 0.05f * h)
+                dispatchSwipe(x, startY, x, endY, randomDuration(), "custom_swipe_up")
+            }
+            CustomGestureStep.TYPE_SWIPE_DOWN -> {
+                val startY = (y - h * dist / 2f).coerceIn(0.05f * h, 0.90f * h)
+                val endY = (startY + h * dist).coerceIn(startY + 0.05f * h, 0.95f * h)
+                dispatchSwipe(x, startY, x, endY, randomDuration(), "custom_swipe_down")
+            }
+            CustomGestureStep.TYPE_SWIPE_LEFT -> {
+                val startX = (x + w * dist / 2f).coerceIn(0.10f * w, 0.95f * w)
+                val endX = (startX - w * dist).coerceIn(0.05f * w, startX - 0.05f * w)
+                dispatchSwipe(startX, y, endX, y, randomDuration(), "custom_swipe_left")
+            }
+            CustomGestureStep.TYPE_SWIPE_RIGHT -> {
+                val startX = (x - w * dist / 2f).coerceIn(0.05f * w, 0.90f * w)
+                val endX = (startX + w * dist).coerceIn(startX + 0.05f * w, 0.95f * w)
+                dispatchSwipe(startX, y, endX, y, randomDuration(), "custom_swipe_right")
+            }
+            else -> performScreenGesture(SceneConfig.getScene(currentScene))
+        }
+    }
+
+    /**
+     * 兼容旧版单手势入口（无序列时使用）。
+     */
+    private fun performCustomGesture() {
+        val (w, h) = getScreenSize()
+        if (w <= 0 || h <= 0) return
+        val xPct = customTapX / 100f
+        val yPct = customTapY / 100f
+        val distPct = customSwipeDistance / 100f
+        // 加入小幅随机偏移（±5%）使手势更自然
+        val jitterX = (Random.nextFloat() - 0.5f) * 0.10f
+        val jitterY = (Random.nextFloat() - 0.5f) * 0.10f
+
+        when (customGestureType) {
+            AppConfig.GESTURE_TAP -> {
+                val x = w * (xPct + jitterX).coerceIn(0.05f, 0.95f)
+                val y = h * (yPct + jitterY).coerceIn(0.05f, 0.95f)
+                tapScreen(x, y, 60L)
+                Log.d(TAG, "自定义手势：单击 (${"%.0f".format(xPct * 100)}%, ${"%.0f".format(yPct * 100)}%)")
+            }
+            AppConfig.GESTURE_DOUBLE_TAP -> {
+                val x = w * (xPct + jitterX).coerceIn(0.05f, 0.95f)
+                val y = h * (yPct + jitterY).coerceIn(0.05f, 0.95f)
+                performDoubleClick(x, y)
+                Log.d(TAG, "自定义手势：双击 (${"%.0f".format(xPct * 100)}%, ${"%.0f".format(yPct * 100)}%)")
+            }
+            AppConfig.GESTURE_SWIPE_UP -> {
+                val cx = w * (xPct + jitterX).coerceIn(0.10f, 0.90f)
+                val startY = h * ((yPct + distPct / 2f) + jitterY).coerceIn(0.10f, 0.95f)
+                val endY = (startY - h * distPct).coerceIn(0.05f, startY - 0.05f * h)
+                dispatchSwipe(cx, startY, cx, endY, randomDuration(), "custom_swipe_up")
+                Log.d(TAG, "自定义手势：上滑")
+            }
+            AppConfig.GESTURE_SWIPE_DOWN -> {
+                val cx = w * (xPct + jitterX).coerceIn(0.10f, 0.90f)
+                val startY = h * ((yPct - distPct / 2f) + jitterY).coerceIn(0.05f, 0.90f)
+                val endY = (startY + h * distPct).coerceIn(startY + 0.05f * h, 0.95f * h)
+                dispatchSwipe(cx, startY, cx, endY, randomDuration(), "custom_swipe_down")
+                Log.d(TAG, "自定义手势：下滑")
+            }
+            AppConfig.GESTURE_SWIPE_LEFT -> {
+                val cy = h * (yPct + jitterY).coerceIn(0.10f, 0.90f)
+                val startX = w * ((xPct + distPct / 2f) + jitterX).coerceIn(0.10f, 0.95f)
+                val endX = (startX - w * distPct).coerceIn(0.05f, startX - 0.05f * w)
+                dispatchSwipe(startX, cy, endX, cy, randomDuration(), "custom_swipe_left")
+                Log.d(TAG, "自定义手势：左滑")
+            }
+            AppConfig.GESTURE_SWIPE_RIGHT -> {
+                val cy = h * (yPct + jitterY).coerceIn(0.10f, 0.90f)
+                val startX = w * ((xPct - distPct / 2f) + jitterX).coerceIn(0.05f, 0.90f)
+                val endX = (startX + w * distPct).coerceIn(startX + 0.05f * w, 0.95f * w)
+                dispatchSwipe(startX, cy, endX, cy, randomDuration(), "custom_swipe_right")
+                Log.d(TAG, "自定义手势：右滑")
+            }
+            else -> {
+                // 降级为上滑
+                performScreenGesture(SceneConfig.getScene(currentScene))
+            }
+        }
+    }
+
+    private fun performGestureOnNode(node: AccessibilityNodeInfo, scene: SceneConfig.Scene) {
         val rect = Rect()
         node.getBoundsInScreen(rect)
         if (rect.width() <= 0 || rect.height() <= 0) {
-            performScreenGesture()
+            performScreenGesture(scene)
             return
         }
         val centerX = (rect.left + rect.right) / 2.0f
-        val startY = (rect.top + rect.bottom) * 0.85f
-        val endY = (rect.top + rect.bottom) * 0.15f
+        // 使用场景配置的上下滑动比例，让不同场景下滑动幅度有差异
+        val startY = rect.top + rect.height() * scene.swipeStartYRatio
+        val endY = rect.top + rect.height() * scene.swipeEndYRatio
         val randomX = centerX + Random.nextFloat() * rect.width() * 0.4f - rect.width() * 0.2f
         val randomStartY = startY + Random.nextFloat() * 50f - 25f
         val randomEndY = endY + Random.nextFloat() * 50f - 25f
         dispatchSwipe(randomX, randomStartY, randomX, randomEndY, randomDuration(), "node")
     }
 
-    private fun performScreenGesture() {
+    private fun performScreenGesture(scene: SceneConfig.Scene) {
         val (w, h) = getScreenSize()
         if (w <= 0 || h <= 0) return
         val centerX = w / 2f
-        val startY = h * 0.85f
-        val endY = h * 0.15f
+        val startY = h * scene.swipeStartYRatio
+        val endY = h * scene.swipeEndYRatio
         val randomX = centerX + Random.nextFloat() * w * 0.3f - w * 0.15f
         val randomStartY = startY + Random.nextFloat() * 100f - 50f
         val randomEndY = endY + Random.nextFloat() * 100f - 50f
@@ -479,7 +756,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             }
             override fun onCancelled(g: GestureDescription?) {
                 Log.w(TAG, "[$source] 手势被取消")
-                if (source != "screen") handler.post { performScreenGesture() }
+                if (source != "screen") handler.post { performScreenGesture(SceneConfig.getScene(currentScene)) }
             }
         }
         if (!dispatchGesture(gesture, callback, handler)) {
@@ -524,17 +801,17 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     /** 在指定节点区域内上滑；节点为空或不可用时全屏上滑 */
-    fun swipeUpOnNodeOrScreen(node: AccessibilityNodeInfo?) {
+    fun swipeUpOnNodeOrScreen(node: AccessibilityNodeInfo?, scene: SceneConfig.Scene = SceneConfig.getScene(currentScene)) {
         try {
             if (node != null) {
                 val rect = Rect()
                 node.getBoundsInScreen(rect)
                 if (rect.width() > 0 && rect.height() > 0) {
-                    performGestureOnNode(node)
+                    performGestureOnNode(node, scene)
                     return
                 }
             }
-            performScreenGesture()
+            performScreenGesture(scene)
         } catch (e: Exception) {
             Log.e(TAG, "上滑手势失败", e)
         }

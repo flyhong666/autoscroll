@@ -15,6 +15,8 @@
     <string name="tab_control">控制</string>
     <string name="tab_scene">场景</string>
     <string name="tab_task">任务</string>
+    <string name="tab_recorder">记录器</string>
+    <string name="tab_script">记录器</string>
 
     <!-- 状态文本 -->
     <string name="status_accessibility_enabled">无障碍服务：已启用</string>
@@ -100,6 +102,22 @@
     <string name="flow_detail">详情流</string>
     <string name="flow_page_tap">点按翻页</string>
     <string name="flow_idle">只挂机</string>
+    <string name="flow_custom">自定义手势</string>
+
+    <!-- 自定义手势配置 -->
+    <string name="custom_gesture_title">自定义手势</string>
+    <string name="custom_gesture_summary">选择手势类型与位置，适用于所有可滑动应用</string>
+    <string name="custom_gesture_type">手势类型</string>
+    <string name="gesture_swipe_up">向上滑动</string>
+    <string name="gesture_swipe_down">向下滑动</string>
+    <string name="gesture_swipe_left">向左滑动</string>
+    <string name="gesture_swipe_right">向右滑动</string>
+    <string name="gesture_tap">单击</string>
+    <string name="gesture_double_tap">双击</string>
+    <string name="custom_tap_x">点击 X 位置</string>
+    <string name="custom_tap_y">点击 Y 位置</string>
+    <string name="custom_swipe_distance">滑动距离</string>
+    <string name="custom_position_hint">数值为屏幕百分比，5%%–95%%</string>
 
     <string name="ad_keywords_title">广告关闭关键词</string>
     <string name="ad_keywords_summary">匹配到这些文案时自动点击关闭。逗号/顿号分隔，可自由增删</string>
@@ -176,6 +194,11 @@
     <string name="script_tip">点「开始录制」后本页会自动退到后台，切换到目标 APP 正常操作即可；屏幕上会出现录制悬浮条，点一下它结束录制并保存脚本。\n注意：录制依赖无障碍事件，部分自绘界面（游戏、Flutter/Canvas 页面）可能捕获不到。</string>
     <string name="script_empty">还没有脚本，点下方按钮开始录制</string>
     <string name="script_start_record">开始录制</string>
+    <string name="script_stop_record">结束录制</string>
+    <string name="script_save_title">保存脚本</string>
+    <string name="script_name_hint">给脚本起个名字</string>
+    <string name="script_save">保存</string>
+    <string name="script_default_name">未命名脚本</string>
     <string name="script_back">返回</string>
     <string name="script_run">运行</string>
     <string name="script_more">更多操作</string>
@@ -227,4 +250,20 @@
     <string name="notif_content_running">运行中 · 剩余 %1$s</string>
     <string name="notif_recorder_channel_name">操作记录器</string>
     <string name="notif_recorder_content">录制 / 回放进行中，点击查看脚本</string>
+
+    <!-- ========== 自定义通用场景 · 手势序列 ========== -->
+    <string name="custom_gesture_hint">按你的需求添加「点击 / 双击 / 滑动 / 仅等待」等步骤，每步可设置等待秒数；服务会按顺序循环执行。</string>
+    <string name="custom_gesture_add">+ 添加一步手势</string>
+    <string name="custom_gesture_empty">还没有步骤，点上方按钮添加第一步</string>
+    <string name="custom_gesture_edit">编辑这一步</string>
+    <string name="custom_gesture_wait">该步之后等待</string>
+    <string name="custom_gesture_wait_value">%1$d 秒</string>
+    <string name="custom_gesture_pos">点击 / 滑动起点位置</string>
+    <string name="custom_gesture_x_value">X %1$d%%</string>
+    <string name="custom_gesture_y_value">Y %1$d%%</string>
+    <string name="custom_gesture_dist">滑动距离</string>
+    <string name="custom_gesture_dist_value">%1$d%%</string>
+    <string name="custom_gesture_move_up">上移</string>
+    <string name="custom_gesture_move_down">下移</string>
+    <string name="custom_gesture_delete">删除</string>
 </resources>
