@@ -77,6 +77,8 @@
     <string name="scene_custom">自定义通用</string>
     <string name="scene_custom_desc">所有可滑动应用通用</string>
     <string name="scene_selected">已选择</string>
+    <string name="scene_entry_title">场景选择</string>
+    <string name="scene_entry_summary">当前：%1$s</string>
 
     <!-- 任务功能 -->
     <string name="task_title">扩展任务</string>

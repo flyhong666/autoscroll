@@ -9,13 +9,13 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import cn.ggdoc.autoscroll.ui.ControlFragment
-import cn.ggdoc.autoscroll.ui.SceneFragment
 import cn.ggdoc.autoscroll.ui.TaskFragment
 import cn.ggdoc.autoscroll.ui.RecorderFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
- * 主界面：底部导航（控制 / 场景 / 任务 / 记录器）+ ViewPager2 四页
+ * 主界面：底部导航（控制 / 任务 / 记录器）+ ViewPager2 三页。
+ * 场景选择已移入控制页的设置弹窗，不再单独占一个 Tab。
  */
 class MainActivity : AppCompatActivity() {
 
@@ -24,7 +24,6 @@ class MainActivity : AppCompatActivity() {
 
     private val fragments: List<Fragment> = listOf(
         ControlFragment(),
-        SceneFragment(),
         TaskFragment(),
         RecorderFragment()
     )
@@ -48,9 +47,8 @@ class MainActivity : AppCompatActivity() {
 
         bottomNav.setOnItemSelectedListener { item ->
             viewPager.currentItem = when (item.itemId) {
-                R.id.nav_scene -> 1
-                R.id.nav_task -> 2
-                R.id.nav_recorder -> 3
+                R.id.nav_task -> 1
+                R.id.nav_recorder -> 2
                 else -> 0
             }
             true
@@ -59,9 +57,8 @@ class MainActivity : AppCompatActivity() {
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 val targetId = when (position) {
-                    1 -> R.id.nav_scene
-                    2 -> R.id.nav_task
-                    3 -> R.id.nav_recorder
+                    1 -> R.id.nav_task
+                    2 -> R.id.nav_recorder
                     else -> R.id.nav_control
                 }
                 if (bottomNav.selectedItemId != targetId) {
@@ -69,11 +66,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
-    }
-
-    /** 供其它 Fragment 调用：切换到「记录器」Tab */
-    fun selectRecorderTab() {
-        bottomNav.selectedItemId = R.id.nav_recorder
     }
 
     /** Android 13+ 需要运行时授予通知权限，否则前台服务通知不会显示 */

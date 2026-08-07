@@ -6,9 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.Spinner
 import android.widget.Toast
-import androidx.fragment.app.Fragment
+import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.ggdoc.autoscroll.R
@@ -17,24 +16,30 @@ import cn.ggdoc.autoscroll.config.CustomGestureStep
 import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.databinding.DialogGestureStepBinding
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 
 /**
- * 场景页：6 大场景卡片选择；选中「自定义通用」时显示可编排的手势序列编辑器。
+ * 场景选择弹窗：6 大场景卡片选择；选中「自定义通用」时显示可编排的手势序列编辑器。
+ * 从控制页「设置」入口打开，替代原先独立的场景 Tab 页。
  */
-class SceneFragment : Fragment() {
+class ScenePickerDialogFragment : DialogFragment() {
+
+    /** 场景发生切换时回调（通知调用方刷新摘要） */
+    var onSceneChanged: (() -> Unit)? = null
 
     private lateinit var rvScenes: RecyclerView
     private lateinit var rvGestureSteps: RecyclerView
     private lateinit var stepAdapter: GestureStepAdapter
+    private lateinit var customGesturePanel: MaterialCardView
+    private lateinit var tvGestureEmpty: View
     private var currentSelectedId: String = AppConfig.SCENE_SHORT_VIDEO
 
     private val steps = mutableListOf<CustomGestureStep>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.fragment_scene, container, false)
-    }
+    ): View = inflater.inflate(R.layout.dialog_scene_picker, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -50,18 +55,23 @@ class SceneFragment : Fragment() {
         )
         rvGestureSteps.adapter = stepAdapter
 
-        view.findViewById<View>(R.id.btnAddGesture).setOnClickListener { showStepEditor(-1) }
+        customGesturePanel = view.findViewById(R.id.customGesturePanel)
+        tvGestureEmpty = view.findViewById(R.id.tvGestureEmpty)
+
+        view.findViewById<MaterialButton>(R.id.btnAddGesture).setOnClickListener { showStepEditor(-1) }
+        view.findViewById<MaterialButton>(R.id.btnSceneDone).setOnClickListener { dismiss() }
 
         currentSelectedId = AppConfig.getCurrentScene(requireContext())
         bindAdapter()
         refreshGesturePanel()
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 切回本页时若仍为自定义场景，刷新序列（可能在服务侧更新）
-        currentSelectedId = AppConfig.getCurrentScene(requireContext())
-        refreshGesturePanel()
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.92).toInt(),
+            (resources.displayMetrics.heightPixels * 0.85).toInt()
+        )
     }
 
     private fun bindAdapter() {
@@ -73,19 +83,18 @@ class SceneFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.toast_scene_changed, Toast.LENGTH_SHORT).show()
             bindAdapter()
             refreshGesturePanel()
+            onSceneChanged?.invoke()
         }
     }
 
     private fun refreshGesturePanel() {
         val isCustom = currentSelectedId == AppConfig.SCENE_CUSTOM
-        view?.findViewById<View>(R.id.customGesturePanel)?.visibility =
-            if (isCustom) View.VISIBLE else View.GONE
+        customGesturePanel.visibility = if (isCustom) View.VISIBLE else View.GONE
         if (!isCustom) return
         steps.clear()
         steps.addAll(AppConfig.getCustomGestureSequence(requireContext()))
         stepAdapter.submit(steps)
-        view?.findViewById<View>(R.id.tvGestureEmpty)?.visibility =
-            if (steps.isEmpty()) View.VISIBLE else View.GONE
+        tvGestureEmpty.visibility = if (steps.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun saveSteps() {
@@ -105,8 +114,7 @@ class SceneFragment : Fragment() {
         steps.removeAt(pos)
         saveSteps()
         stepAdapter.submit(steps)
-        view?.findViewById<View>(R.id.tvGestureEmpty)?.visibility =
-            if (steps.isEmpty()) View.VISIBLE else View.GONE
+        tvGestureEmpty.visibility = if (steps.isEmpty()) View.VISIBLE else View.GONE
     }
 
     /** 编辑 / 新增一步手势。editPos = -1 表示新增 */
@@ -177,7 +185,7 @@ class SceneFragment : Fragment() {
                 if (isEdit) steps[editPos] = step else steps.add(step)
                 saveSteps()
                 stepAdapter.submit(steps)
-                view?.findViewById<View>(R.id.tvGestureEmpty)?.visibility = View.GONE
+                tvGestureEmpty.visibility = View.GONE
             }
             .show()
     }

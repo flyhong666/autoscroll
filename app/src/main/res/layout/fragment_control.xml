@@ -184,67 +184,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 操作记录器入口 -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardRecorderEntry"
-            style="@style/AutoScrollCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:rippleColor="@color/purple_200">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="16dp">
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="8dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_record"
-                    app:tint="@color/danger"
-                    android:background="@drawable/scene_icon_bg" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="12dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/script_title"
-                        android:textAppearance="@style/TextAppearance.Title"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/tvRecorderSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="@string/script_subtitle"
-                        android:textAppearance="@style/TextAppearance.Body"
-                        android:textSize="12.5sp"
-                        android:textColor="@color/text_hint" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_chevron_right"
-                    app:tint="@color/text_hint" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
         <!-- 权限与服务操作 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAccessibility"

@@ -24,6 +24,9 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     var onSaved: (() -> Unit)? = null
 
+    /** 场景切换时回调（通知控制页刷新状态展示） */
+    var onSceneChanged: (() -> Unit)? = null
+
     private lateinit var sliderMinInterval: Slider
     private lateinit var sliderMaxInterval: Slider
     private lateinit var sliderMinDuration: Slider
@@ -32,6 +35,8 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     private lateinit var tvMaxInterval: TextView
     private lateinit var tvMinDuration: TextView
     private lateinit var tvMaxDuration: TextView
+    private lateinit var cardSceneEntry: MaterialCardView
+    private lateinit var tvSceneSummary: TextView
     private lateinit var cardAllowedApps: MaterialCardView
     private lateinit var tvAllowedAppsSummary: TextView
     private lateinit var etAdKeywords: TextInputEditText
@@ -53,6 +58,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         setupSliders()
         loadSettingsToUI()
 
+        cardSceneEntry.setOnClickListener { openScenePicker() }
         cardAllowedApps.setOnClickListener { openAppPicker() }
         btnApplyRecommend.setOnClickListener { applyRecommendParams() }
         btnSaveSettings.setOnClickListener { saveSettings() }
@@ -67,6 +73,8 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         tvMaxInterval = v.findViewById(R.id.tvMaxInterval)
         tvMinDuration = v.findViewById(R.id.tvMinDuration)
         tvMaxDuration = v.findViewById(R.id.tvMaxDuration)
+        cardSceneEntry = v.findViewById(R.id.cardSceneEntry)
+        tvSceneSummary = v.findViewById(R.id.tvSceneSummary)
         cardAllowedApps = v.findViewById(R.id.cardAllowedApps)
         tvAllowedAppsSummary = v.findViewById(R.id.tvAllowedAppsSummary)
         etAdKeywords = v.findViewById(R.id.etAdKeywords)
@@ -106,8 +114,24 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         selectedApps = AppConfig.getAllowedApps(ctx).toMutableSet()
         updateAllowedAppsSummary()
+        updateSceneSummary()
 
         etAdKeywords.setText(AppConfig.getAdKeywords(ctx).joinToString(","))
+    }
+
+    private fun updateSceneSummary() {
+        val ctx = requireContext()
+        val sceneName = getString(SceneConfig.getScene(AppConfig.getCurrentScene(ctx)).nameRes)
+        tvSceneSummary.text = getString(R.string.scene_entry_summary, sceneName)
+    }
+
+    private fun openScenePicker() {
+        val dialog = ScenePickerDialogFragment()
+        dialog.onSceneChanged = {
+            updateSceneSummary()
+            onSceneChanged?.invoke()
+        }
+        dialog.show(childFragmentManager, "scene_picker")
     }
 
     private fun updateAllowedAppsSummary() {

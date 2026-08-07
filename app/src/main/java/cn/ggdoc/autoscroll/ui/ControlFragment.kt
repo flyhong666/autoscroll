@@ -17,7 +17,6 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import cn.ggdoc.autoscroll.R
-import cn.ggdoc.autoscroll.MainActivity
 import cn.ggdoc.autoscroll.config.AppConfig
 import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
@@ -44,7 +43,6 @@ class ControlFragment : Fragment() {
     private lateinit var btnOverlay: MaterialButton
     private lateinit var btnStartService: MaterialButton
     private lateinit var cardSettingsEntry: MaterialCardView
-    private lateinit var cardRecorderEntry: MaterialCardView
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -94,7 +92,6 @@ class ControlFragment : Fragment() {
         btnOverlay = v.findViewById(R.id.btnOverlay)
         btnStartService = v.findViewById(R.id.btnStartService)
         cardSettingsEntry = v.findViewById(R.id.cardSettingsEntry)
-        cardRecorderEntry = v.findViewById(R.id.cardRecorderEntry)
     }
 
     private fun setupClickListeners() {
@@ -105,14 +102,12 @@ class ControlFragment : Fragment() {
             else startFloatingService()
         }
         cardSettingsEntry.setOnClickListener { openSettingsSheet() }
-        cardRecorderEntry.setOnClickListener {
-            (requireActivity() as? MainActivity)?.selectRecorderTab()
-        }
     }
 
     private fun openSettingsSheet() {
         val sheet = SettingsBottomSheet()
         sheet.onSaved = { refreshParamSummary() }
+        sheet.onSceneChanged = { refreshUI() }
         sheet.show(childFragmentManager, "SettingsBottomSheet")
     }
 
