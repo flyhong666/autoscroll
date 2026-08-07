@@ -207,8 +207,13 @@
     <string name="script_meta">%1$d 步 · 约 %2$d 秒 · %3$s</string>
 
     <string name="script_record_confirm_title">开始录制</string>
-    <string name="script_record_confirm_msg">确认后本页退到后台，请切到要录制的 APP 正常操作。\n\n· 点击、长按、列表滑动会被记录\n· 最多记录 300 步\n· 点击悬浮条上的「结束」保存脚本</string>
+    <string name="script_record_confirm_msg">确认后本页退到后台，请切到要录制的 APP 正常操作。\n\n· 点击、长按、列表滑动会被记录\n· 最多记录 300 步\n· 点击悬浮条上的「结束」保存脚本\n\n注意：录制基于无障碍事件，记录的是「控件中心」而非你手指真实落点；游戏、Flutter/Canvas 等自绘界面可能捕获不到。滑动方向需在 Android 9 及以上才能准确记录，低版本下滑动会被记为「上滑」。</string>
     <string name="script_record_start_now">立即开始</string>
+
+    <!-- 录制：版本过低提示 -->
+    <string name="recorder_version_low_title">系统版本过低</string>
+    <string name="recorder_version_low_msg">当前系统版本低于 Android 9，无障碍事件无法提供滑动方向，录制结果中所有滑动都会被记为「上滑」，且点击坐标取的是控件中心而非真实手指落点，回放效果可能不准确。\n\n建议升级到 Android 9 及以上以获得更准确的录制；是否仍要开始录制？</string>
+    <string name="recorder_version_low_continue">仍要开始</string>
 
     <string name="script_loops">循环次数</string>
     <string name="script_loops_value">循环 %1$d 次</string>

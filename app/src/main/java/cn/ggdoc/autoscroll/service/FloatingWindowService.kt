@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
@@ -240,12 +241,21 @@ class FloatingWindowService : Service() {
 
         updateButtonState(showToast = false)
 
+        // 悬浮窗权限可能在服务运行期间被用户收回：此处先校验，缺失则直接停止，
+        // 避免 addView 抛异常被吞、服务空转（对比 RecorderOverlayService 会 stopSelf）。
+        if (!Settings.canDrawOverlays(this)) {
+            Log.e(TAG, "悬浮窗权限已缺失，停止服务")
+            stopSelf()
+            return
+        }
+
         try {
             windowManager.addView(floatingView, params)
             isAdded = true
             Log.d(TAG, "悬浮窗已添加")
         } catch (e: Exception) {
             Log.e(TAG, "添加悬浮窗失败", e)
+            stopSelf()
         }
     }
 
@@ -450,8 +460,8 @@ class FloatingWindowService : Service() {
             }
             isAdded = false
         }
-        _instance?.clear()
-        if (_instance?.get() == null) _instance = null
+        // 仅当当前实例仍是本服务时才清空引用，避免服务快速重启时旧实例误清新实例
+        _instance?.let { if (it.get() === this) it.clear() }
         notifyStateChanged(this)
     }
 }

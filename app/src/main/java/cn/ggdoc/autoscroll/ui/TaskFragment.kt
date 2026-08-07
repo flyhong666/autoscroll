@@ -47,6 +47,16 @@ class TaskFragment : Fragment() {
     private lateinit var sliderBatteryThreshold: Slider
     private lateinit var sliderAdRewardInterval: Slider
 
+    // 详情流（新闻 / 社交场景）参数滑块
+    private lateinit var sliderDetailDwellMin: Slider
+    private lateinit var sliderDetailDwellMax: Slider
+    private lateinit var sliderDetailReadAll: Slider
+    private lateinit var sliderDetailMaxScrolls: Slider
+    private lateinit var tvDetailDwellMin: TextView
+    private lateinit var tvDetailDwellMax: TextView
+    private lateinit var tvDetailReadAll: TextView
+    private lateinit var tvDetailMaxScrolls: TextView
+
     private lateinit var tvLikeProbability: TextView
     private lateinit var tvTimedStopMinutes: TextView
     private lateinit var tvRotationMinutes: TextView
@@ -144,6 +154,15 @@ class TaskFragment : Fragment() {
         sliderBatteryThreshold = v.findViewById(R.id.sliderBatteryThreshold)
         sliderAdRewardInterval = v.findViewById(R.id.sliderAdRewardInterval)
 
+        sliderDetailDwellMin = v.findViewById(R.id.sliderDetailDwellMin)
+        sliderDetailDwellMax = v.findViewById(R.id.sliderDetailDwellMax)
+        sliderDetailReadAll = v.findViewById(R.id.sliderDetailReadAll)
+        sliderDetailMaxScrolls = v.findViewById(R.id.sliderDetailMaxScrolls)
+        tvDetailDwellMin = v.findViewById(R.id.tvDetailDwellMin)
+        tvDetailDwellMax = v.findViewById(R.id.tvDetailDwellMax)
+        tvDetailReadAll = v.findViewById(R.id.tvDetailReadAll)
+        tvDetailMaxScrolls = v.findViewById(R.id.tvDetailMaxScrolls)
+
         tvLikeProbability = v.findViewById(R.id.tvLikeProbability)
         tvTimedStopMinutes = v.findViewById(R.id.tvTimedStopMinutes)
         tvRotationMinutes = v.findViewById(R.id.tvRotationMinutes)
@@ -187,6 +206,20 @@ class TaskFragment : Fragment() {
         }
         sliderAdRewardInterval.addOnChangeListener { _, value, _ ->
             tvAdRewardInterval.text = "${value.toInt()}min"
+        }
+
+        // 详情流参数滑块：拖动时实时刷新数值，并由 AppConfig 的 coerce 保证合法
+        sliderDetailDwellMin.addOnChangeListener { _, value, _ ->
+            tvDetailDwellMin.text = "${value.toInt()}s"
+        }
+        sliderDetailDwellMax.addOnChangeListener { _, value, _ ->
+            tvDetailDwellMax.text = "${value.toInt()}s"
+        }
+        sliderDetailReadAll.addOnChangeListener { _, value, _ ->
+            tvDetailReadAll.text = "$value%"
+        }
+        sliderDetailMaxScrolls.addOnChangeListener { _, value, _ ->
+            tvDetailMaxScrolls.text = value.toInt().toString()
         }
     }
 
@@ -306,6 +339,20 @@ class TaskFragment : Fragment() {
             .coerceIn(sliderAdRewardInterval.valueFrom, sliderAdRewardInterval.valueTo)
         tvAdRewardInterval.text = "${sliderAdRewardInterval.value.toInt()}min"
         etAdRewardKeywords.setText(AppConfig.getAdRewardKeywords(ctx).joinToString(","))
+
+        // 详情流（新闻 / 社交）参数
+        sliderDetailDwellMin.value = AppConfig.getDetailDwellMin(ctx).toFloat()
+            .coerceIn(sliderDetailDwellMin.valueFrom, sliderDetailDwellMin.valueTo)
+        tvDetailDwellMin.text = "${sliderDetailDwellMin.value.toInt()}s"
+        sliderDetailDwellMax.value = AppConfig.getDetailDwellMax(ctx).toFloat()
+            .coerceIn(sliderDetailDwellMax.valueFrom, sliderDetailDwellMax.valueTo)
+        tvDetailDwellMax.text = "${sliderDetailDwellMax.value.toInt()}s"
+        sliderDetailReadAll.value = AppConfig.getDetailReadAllProbability(ctx).toFloat()
+            .coerceIn(sliderDetailReadAll.valueFrom, sliderDetailReadAll.valueTo)
+        tvDetailReadAll.text = "${sliderDetailReadAll.value.toInt()}%"
+        sliderDetailMaxScrolls.value = AppConfig.getDetailMaxScrolls(ctx).toFloat()
+            .coerceIn(sliderDetailMaxScrolls.valueFrom, sliderDetailMaxScrolls.valueTo)
+        tvDetailMaxScrolls.text = sliderDetailMaxScrolls.value.toInt().toString()
     }
 
     private fun saveSettings() {
@@ -334,6 +381,12 @@ class TaskFragment : Fragment() {
             ctx,
             AppConfig.parseKeywords(etAdRewardKeywords.text?.toString().orEmpty())
         )
+
+        // 详情流（新闻 / 社交）参数：随滚动一并生效，决定拟人浏览的停留/读完/翻页上限
+        AppConfig.setDetailDwellMin(ctx, sliderDetailDwellMin.value.toInt())
+        AppConfig.setDetailDwellMax(ctx, sliderDetailDwellMax.value.toInt())
+        AppConfig.setDetailReadAllProbability(ctx, sliderDetailReadAll.value.toInt())
+        AppConfig.setDetailMaxScrolls(ctx, sliderDetailMaxScrolls.value.toInt())
 
         // 实时同步到无障碍服务（含定时闹钟重排、激励间隔重载）
         AutoScrollAccessibilityService.instance?.onScheduleConfigChanged()

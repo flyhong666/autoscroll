@@ -352,6 +352,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         customSeqRunnable?.let { handler.removeCallbacks(it); customSeqRunnable = null }
 
         KeepAliveManager.release()
+        remainingSeconds = 0
         Log.i(
             TAG,
             "停止自动滚动（滚动=$scrollCount, 点赞=$likeCount, 广告屏蔽=$adBlockCount, 激励=$adRewardCount）"
@@ -380,8 +381,8 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
         scrollTask = Runnable {
             val scene = SceneConfig.getScene(currentScene)
-            // 新闻资讯：列表-详情拟人浏览（点开→浏览→返回），由详情流控制器接管本轮节奏
-            if (scene.id == "news") {
+            // 新闻 / 社交：列表-详情拟人浏览（点开→浏览→返回），由详情流控制器接管本轮节奏
+            if (scene.useDetailFlow) {
                 detailFlow.startOneCycle { scheduleNextScroll() }
             } else {
                 doScrollAndTasks()
@@ -559,9 +560,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         if (Random.nextInt(100) >= 20) return
         val (w, h) = getScreenSize()
         if (w <= 0 || h <= 0) return
-        // 在屏幕上方 15%-25% 区域轻触，避免误触礼物/弹幕按钮
-        val x = w * (0.30f + Random.nextFloat() * 0.40f)
-        val y = h * (0.15f + Random.nextFloat() * 0.10f)
+        // 在屏幕左上区域（高度 10%-18%、宽度 12%-37%）轻触保活，
+        // 远离顶部居中的主播头像/关注按钮，也避开底部礼物/弹幕输入区。
+        val x = w * (0.12f + Random.nextFloat() * 0.25f)
+        val y = h * (0.10f + Random.nextFloat() * 0.08f)
         tapScreen(x, y, 50L)
         Log.d(TAG, "直播挂机：微互动保活")
     }
@@ -599,20 +601,17 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             executeSingleGesture(step)
         }
 
+        // 等待本步指定的秒数。即使 waitSec=0 也用 1ms 兜底继续推进，
+        // 避免末步 waitSec=0 导致序列驻留、需等外层重新触发才能继续。
         val waitMs = (step.waitSec.coerceAtLeast(0) * 1000).toLong()
-        if (customSeqStep < seq.size || true) {
-            // 序列末尾仍等待后从头循环（由下一轮 doScrollAndTasks 重新触发，
-            // 因此这里只等待本步间隔；最后一步的等待交给循环节律）
-        }
-        if (waitMs > 0) {
-            customSeqRunnable = Runnable {
-                // 仅当仍处于自定义场景且服务运行中才继续
-                if (currentScene == AppConfig.SCENE_CUSTOM && isScrolling) {
-                    runCustomStep(seq)
-                }
+        val delay = if (waitMs > 0) waitMs else 1L
+        customSeqRunnable = Runnable {
+            // 仅当仍处于自定义场景且服务运行中才继续
+            if (currentScene == AppConfig.SCENE_CUSTOM && isScrolling) {
+                runCustomStep(seq)
             }
-            handler.postDelayed(customSeqRunnable!!, waitMs)
         }
+        handler.postDelayed(customSeqRunnable!!, delay)
     }
 
     /** 执行序列中的单步手势 */
@@ -756,7 +755,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             }
             override fun onCancelled(g: GestureDescription?) {
                 Log.w(TAG, "[$source] 手势被取消")
-                if (source != "screen") handler.post { performScreenGesture(SceneConfig.getScene(currentScene)) }
+                // 仅在「节点滚动手势」被系统取消时，回退一次全屏上滑兜底。
+                // tap / 双击列 / 自定义手势被取消不应退化成全屏上滑，否则会与详情流的
+                // Handler 延时链抢拍，破坏拟人节奏。
+                if (source == "node") {
+                    handler.post { performScreenGesture(SceneConfig.getScene(currentScene)) }
+                }
             }
         }
         if (!dispatchGesture(gesture, callback, handler)) {
@@ -832,8 +836,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     /** 广告屏蔽入口（供详情流在周期节点调用） */
     fun runAdBlockCheck() = tryAdBlock()
 
-    /** 保护策略 + 生效应用清单综合校验 */
+    /** 保护策略 + 生效应用清单 + 看广告期综合校验 */
     fun isFlowAllowedToAct(): Boolean {
+        if (isWatchingAdReward) return false
         if (isBlockedByPolicy()) return false
         val pkg = foregroundPackage
         if (allowedApps.isNotEmpty() && pkg != null && !allowedApps.contains(pkg)) return false
@@ -973,6 +978,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     // ========== 每秒 tick：更新剩余时间 + 刷新统计看板 ==========
     private fun startTick() {
         tickRunnable?.let { handler.removeCallbacks(it) }
+        tickCount = 0
         tickRunnable = object : Runnable {
             override fun run() {
                 if (!isScrolling) return
@@ -981,9 +987,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                     val total = (timedStopMinutes * 60).toLong()
                     remainingSeconds = (total - elapsed).coerceAtLeast(0)
                 }
-                // 每秒广播一次，让统计看板与悬浮窗刷新（含运行时长）
+                // 未开启定时停止时，倒计时无变化，降频到每 5 秒广播一次，减少耗电；
+                // 开启定时停止时每秒广播，保证悬浮窗倒计时实时刷新。
+                val interval = if (timedStop) 1000L else 5000L
                 broadcastState()
-                handler.postDelayed(this, 1000L)
+                handler.postDelayed(this, interval)
             }
         }
         handler.post(tickRunnable!!)
@@ -997,13 +1005,18 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 val bounds = wm.currentWindowMetrics.bounds
                 bounds.width() to bounds.height()
             } else {
+                // Android 11（API 30）以下：用 WindowManager.defaultDisplay 取真实屏幕尺寸。
+                // 注意：Context.getDisplay() 是 API 30 才有的方法，低版本调用会抛 NoSuchMethodError，
+                // 因此这里必须用 defaultDisplay，不能用 display?.
                 val dm = DisplayMetrics()
                 @Suppress("DEPRECATION")
-                display?.getRealMetrics(dm)
-                (dm?.widthPixels ?: 0) to (dm?.heightPixels ?: 0)
+                wm.defaultDisplay.getRealMetrics(dm)
+                dm.widthPixels to dm.heightPixels
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "获取屏幕尺寸失败", e)
+        } catch (t: Throwable) {
+            // 兜底用 Throwable：低版本若仍有意外（如 NoSuchMethodError 继承自 Error 而非 Exception），
+            // catch(Exception) 接不住，会导致无障碍服务进程级崩溃。
+            Log.e(TAG, "获取屏幕尺寸失败", t)
             0 to 0
         }
     }

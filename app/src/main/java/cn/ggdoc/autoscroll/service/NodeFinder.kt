@@ -2,11 +2,17 @@ package cn.ggdoc.autoscroll.service
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import java.util.HashSet
 import java.util.LinkedList
 
 /**
  * 无障碍节点查找工具：可滚动容器识别 + 列表条目收集。
  * 供自动滚动（滑动/详情流）与广告屏蔽等逻辑复用。
+ *
+ * 重要：Android 13（API 33）以下节点对象来自一个固定大小的池，
+ * 不复用（recycle）会导致 rootInActiveWindow 逐渐返回 null、滑动静默失效。
+ * 因此本工具在遍历结束后回收所有「不被返回、不被外层持有」的中间节点，
+ * 仅保留调用方需要继续使用的容器与列表项节点。
  */
 object NodeFinder {
 
@@ -31,20 +37,63 @@ object NodeFinder {
     /**
      * 广度优先寻找可滚动容器：
      * 类名命中常见滚动控件白名单，或节点自身 isScrollable。
+     *
+     * 优先匹配「真正的列表容器」（RecyclerView / ListView），这些通常才是内容列表；
+     * 外层 ViewPager2 频道页、ScrollView 嵌套等放在第二轮匹配，避免命中过于宽泛的容器。
+     *
+     * 返回找到的容器节点（调用方持有，本方法不回收）；遍历产生的其余中间节点会被回收。
      */
     fun findScrollable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        val visited = HashSet<AccessibilityNodeInfo>()
+        visited.add(root)
         val queue = LinkedList<AccessibilityNodeInfo>()
         queue.offer(root)
-        var visited = 0
-        while (queue.isNotEmpty() && visited < 1500) {
+        // 第一轮：仅匹配真正的列表类（RecyclerView / ListView）
+        var result = bfsMatch(root, visited, queue, listOnly = true)
+        if (result == null) {
+            // 第二轮：匹配任意可滚动容器（含 ScrollView / WebView / ViewPager 等）
+            result = bfsMatch(root, visited, queue, listOnly = false)
+        }
+        // 回收队列中剩余未处理的节点（保留 root 与 result）
+        while (queue.isNotEmpty()) {
+            queue.poll()?.let { if (it !== root && it !== result) it.recycle() }
+        }
+        return result
+    }
+
+    /**
+     * 单轮 BFS 匹配。listOnly=true 时只认 RecyclerView/ListView；
+     * 返回首个命中的容器，未命中返回 null。queue/visited 在轮次间复用。
+     */
+    private fun bfsMatch(
+        root: AccessibilityNodeInfo,
+        visited: HashSet<AccessibilityNodeInfo>,
+        queue: LinkedList<AccessibilityNodeInfo>,
+        listOnly: Boolean
+    ): AccessibilityNodeInfo? {
+        var visitedCount = 0
+        while (queue.isNotEmpty() && visitedCount < 1500) {
             val current = queue.poll() ?: continue
-            visited++
+            visitedCount++
             val className = current.className?.toString().orEmpty()
-            if (SCROLLABLE_CLASSES.any { className.contains(it, ignoreCase = true) }) return current
-            if (current.isScrollable) return current
-            for (i in 0 until current.childCount) {
-                current.getChild(i)?.let { queue.offer(it) }
+            val isList = className.endsWith("RecyclerView") || className.endsWith("ListView")
+            val classHit = if (listOnly) isList else SCROLLABLE_CLASSES.any {
+                className.contains(it, ignoreCase = true)
             }
+            if (classHit || (!listOnly && current.isScrollable)) {
+                // 命中：返回该容器（保留），其余待回收
+                return current
+            }
+            for (i in 0 until current.childCount) {
+                val child = current.getChild(i) ?: continue
+                if (visited.add(child)) {
+                    queue.offer(child)
+                } else {
+                    child.recycle()
+                }
+            }
+            // 处理完当前节点后回收（保留 root，命中节点已在 return 时跳出）
+            if (current !== root) current.recycle()
         }
         return null
     }
@@ -58,6 +107,8 @@ object NodeFinder {
      *  - 宽度 >= 容器宽*0.5（排除侧边小图标）
      *  - 文案命中「广告/推广/赞助」的推广位跳过
      *  - 被其他候选条目完全包含的重复节点去重
+     *
+     * 遍历产生的中间节点在结束后回收，仅保留 [container] 与返回给调用方的列表项节点。
      */
     fun collectListItems(
         container: AccessibilityNodeInfo,
@@ -68,8 +119,9 @@ object NodeFinder {
         val maxH = (containerRect.height() * 0.75f).toInt()
         val minW = (containerRect.width() * 0.5f).toInt()
         val queue = LinkedList<Pair<AccessibilityNodeInfo, Int>>()
+        val visited = HashSet<AccessibilityNodeInfo>()
+        visited.add(container)
         queue.offer(container to 0)
-        val seen = HashSet<String>()
         while (queue.isNotEmpty() && out.size < 40) {
             val (node, depth) = queue.poll() ?: continue
             if (depth > 10) continue
@@ -83,10 +135,17 @@ object NodeFinder {
                 !looksLikeAd(node)
             ) {
                 val key = rect.flattenToString()
-                if (seen.add(key)) out.add(ListItem(node, rect))
+                if (out.none { it.rect.flattenToString() == key }) {
+                    out.add(ListItem(node, rect))
+                }
             }
             for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { queue.offer(it to depth + 1) }
+                val child = node.getChild(i) ?: continue
+                if (visited.add(child)) {
+                    queue.offer(child to depth + 1)
+                } else {
+                    child.recycle()
+                }
             }
         }
         // 去掉被更大条目完全包含的重复项（父子都可点击时只保留外层）
@@ -97,6 +156,11 @@ object NodeFinder {
                         b.rect.height() >= a.rect.height() &&
                         b.rect.contains(a.rect)
             }
+        }
+        val keep = dedup.map { it.node }.toSet()
+        // 回收所有遍历过的节点，保留 container 与 retained 列表项
+        visited.forEach { n ->
+            if (n !== container && n !in keep) n.recycle()
         }
         return dedup.sortedWith(compareBy({ it.rect.top }, { it.rect.left }))
     }

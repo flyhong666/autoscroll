@@ -25,11 +25,11 @@ object AdBlocker {
      */
     fun scanAndClose(service: AccessibilityService): Int {
         var closed = 0
+        val candidates = mutableListOf<AccessibilityNodeInfo>()
         try {
             val keywords = AppConfig.getAdKeywords(service)
             if (keywords.isEmpty()) return 0
             val root = service.rootInActiveWindow ?: return 0
-            val candidates = mutableListOf<AccessibilityNodeInfo>()
 
             collectClickableNodes(root, candidates)
 
@@ -51,12 +51,19 @@ object AdBlocker {
             }
         } catch (e: Exception) {
             Log.e(TAG, "广告屏蔽扫描失败", e)
+        } finally {
+            // 回收候选节点，避免 Android 13 以下节点池耗尽导致静默失效
+            candidates.forEach { runCatching { it.recycle() } }
         }
         return closed
     }
 
     /**
-     * 递归收集所有可点击 / 有文本的节点（限制深度与数量避免 OOM）
+     * 递归收集可点击、且文案简短的节点（限制深度与数量避免 OOM）。
+     *
+     * 收紧点（避免误伤正文）：
+     *  - 只收「真正可点击」的节点，去掉 isFocusable 这个过宽条件（正文文本块往往可聚焦但不可点）；
+     *  - 文案过长（>16 字）的节点视为内容而非按钮，跳过，避免点掉正文段落。
      */
     private fun collectClickableNodes(
         node: AccessibilityNodeInfo,
@@ -65,10 +72,12 @@ object AdBlocker {
     ) {
         if (depth > 20 || out.size > 200) return
 
-        val hasText = !node.text.isNullOrBlank() || !node.contentDescription.isNullOrBlank()
-        val clickable = node.isClickable
+        val text = node.text?.toString()?.trim().orEmpty()
+        val desc = node.contentDescription?.toString()?.trim().orEmpty()
+        val hasText = text.isNotEmpty() || desc.isNotEmpty()
+        val textLen = maxOf(text.length, desc.length)
 
-        if (hasText && (clickable || node.isFocusable)) {
+        if (hasText && node.isClickable && textLen <= 16) {
             out.add(node)
         }
 

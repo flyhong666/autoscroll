@@ -143,6 +143,8 @@ object ScriptPlayer {
         }
         val duration = (action.duration / speed).toLong().coerceIn(30L, 30_000L)
         val advance = Runnable {
+            // 若回放已停止（用户手动终止 / 服务断开），不再推进步骤，避免 stepIndex 越界
+            if (!isPlaying) return@Runnable
             stepIndex++
             notifyChanged()
             scheduleStep()

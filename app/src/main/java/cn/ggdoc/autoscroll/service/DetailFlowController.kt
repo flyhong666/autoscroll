@@ -33,6 +33,10 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
     private var nextMinTopY = 0
     private var swipedThisCycle = false
     private var scrollsLeft = 0
+    /** 单轮已点开条数，超过上限视为「未正确返回列表」主动收手 */
+    private var cycleClicks = 0
+    /** 单轮点击次数硬上限，防止返回失败后在详情页内乱点 */
+    private val MAX_CYCLE_CLICKS = 12
     /** 详情页滚动方式：0=未探测 1=ACTION_SCROLL 可用 2=仅手势可用 */
     private var scrollMode = 0
     private var onDone: (() -> Unit)? = null
@@ -50,6 +54,7 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         onDone = done
         swipedThisCycle = false
         scrollMode = 0
+        cycleClicks = 0
 
         // 进列表前先清一下弹窗广告
         service.runAdBlockCheck()
@@ -68,6 +73,7 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
     fun resetCursor() {
         nextMinTopY = 0
         swipedThisCycle = false
+        cycleClicks = 0
     }
 
     // ========== 内部步骤 ==========
@@ -98,6 +104,20 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         val containerRect = Rect().also { container.getBoundsInScreen(it) }
         if (containerRect.width() <= 0 || containerRect.height() <= 0) return finish()
 
+        // 列表页校验：当前可滚动容器若为 WebView（多为详情正文），说明上一步「返回」未生效
+        // 或仍在详情页，结束本轮，避免继续在详情页里乱点（评论/分享/举报等）。
+        if (isWebView(container)) {
+            Log.d(TAG, "当前处于详情/网页容器，疑似未返回列表，结束本轮")
+            nextMinTopY = 0
+            return finish()
+        }
+        // 单轮点击次数上限：超过说明大概率没有正确返回列表，主动收手以防乱点
+        if (cycleClicks >= MAX_CYCLE_CLICKS) {
+            Log.w(TAG, "本轮点击次数过多，疑似未返回列表，结束本轮")
+            nextMinTopY = 0
+            return finish()
+        }
+
         val density = service.resources.displayMetrics.density
         val minItemHeight = (80 * density).toInt()
         val items = NodeFinder.collectListItems(container, containerRect, minItemHeight)
@@ -117,11 +137,21 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             return
         }
 
+        // 释放本次未选中的其他候选条目节点（避免节点池占用）
+        items.forEach { if (it !== pick) runCatching { it.node.recycle() } }
         nextMinTopY = pick.rect.bottom - 10
+        cycleClicks++
         clickItem(pick)
+        pick.node.recycle()
         service.countDetailBrowsed()
         Log.d(TAG, "点开条目 @(${pick.rect.centerX()}, ${pick.rect.centerY()})")
         post(Random.nextLong(1000, 1800)) { stepDwell() }
+    }
+
+    /** 容器是否为网页视图（详情正文常见），用于列表页校验 */
+    private fun isWebView(node: AccessibilityNodeInfo): Boolean {
+        val cn = node.className?.toString().orEmpty()
+        return cn.contains("WebView", ignoreCase = true)
     }
 
     private fun clickItem(item: NodeFinder.ListItem) {

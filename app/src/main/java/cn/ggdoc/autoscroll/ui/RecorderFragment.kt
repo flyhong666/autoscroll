@@ -82,6 +82,21 @@ class RecorderFragment : Fragment() {
             toast(R.string.toast_record_already)
             return
         }
+        // Android 9（API 28）以下：无障碍事件不携带滑动方向（scrollDeltaX/Y），
+        // 录制结果不准确，先弹出版本过低提示，由用户决定是否仍要开始。
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.recorder_version_low_title)
+                .setMessage(R.string.recorder_version_low_msg)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.recorder_version_low_continue) { _, _ -> showRecordConfirm() }
+                .show()
+            return
+        }
+        showRecordConfirm()
+    }
+
+    private fun showRecordConfirm() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.script_record_confirm_title)
             .setMessage(R.string.script_record_confirm_msg)

@@ -42,12 +42,12 @@ object AdRewardTask {
      * @return 被点击的入口文案；未找到或点击失败时返回 null
      */
     fun clickRewardEntry(service: AccessibilityService): String? {
+        val candidates = ArrayList<AccessibilityNodeInfo>()
         return try {
             val keywords = AppConfig.getAdRewardKeywords(service)
             if (keywords.isEmpty()) return null
             val root = service.rootInActiveWindow ?: return null
 
-            val candidates = ArrayList<AccessibilityNodeInfo>()
             collectNodes(root, candidates)
 
             // 命中文案越短越可能是按钮，优先点击
@@ -73,6 +73,9 @@ object AdRewardTask {
         } catch (e: Exception) {
             Log.e(TAG, "激励入口扫描失败", e)
             null
+        } finally {
+            // 回收候选节点，避免 Android 13 以下节点池耗尽
+            candidates.forEach { runCatching { it.recycle() } }
         }
     }
 
@@ -82,7 +85,8 @@ object AdRewardTask {
         while (queue.isNotEmpty() && out.size < MAX_NODES) {
             val (node, depth) = queue.poll() ?: continue
             if (depth > MAX_DEPTH) continue
-            if (labelOf(node).isNotEmpty() && (node.isClickable || node.isFocusable)) {
+            // 仅收集真正可点击的节点，减少误命中正文文本
+            if (labelOf(node).isNotEmpty() && node.isClickable) {
                 out.add(node)
             }
             for (i in 0 until node.childCount) {

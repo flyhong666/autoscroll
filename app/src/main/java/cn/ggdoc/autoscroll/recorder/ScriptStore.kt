@@ -80,8 +80,9 @@ object ScriptStore {
     /** 导出到外部专属目录，返回目标文件（失败 null） */
     fun export(context: Context, fileName: String): File? = try {
         val src = File(dir(context), fileName)
-        val outDir = File(context.getExternalFilesDir(null), DIR_NAME)
-            .apply { if (!exists()) mkdirs() }
+        // 部分设备 / 受限存储下 getExternalFilesDir 可能返回 null，安全降级
+        val extRoot = context.getExternalFilesDir(null) ?: return null
+        val outDir = File(extRoot, DIR_NAME).apply { if (!exists()) mkdirs() }
         val out = File(outDir, fileName)
         src.copyTo(out, overwrite = true)
         out

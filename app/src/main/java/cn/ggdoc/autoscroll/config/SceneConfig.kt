@@ -14,12 +14,6 @@ import cn.ggdoc.autoscroll.R
  */
 object SceneConfig {
 
-    // ============ 兼容旧调用方的流类型常量 ============
-    const val FLOW_DETAIL = "detail"
-    const val FLOW_IDLE = "idle"
-    const val FLOW_PAGE_TAP = "page_tap"
-    const val FLOW_CUSTOM = "custom"
-
     enum class ScrollMode {
         /** 全屏竖向滑动（短视频、信息流） */
         VERTICAL,
@@ -51,19 +45,13 @@ object SceneConfig {
         val doubleColumn: Boolean,
         /** 挂机模式：完全不滑动 */
         val idle: Boolean,
+        /** 是否走「列表-详情」拟人浏览闭环（新闻 / 社交场景） */
+        val useDetailFlow: Boolean = false,
         /** 推荐的单次手势滑动时长（毫秒），供设置面板 Slider 预设 */
         val recommendMinDuration: Int = 300,
         /** 推荐的单次手势滑动时长上限（毫秒） */
         val recommendMaxDuration: Int = 500
-    ) {
-        /** 兼容旧代码：返回该场景对应的流类型 */
-        fun flow(): String = when (id) {
-            "news", "social" -> FLOW_DETAIL
-            "live" -> FLOW_IDLE
-            "novel" -> FLOW_PAGE_TAP
-            else -> FLOW_CUSTOM
-        }
-    }
+    )
 
     val SCENES = listOf(
         Scene(
@@ -97,6 +85,7 @@ object SceneConfig {
             swipeCrossXRatio = 0f,
             doubleColumn = false,
             idle = false,
+            useDetailFlow = true,
             recommendMinDuration = 300,
             recommendMaxDuration = 600
         ),
@@ -131,6 +120,7 @@ object SceneConfig {
             swipeCrossXRatio = 0.12f,
             doubleColumn = true,
             idle = false,
+            useDetailFlow = true,
             recommendMinDuration = 250,
             recommendMaxDuration = 500
         ),
@@ -174,11 +164,48 @@ object SceneConfig {
 
     fun getScene(id: String): Scene = SCENE_MAP[id] ?: SCENES.last()
 
-    /** 兼容旧调用方 */
-    fun getSceneFlow(id: String): String = getScene(id).flow()
+    /**
+     * 返回该场景的知名 APP 包名（用于「多 APP 轮换」在未配置生效应用清单时，
+     * 仍能在场景内的若干 APP 间定时切换）。仅作兜底，用户未安装的应用会被安全跳过。
+     */
+    fun getScenePackages(id: String): List<String> = SCENE_PACKAGES[id] ?: emptyList()
 
-    /** 兼容旧调用方：返回该场景适用的包名前缀（无限制时返回空列表） */
-    fun getScenePackages(id: String): List<String> = emptyList()
+    /** 各场景的知名 APP 包名（兜底轮换清单） */
+    private val SCENE_PACKAGES: Map<String, List<String>> = mapOf(
+        SCENE_SHORT_VIDEO to listOf(
+            "com.ss.android.ugc.aweme",          // 抖音
+            "com.kuaishou.nebula",               // 快手
+            "com.ss.android.ugc.aweme.lite",     // 抖音极速版
+            "com.kuaishou.nebula.lite",          // 快手极速版
+            "tiktok"                             // TikTok
+        ),
+        SCENE_NEWS to listOf(
+            "com.ss.android.article.news",       // 今日头条
+            "com.tencent.news",                  // 腾讯新闻
+            "com.netease.newsreader.activity",   // 网易新闻
+            "com.sina.news",                     // 新浪新闻
+            "com.ifeng.news2",                   // 凤凰新闻
+            "com.qiyi.news"                       // 一点资讯
+        ),
+        SCENE_NOVEL to listOf(
+            "com.dragon.read",                   // 番茄小说
+            "com.qidian.QDReader",               // 起点读书
+            "com.kmxs.reader",                   // 掌阅
+            "com.duoku.game.yuedu",              // 七猫小说
+            "com.zhangyue.read"                  // 掌阅 iReader
+        ),
+        SCENE_SOCIAL to listOf(
+            "com.sina.weibo",                    // 微博
+            "com.xingin.xhs",                    // 小红书
+            "com.zhihu.android",                 // 知乎
+            "com.tencent.mm"                     // 微信（朋友圈/公众号）
+        ),
+        SCENE_LIVE to listOf(
+            "com.ss.android.ugc.aweme",          // 抖音直播
+            "com.duowan.kiwi",                   // 虎牙
+            "com.douyu.douxui"                   // 斗鱼
+        )
+    )
 
     fun allSceneIds(): List<String> = SCENES.map { it.id }
 
