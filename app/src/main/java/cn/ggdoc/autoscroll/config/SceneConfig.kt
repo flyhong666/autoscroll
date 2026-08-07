@@ -172,14 +172,14 @@ object SceneConfig {
 
     /** 各场景的知名 APP 包名（兜底轮换清单） */
     private val SCENE_PACKAGES: Map<String, List<String>> = mapOf(
-        SCENE_SHORT_VIDEO to listOf(
+        AppConfig.SCENE_SHORT_VIDEO to listOf(
             "com.ss.android.ugc.aweme",          // 抖音
             "com.kuaishou.nebula",               // 快手
             "com.ss.android.ugc.aweme.lite",     // 抖音极速版
             "com.kuaishou.nebula.lite",          // 快手极速版
             "tiktok"                             // TikTok
         ),
-        SCENE_NEWS to listOf(
+        AppConfig.SCENE_NEWS to listOf(
             "com.ss.android.article.news",       // 今日头条
             "com.tencent.news",                  // 腾讯新闻
             "com.netease.newsreader.activity",   // 网易新闻
@@ -187,20 +187,20 @@ object SceneConfig {
             "com.ifeng.news2",                   // 凤凰新闻
             "com.qiyi.news"                       // 一点资讯
         ),
-        SCENE_NOVEL to listOf(
+        AppConfig.SCENE_NOVEL to listOf(
             "com.dragon.read",                   // 番茄小说
             "com.qidian.QDReader",               // 起点读书
             "com.kmxs.reader",                   // 掌阅
             "com.duoku.game.yuedu",              // 七猫小说
             "com.zhangyue.read"                  // 掌阅 iReader
         ),
-        SCENE_SOCIAL to listOf(
+        AppConfig.SCENE_SOCIAL to listOf(
             "com.sina.weibo",                    // 微博
             "com.xingin.xhs",                    // 小红书
             "com.zhihu.android",                 // 知乎
             "com.tencent.mm"                     // 微信（朋友圈/公众号）
         ),
-        SCENE_LIVE to listOf(
+        AppConfig.SCENE_LIVE to listOf(
             "com.ss.android.ugc.aweme",          // 抖音直播
             "com.duowan.kiwi",                   // 虎牙
             "com.douyu.douxui"                   // 斗鱼

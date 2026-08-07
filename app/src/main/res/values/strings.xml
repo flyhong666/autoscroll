@@ -169,6 +169,28 @@
     <string name="toast_ad_blocked">已关闭广告弹窗</string>
     <string name="toast_liked">已自动点赞</string>
     <string name="toast_ad_reward">正在观看激励视频：%1$s</string>
+    <string name="toast_scene_auto_switched">已自动切换场景：%1$s</string>
+    <string name="toast_stuck_close_popup">内容无变化，尝试关闭弹窗</string>
+    <string name="toast_stuck_press_back">内容无变化，已执行返回</string>
+    <string name="toast_stuck_restart_app">内容长时间无变化，正在重启应用</string>
+
+    <!-- ========== 场景自动识别 / 卡死自恢复（优化项） ========== -->
+    <string name="task_auto_scene">场景自动识别</string>
+    <string name="task_auto_scene_summary">打开抖音、头条、小红书等应用时，自动切换到对应的场景策略。自定义场景不会被覆盖。</string>
+    <string name="task_auto_recover">卡死自动恢复</string>
+    <string name="task_auto_recover_summary">检测屏幕内容是否真的在变化。连续无变化时依次尝试关闭弹窗、返回上一层、重启应用，避免刷到底后空转。</string>
+
+    <!-- ========== 统计看板 ========== -->
+    <string name="stats_title">运行统计</string>
+    <string name="stats_today">今日</string>
+    <string name="stats_total">累计</string>
+    <string name="stats_scrolls">滑动 %1$d 次</string>
+    <string name="stats_likes">点赞 %1$d 次</string>
+    <string name="stats_ad_blocks">屏蔽广告 %1$d 次</string>
+    <string name="stats_details">浏览详情 %1$d 篇</string>
+    <string name="stats_duration">时长 %1$s</string>
+    <string name="stats_clear">清空统计</string>
+    <string name="stats_cleared">统计数据已清空</string>
 
     <!-- ========== 看广告得金币（高风险独立任务） ========== -->
     <string name="task_ad_reward">看广告得金币（高风险）</string>

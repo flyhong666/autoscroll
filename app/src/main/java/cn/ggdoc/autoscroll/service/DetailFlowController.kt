@@ -7,6 +7,8 @@ import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import cn.ggdoc.autoscroll.config.SceneConfig
+import cn.ggdoc.autoscroll.human.HumanTiming
+import cn.ggdoc.autoscroll.human.PageClassifier
 import kotlin.math.max
 import kotlin.random.Random
 
@@ -104,10 +106,21 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         val containerRect = Rect().also { container.getBoundsInScreen(it) }
         if (containerRect.width() <= 0 || containerRect.height() <= 0) return finish()
 
-        // 列表页校验：当前可滚动容器若为 WebView（多为详情正文），说明上一步「返回」未生效
-        // 或仍在详情页，结束本轮，避免继续在详情页里乱点（评论/分享/举报等）。
-        if (isWebView(container)) {
-            Log.d(TAG, "当前处于详情/网页容器，疑似未返回列表，结束本轮")
+        // 列表页校验（O3）：改用多信号判定，不再只看 className 是否含 WebView。
+        //
+        // 只看 WebView 的老问题：今日头条、腾讯新闻、知乎的正文页是**原生 RecyclerView**
+        // 渲染的，根本没有 WebView。结果详情页被当成列表页，接着在正文里
+        // 「挑一条可点条目点开」——点到的是评论、关注、举报、相关推荐，行为彻底失控。
+        //
+        // 现在综合正文长度、长段落、详情动作词、可点条目数等信号联合判定，
+        // 并且**只有明确判定为 LIST 才继续点**（UNKNOWN 一律保守收手）。
+        val snapshot = ScreenSnapshot.capture(root, containerRect.height())
+        // 顺带把指纹交给卡死检测：详情流走自己的节奏，不经过主循环
+        service.submitFingerprintFromFlow(snapshot.fingerprint)
+
+        val pageType = snapshot.pageType()
+        if (pageType != PageClassifier.PageType.LIST) {
+            Log.d(TAG, "页面判定为 $pageType（非列表页），疑似未返回列表，结束本轮")
             nextMinTopY = 0
             return finish()
         }
@@ -148,12 +161,6 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         post(Random.nextLong(1000, 1800)) { stepDwell() }
     }
 
-    /** 容器是否为网页视图（详情正文常见），用于列表页校验 */
-    private fun isWebView(node: AccessibilityNodeInfo): Boolean {
-        val cn = node.className?.toString().orEmpty()
-        return cn.contains("WebView", ignoreCase = true)
-    }
-
     private fun clickItem(item: NodeFinder.ListItem) {
         var target: AccessibilityNodeInfo? = item.node
         var depth = 0
@@ -186,11 +193,18 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             scrollsLeft = AutoScrollAccessibilityService.detailMaxScrolls
             post(Random.nextLong(700, 1400)) { stepScrollOnce() }
         } else {
+            // O4：详情页停留同样改用长尾分布 + 疲劳因子。
+            // 真人读文章的时长绝不是均匀分布——大部分扫两眼就走，
+            // 偶尔碰到感兴趣的会读很久，且刷得越久越容易长时间发呆。
             val lo = AutoScrollAccessibilityService.detailDwellMin
             val hi = max(AutoScrollAccessibilityService.detailDwellMax, lo + 1)
-            val dwellSeconds = Random.nextInt(lo, hi)
-            Log.d(TAG, "随机停留 ${dwellSeconds}s 后返回")
-            post(dwellSeconds * 1000L) { stepBack() }
+            val dwellMs = HumanTiming.nextIntervalMs(
+                minSec = lo,
+                maxSec = hi,
+                runningMinutes = AutoScrollAccessibilityService.runningMinutes
+            )
+            Log.d(TAG, "随机停留 ${dwellMs}ms 后返回")
+            post(dwellMs) { stepBack() }
         }
     }
 

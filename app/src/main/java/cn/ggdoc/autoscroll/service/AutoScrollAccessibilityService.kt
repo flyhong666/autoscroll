@@ -25,13 +25,18 @@ import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.config.AppConfig
 import cn.ggdoc.autoscroll.config.CustomGestureStep
 import cn.ggdoc.autoscroll.config.SceneConfig
+import cn.ggdoc.autoscroll.config.StatsStore
+import cn.ggdoc.autoscroll.human.HumanGestureDispatcher
+import cn.ggdoc.autoscroll.human.HumanTiming
+import cn.ggdoc.autoscroll.human.RotationPlanner
+import cn.ggdoc.autoscroll.human.SceneDetector
+import cn.ggdoc.autoscroll.human.ScheduleUtils
+import cn.ggdoc.autoscroll.human.StuckDetector
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.task.AdBlocker
 import cn.ggdoc.autoscroll.task.AdRewardTask
 import cn.ggdoc.autoscroll.task.KeepAliveManager
 import java.lang.ref.WeakReference
-import java.util.Calendar
-import kotlin.math.max
 import kotlin.random.Random
 
 /**
@@ -51,6 +56,21 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         const val EVENT_AD_BLOCK = "ad_block"
         const val EVENT_LIKE = "like"
         const val EVENT_AD_REWARD = "ad_reward"
+
+        /** 场景自动识别触发的切换（O6） */
+        const val EVENT_SCENE_AUTO = "scene_auto"
+
+        /** 卡死自恢复动作（O2） */
+        const val EVENT_STUCK_RECOVER = "stuck_recover"
+
+        /** 手势派发后等多久再采集指纹：手势时长上限 + 渲染缓冲 */
+        private const val STUCK_CHECK_BUFFER_MS = 900
+
+        /** 轮换后回查前台包名的延时，给系统留出冷启动时间 */
+        private const val ROTATION_VERIFY_DELAY_MS = 3500L
+
+        /** 每多少个 tick 落盘一次统计增量 */
+        private const val STATS_PERSIST_TICKS = 30
 
         // 定时运行闹钟
         const val ACTION_SCHEDULE_START = "cn.ggdoc.autoscroll.SCHEDULE_START"
@@ -161,10 +181,22 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         var adRewardCount: Int = 0
             private set
 
+        /** 本次运行中「详情页浏览」次数（详情流场景） */
+        var detailCount: Int = 0
+            private set
+
         /** 本次运行已持续的秒数（未运行时为 0） */
         val runningSeconds: Long
             get() = if (isScrolling && startTimestamp > 0)
                 (System.currentTimeMillis() - startTimestamp) / 1000L else 0L
+
+        /** 本次运行已持续的分钟数，供疲劳曲线计算 */
+        val runningMinutes: Long get() = runningSeconds / 60L
+
+        /** 当前是否被卡死检测判定为「内容无变化」 */
+        @Volatile
+        var stuckSameCount: Int = 0
+            private set
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -181,6 +213,20 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     /** 当前场景的 APP 包名列表（用于轮换） */
     private val rotationList = mutableListOf<String>()
     private var rotationIndex = 0
+
+    /** 轮换规划器：校验切换是否真的成功，连续失败的包名临时下线 */
+    private var rotationPlanner: RotationPlanner? = null
+
+    /** 卡死检测：内容指纹连续无变化时分级自恢复 */
+    private val stuckDetector = StuckDetector()
+
+    /** 上一次统计落盘时各计数器的快照，用于计算增量 */
+    private var lastPersistedScrolls = 0
+    private var lastPersistedLikes = 0
+    private var lastPersistedAdBlocks = 0
+    private var lastPersistedAdRewards = 0
+    private var lastPersistedDetails = 0
+    private var lastPersistSecondsMark = 0L
 
     /** 详情流控制器（新闻 / 社交场景） */
     private val detailFlow = DetailFlowController(this)
@@ -211,6 +257,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             if (!pkg.isNullOrBlank() && pkg != foregroundPackage) {
                 foregroundPackage = pkg
                 Log.d(TAG, "前台应用切换：$pkg")
+                // 换了 APP 等于换了内容源，卡死计数清零避免误判
+                stuckDetector.reset()
+                stuckSameCount = 0
+                maybeAutoSwitchScene(pkg)
                 broadcastState()
             }
         }
@@ -227,6 +277,46 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     private var lastAdScanTime = 0L
+
+    /**
+     * 场景自动识别（O6）：前台 APP 变化时，按包名把场景切到对应模板。
+     *
+     * 为什么需要：原来切了 APP 但场景还停在上一个——用短视频的策略去刷新闻，
+     * 滑动幅度、间隔、点赞全是错的。
+     *
+     * 三条保护：
+     * - 需用户在设置里开启「场景自动识别」才生效
+     * - 自定义场景是用户手工编排的，永不被自动覆盖
+     * - 系统 UI / 桌面 / 本应用自身不触发切换
+     */
+    private fun maybeAutoSwitchScene(pkg: String) {
+        if (!AppConfig.isAutoSceneEnabled(this)) return
+        if (pkg == packageName) return
+        val target = SceneDetector.sceneOf(pkg) ?: return
+        if (!SceneDetector.shouldSwitch(currentScene, pkg)) return
+        if (target == currentScene) return
+
+        currentScene = target
+        AppConfig.setCurrentScene(this, target)
+        // 场景切换后同步该场景的推荐节奏（用户未手工改过时才跟随）
+        applySceneRecommendIfDefault(target)
+        detailFlow.resetCursor()
+        Log.i(TAG, "场景自动识别：$pkg -> $target")
+        sendTaskEvent(EVENT_SCENE_AUTO, getString(R.string.toast_scene_auto_switched, target))
+    }
+
+    /**
+     * 场景自动切换后跟随该场景的推荐滑动参数。
+     * 仅在用户没有手工调过节奏时生效，避免覆盖用户的自定义设置。
+     */
+    private fun applySceneRecommendIfDefault(sceneId: String) {
+        if (AppConfig.isIntervalCustomized(this)) return
+        val scene = SceneConfig.getScene(sceneId)
+        minIntervalSeconds = scene.recommendMinInterval
+        maxIntervalSeconds = scene.recommendMaxInterval
+        minDurationMs = scene.recommendMinDuration
+        maxDurationMs = scene.recommendMaxDuration
+    }
 
     override fun onInterrupt() {
         stopScrolling()
@@ -303,10 +393,17 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
         isScrolling = true
         startTimestamp = System.currentTimeMillis()
+        // 本次运行的会话计数器清零；跨会话的累计数据由 StatsStore 持久化保存，
+        // 不受这里影响（见 persistStatsDelta 的增量写入设计）
         scrollCount = 0
         likeCount = 0
         adBlockCount = 0
         adRewardCount = 0
+        detailCount = 0
+        stuckSameCount = 0
+        resetStatsBaseline()
+        stuckDetector.reset()
+        rotationPlanner = if (rotationList.isNotEmpty()) RotationPlanner(rotationList.toList()) else null
         isWatchingAdReward = false
         detailFlow.resetCursor()
         Log.i(TAG, "开始自动滚动，场景=$currentScene")
@@ -340,10 +437,13 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     fun stopScrolling() {
         if (!isScrolling) return
+        // 先落盘再翻转标志：runningSeconds 依赖 isScrolling，顺序反了会丢掉本次时长
+        persistStatsDelta()
         isScrolling = false
         isWatchingAdReward = false
         detailFlow.cancel()
         scrollTask?.let { handler.removeCallbacks(it); scrollTask = null }
+        stuckCheckRunnable?.let { handler.removeCallbacks(it); stuckCheckRunnable = null }
         timedStopRunnable?.let { handler.removeCallbacks(it); timedStopRunnable = null }
         rotationRunnable?.let { handler.removeCallbacks(it); rotationRunnable = null }
         tickRunnable?.let { handler.removeCallbacks(it); tickRunnable = null }
@@ -367,10 +467,15 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         val delayMs = if (immediate) {
             0L
         } else {
-            val lo = minIntervalSeconds
-            val hi = maxIntervalSeconds
-            val effectiveHi = if (hi > lo) hi else lo + 1
-            var base = Random.nextInt(lo, effectiveHi).toLong() * 1000L
+            // O4：间隔改用「对数正态 + 疲劳曲线 + 偶发长驻留」三层叠加。
+            // 原来是 Random.nextInt(lo, hi) 均匀分布——真人的停留时间是长尾的：
+            // 大多数内容 2~4 秒划走，偶尔遇到感兴趣的会看十几秒；
+            // 并且刷得越久节奏越慢（疲劳），均匀分布完全没有这些特征。
+            var base = HumanTiming.nextIntervalMs(
+                minSec = minIntervalSeconds,
+                maxSec = maxIntervalSeconds,
+                runningMinutes = runningMinutes
+            )
             // 自定义手势序列：外层节奏不得短于序列总时长，避免与序列内部循环抢拍
             if (currentScene == AppConfig.SCENE_CUSTOM && customGestureSequence.isNotEmpty()) {
                 val seqTotal = customGestureSequence.sumOf { (it.waitSec.coerceAtLeast(0)).toLong() } * 1000L
@@ -451,6 +556,83 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 3. 自动点赞（直播 / 挂机场景除外）
         if (autoLike && scene.mode != SceneConfig.ScrollMode.IDLE) {
             tryAutoLike()
+        }
+
+        // 4. 卡死检测（O2）：手势派发后延时取指纹，判断内容到底有没有变
+        if (scene.mode != SceneConfig.ScrollMode.IDLE) {
+            scheduleStuckCheck()
+        }
+    }
+
+    // ========== O2：内容指纹 + 无变化自恢复 ==========
+
+    private var stuckCheckRunnable: Runnable? = null
+
+    /**
+     * 手势后延时采集屏幕指纹。
+     *
+     * 为什么要延时：手势派发是异步的，立刻取快照拿到的还是滑动前的画面，
+     * 会把「正常滑动」误判成卡死。这里等手势时长上限 + 渲染缓冲后再采。
+     */
+    private fun scheduleStuckCheck() {
+        if (!AppConfig.isAutoRecover(this)) return
+        stuckCheckRunnable?.let { handler.removeCallbacks(it) }
+        val delay = (maxDurationMs + STUCK_CHECK_BUFFER_MS).toLong()
+        stuckCheckRunnable = Runnable { runStuckCheck() }
+        handler.postDelayed(stuckCheckRunnable!!, delay)
+    }
+
+    private fun runStuckCheck() {
+        if (!isScrolling || isWatchingAdReward) return
+        val root = try { rootInActiveWindow } catch (e: Exception) { null }
+        val snapshot = try {
+            ScreenSnapshot.capture(root, getScreenSize().second)
+        } finally {
+            runCatching { root?.recycle() }
+        }
+        if (!snapshot.isValid) return
+
+        val action = stuckDetector.submit(snapshot.fingerprint)
+        stuckSameCount = stuckDetector.consecutiveSame
+        if (action == StuckDetector.Action.NONE) return
+
+        Log.w(TAG, "内容连续 ${stuckDetector.consecutiveSame} 次无变化，执行恢复：$action")
+        when (action) {
+            StuckDetector.Action.CLOSE_POPUP -> {
+                // 最轻的干预：多半是弹窗/浮层把滑动手势吃掉了
+                val closed = AdBlocker.scanAndClose(this)
+                if (closed > 0) {
+                    adBlockCount += closed
+                    sendTaskEvent(EVENT_AD_BLOCK, getString(R.string.toast_ad_blocked))
+                }
+                sendTaskEvent(EVENT_STUCK_RECOVER, getString(R.string.toast_stuck_close_popup))
+            }
+            StuckDetector.Action.PRESS_BACK -> {
+                // 可能误入了详情页 / 设置页，退回上一层
+                performGlobalAction(GLOBAL_ACTION_BACK)
+                sendTaskEvent(EVENT_STUCK_RECOVER, getString(R.string.toast_stuck_press_back))
+            }
+            StuckDetector.Action.RESTART_APP -> {
+                // APP 可能已被系统回收，或彻底卡死，重新拉起
+                restartForegroundApp()
+                sendTaskEvent(EVENT_STUCK_RECOVER, getString(R.string.toast_stuck_restart_app))
+            }
+            StuckDetector.Action.NONE -> Unit
+        }
+        stuckDetector.onRecoveryAttempted()
+    }
+
+    /** 重新拉起当前目标 APP（卡死恢复的最后手段） */
+    private fun restartForegroundApp() {
+        val pkg = foregroundPackage ?: rotationList.getOrNull(rotationIndex) ?: return
+        if (pkg == packageName) return
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(pkg) ?: return
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            startActivity(intent)
+            Log.i(TAG, "卡死恢复：已重新拉起 $pkg")
+        } catch (e: Exception) {
+            Log.e(TAG, "卡死恢复：重启 $pkg 失败", e)
         }
     }
 
@@ -741,37 +923,49 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         dispatchSwipe(randomX, randomStartY, randomX, randomEndY, randomDuration(minBias = 50L), "screen")
     }
 
+    /**
+     * 派发滑动手势（O1：贝塞尔曲线 + 分段变速）。
+     *
+     * 原实现是 `moveTo → lineTo` 的一条**完全笔直、匀速**的直线，
+     * 这是最容易被风控识别的特征——真人的手指做不到匀速直线。
+     * 现在交给 [HumanGestureDispatcher]：
+     * - 三次贝塞尔生成带弧度的轨迹 + 像素级微抖动（模拟生理震颤）
+     * - API 26+ 用 continueStroke 分段拼接，实现「快起慢收」的变速
+     * - 低版本自动降级为单段贝塞尔折线，仍保留弧度（不弹窗打扰用户）
+     */
     private fun dispatchSwipe(
         startX: Float, startY: Float, endX: Float, endY: Float,
         durationMs: Long, source: String
     ) {
-        val path = Path().apply { moveTo(startX, startY); lineTo(endX, endY) }
-        val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs)
-        val gesture = GestureDescription.Builder().addStroke(stroke).build()
-
-        val callback = object : GestureResultCallback() {
-            override fun onCompleted(g: GestureDescription?) {
+        HumanGestureDispatcher.dispatchSwipe(
+            service = this,
+            startX = startX, startY = startY,
+            endX = endX, endY = endY,
+            durationMs = durationMs,
+            handler = handler
+        ) { completed ->
+            if (completed) {
                 Log.v(TAG, "[$source] 手势完成 ${durationMs}ms")
-            }
-            override fun onCancelled(g: GestureDescription?) {
+            } else {
                 Log.w(TAG, "[$source] 手势被取消")
                 // 仅在「节点滚动手势」被系统取消时，回退一次全屏上滑兜底。
-                // tap / 双击列 / 自定义手势被取消不应退化成全屏上滑，否则会与详情流的
+                // tap / 双击 / 自定义手势被取消不应退化成全屏上滑，否则会与详情流的
                 // Handler 延时链抢拍，破坏拟人节奏。
                 if (source == "node") {
                     handler.post { performScreenGesture(SceneConfig.getScene(currentScene)) }
                 }
             }
         }
-        if (!dispatchGesture(gesture, callback, handler)) {
-            Log.e(TAG, "[$source] dispatchGesture 返回 false")
-        }
     }
 
+    /**
+     * 单次手势时长（O4）：对数正态分布取样，而非均匀随机。
+     * 真人滑动时长集中在一个「舒适值」附近，偶尔出现明显更慢的一次，
+     * 均匀分布则是每个值等概率——统计上一眼假。
+     */
     private fun randomDuration(minBias: Long = 0L): Long {
         val lo = minDurationMs + minBias.toInt()
-        val hi = max(maxDurationMs, lo + 1)
-        return Random.nextInt(lo, hi).toLong()
+        return HumanTiming.nextDurationMs(lo, maxDurationMs)
     }
 
     // ========== 自动点赞（双击屏幕中央） ==========
@@ -785,16 +979,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         handler.postDelayed({ performAutoLikeNow() }, 500)
     }
 
+    /**
+     * 双击（O1）：两次落点不再是同一个像素，间隔也不再是固定 100ms。
+     * 真人双击的两次触点总会有几像素偏差、间隔在 80~160ms 之间浮动。
+     */
     private fun performDoubleClick(x: Float, y: Float) {
-        val path = Path().apply { moveTo(x, y) }
-        // 双击：第一段 0-80ms，第二段 100-180ms（duration = 80ms）
-        val stroke1 = GestureDescription.StrokeDescription(path, 0L, 80L)
-        val stroke2 = GestureDescription.StrokeDescription(path, 100L, 80L)
-        val gesture = GestureDescription.Builder()
-            .addStroke(stroke1)
-            .addStroke(stroke2)
-            .build()
-        dispatchGesture(gesture, null, null)
+        HumanGestureDispatcher.dispatchDoubleTap(this, x, y, handler)
     }
 
     // ========== 供详情流 / 翻页复用的手势接口 ==========
@@ -845,9 +1035,28 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         return true
     }
 
-    /** 详情流每点开一条计入「滚动次数」统计 */
+    /** 详情流每点开一条计入「滚动次数」与独立的「详情浏览」统计 */
     fun countDetailBrowsed() {
         scrollCount++
+        detailCount++
+    }
+
+    /** 供详情流复用：提交一次屏幕指纹给卡死检测（详情流有自己的节奏，不走主循环） */
+    fun submitFingerprintFromFlow(fingerprint: Long) {
+        if (!AppConfig.isAutoRecover(this)) return
+        if (fingerprint == StuckDetector.NO_HASH) return
+        val action = stuckDetector.submit(fingerprint)
+        stuckSameCount = stuckDetector.consecutiveSame
+        if (action != StuckDetector.Action.NONE) {
+            Log.w(TAG, "详情流：内容无变化，执行恢复 $action")
+            when (action) {
+                StuckDetector.Action.CLOSE_POPUP -> runAdBlockCheck()
+                StuckDetector.Action.PRESS_BACK -> performGlobalAction(GLOBAL_ACTION_BACK)
+                StuckDetector.Action.RESTART_APP -> restartForegroundApp()
+                StuckDetector.Action.NONE -> Unit
+            }
+            stuckDetector.onRecoveryAttempted()
+        }
     }
 
     // ========== 广告屏蔽 ==========
@@ -948,34 +1157,87 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         handler.postDelayed(timedStopRunnable!!, totalMs)
     }
 
-    // ========== 多 APP 轮换 ==========
+    // ========== 多 APP 轮换（O7：校验启动结果） ==========
+
+    /**
+     * APP 轮换。
+     *
+     * 原实现的问题：`getLaunchIntentForPackage` 返回 null（应用未安装/被禁用）时
+     * 直接吞掉，`startActivity` 抛异常也只打个日志——**然后照样认为切换成功**，
+     * 接着对着一个根本没起来的 APP 空刷一整个轮换周期。
+     *
+     * 现在交给 [RotationPlanner]：延时回查前台包名验证是否真的切过去了，
+     * 失败计数累计到 3 次的包名临时下线，全部下线时整体复活重试
+     * （可能只是当时系统忙，不该永久放弃）。
+     */
     private fun startAppRotation() {
         val intervalMs = rotationMinutes * 60 * 1000L
         rotationRunnable?.let { handler.removeCallbacks(it) }
+        val planner = rotationPlanner ?: RotationPlanner(rotationList.toList()).also {
+            rotationPlanner = it
+        }
         rotationRunnable = object : Runnable {
             override fun run() {
                 if (!isScrolling) return
-                rotationIndex = (rotationIndex + 1) % rotationList.size
-                val targetPkg = rotationList[rotationIndex]
-                Log.d(TAG, "轮换切换到：$targetPkg")
-                sendTaskEvent(EVENT_APP_ROTATION, getString(R.string.toast_app_rotation, targetPkg))
-                // 通过 Intent 启动目标 APP
-                try {
-                    val launchIntent = packageManager.getLaunchIntentForPackage(targetPkg)
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(launchIntent)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "启动 $targetPkg 失败", e)
+                val targetPkg = planner.next()
+                if (targetPkg == null) {
+                    Log.w(TAG, "轮换：无可用 APP，跳过本轮")
+                    handler.postDelayed(this, intervalMs)
+                    return
                 }
+                rotationIndex = rotationList.indexOf(targetPkg).coerceAtLeast(0)
+                launchAndVerify(planner, targetPkg)
                 handler.postDelayed(this, intervalMs)
             }
         }
         handler.postDelayed(rotationRunnable!!, intervalMs)
     }
 
-    // ========== 每秒 tick：更新剩余时间 + 刷新统计看板 ==========
+    /** 启动目标 APP 并在延时后回查前台包名，确认切换是否真的生效 */
+    private fun launchAndVerify(planner: RotationPlanner, targetPkg: String) {
+        val launchIntent = try {
+            packageManager.getLaunchIntentForPackage(targetPkg)
+        } catch (e: Exception) {
+            Log.e(TAG, "查询 $targetPkg 启动入口失败", e)
+            null
+        }
+        if (launchIntent == null) {
+            // 未安装 / 被禁用 / 无启动入口：直接记失败，不必等回查
+            val offline = planner.markFailure(targetPkg)
+            Log.w(TAG, "轮换：$targetPkg 无启动入口${if (offline) "，已临时下线" else ""}")
+            return
+        }
+        try {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(launchIntent)
+        } catch (e: Exception) {
+            val offline = planner.markFailure(targetPkg)
+            Log.e(TAG, "轮换：启动 $targetPkg 失败${if (offline) "，已临时下线" else ""}", e)
+            return
+        }
+
+        // 延时回查：给系统留出冷启动时间
+        handler.postDelayed({
+            if (!isScrolling) return@postDelayed
+            val ok = planner.isSwitchSuccessful(targetPkg, foregroundPackage)
+            if (ok) {
+                planner.markSuccess(targetPkg)
+                stuckDetector.reset()
+                stuckSameCount = 0
+                Log.d(TAG, "轮换：已切换到 $targetPkg")
+                sendTaskEvent(EVENT_APP_ROTATION, getString(R.string.toast_app_rotation, targetPkg))
+            } else {
+                val offline = planner.markFailure(targetPkg)
+                Log.w(
+                    TAG,
+                    "轮换：切换 $targetPkg 未生效（前台=$foregroundPackage）" +
+                        if (offline) "，已临时下线" else "，将在下轮重试"
+                )
+            }
+        }, ROTATION_VERIFY_DELAY_MS)
+    }
+
+    // ========== 每秒 tick：更新剩余时间 + 刷新统计看板 + 统计落盘 ==========
     private fun startTick() {
         tickRunnable?.let { handler.removeCallbacks(it) }
         tickCount = 0
@@ -987,6 +1249,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                     val total = (timedStopMinutes * 60).toLong()
                     remainingSeconds = (total - elapsed).coerceAtLeast(0)
                 }
+                tickCount++
+                // O5：每 30 个 tick 落盘一次增量。不每次都写是因为
+                // SharedPreferences 频繁提交会拖累主线程且无谓磨损闪存。
+                if (tickCount % STATS_PERSIST_TICKS == 0) {
+                    persistStatsDelta()
+                }
                 // 未开启定时停止时，倒计时无变化，降频到每 5 秒广播一次，减少耗电；
                 // 开启定时停止时每秒广播，保证悬浮窗倒计时实时刷新。
                 val interval = if (timedStop) 1000L else 5000L
@@ -996,6 +1264,55 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
         handler.post(tickRunnable!!)
     }
+
+    // ========== O5：统计持久化 ==========
+
+    /**
+     * 把自上次落盘以来的**增量**写入 [StatsStore]。
+     *
+     * 用增量而不是覆盖：内存计数器在每次 startScrolling 时清零，
+     * 若直接覆盖写，重启一次滚动今日数据就被抹掉了。
+     * 增量累加则天然支持「多次启停累计」和「跨天自动滚动」。
+     */
+    private fun persistStatsDelta() {
+        val nowSeconds = runningSeconds
+        val delta = StatsStore.Stats(
+            scrolls = scrollCount - lastPersistedScrolls,
+            likes = likeCount - lastPersistedLikes,
+            adBlocks = adBlockCount - lastPersistedAdBlocks,
+            adRewards = adRewardCount - lastPersistedAdRewards,
+            details = detailCount - lastPersistedDetails,
+            seconds = (nowSeconds - lastPersistSecondsMark).coerceAtLeast(0)
+        )
+        if (delta.isEmpty()) return
+        try {
+            StatsStore.accumulate(this, delta)
+            lastPersistedScrolls = scrollCount
+            lastPersistedLikes = likeCount
+            lastPersistedAdBlocks = adBlockCount
+            lastPersistedAdRewards = adRewardCount
+            lastPersistedDetails = detailCount
+            lastPersistSecondsMark = nowSeconds
+        } catch (e: Exception) {
+            Log.e(TAG, "统计落盘失败", e)
+        }
+    }
+
+    /** 重置增量基线（每次开始滚动时调用） */
+    private fun resetStatsBaseline() {
+        lastPersistedScrolls = 0
+        lastPersistedLikes = 0
+        lastPersistedAdBlocks = 0
+        lastPersistedAdRewards = 0
+        lastPersistedDetails = 0
+        lastPersistSecondsMark = 0L
+    }
+
+    /** 今日累计统计（供 UI 展示） */
+    fun getTodayStats(): StatsStore.Stats = StatsStore.today(this)
+
+    /** 历史总计统计（供 UI 展示） */
+    fun getTotalStats(): StatsStore.Stats = StatsStore.total(this)
 
     // ========== 屏幕尺寸 ==========
     private fun getScreenSize(): Pair<Int, Int> {
@@ -1112,33 +1429,13 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     /** 下一个目标分钟对应的触发时刻（今天若已过则顺延到明天） */
-    private fun nextAlarmMillis(targetMin: Int): Long {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, targetMin / 60)
-            set(Calendar.MINUTE, targetMin % 60)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        if (cal.timeInMillis <= System.currentTimeMillis()) {
-            cal.add(Calendar.DAY_OF_MONTH, 1)
-        }
-        return cal.timeInMillis
-    }
+    private fun nextAlarmMillis(targetMin: Int): Long =
+        ScheduleUtils.nextAlarmMillis(targetMin)
 
     /** 当前是否处于定时运行窗口内（支持跨午夜） */
     private fun isWithinWindow(): Boolean {
         if (!scheduleEnabled) return true
-        val now = nowMinute()
-        return if (scheduleStartMin <= scheduleEndMin) {
-            now in scheduleStartMin..scheduleEndMin
-        } else {
-            now >= scheduleStartMin || now <= scheduleEndMin
-        }
-    }
-
-    private fun nowMinute(): Int {
-        val cal = Calendar.getInstance()
-        return cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        return ScheduleUtils.isWithinWindow(ScheduleUtils.nowMinute(), scheduleStartMin, scheduleEndMin)
     }
 
     /** 综合保护策略：任一不满足则暂停本次滚动 */
@@ -1169,8 +1466,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun formatMinute(min: Int): String =
-        String.format("%02d:%02d", min / 60, min % 60)
+    private fun formatMinute(min: Int): String = ScheduleUtils.formatMinute(min)
 
     override fun onDestroy() {
         stopScrolling()

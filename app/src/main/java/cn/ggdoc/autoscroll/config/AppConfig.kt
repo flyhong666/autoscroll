@@ -2,6 +2,7 @@ package cn.ggdoc.autoscroll.config
 
 import android.content.Context
 import android.content.SharedPreferences
+import cn.ggdoc.autoscroll.human.SceneIds
 
 /**
  * 应用配置管理，使用 SharedPreferences 持久化参数
@@ -18,6 +19,11 @@ object AppConfig {
 
     // ===== 场景 =====
     private const val KEY_CURRENT_SCENE = "current_scene"
+    private const val KEY_AUTO_SCENE = "auto_scene_detect"
+    private const val KEY_INTERVAL_CUSTOMIZED = "interval_customized"
+
+    // ===== 卡死自恢复 =====
+    private const val KEY_AUTO_RECOVER = "auto_recover_when_stuck"
 
     // ===== 任务调度 =====
     private const val KEY_AUTO_LIKE = "auto_like"
@@ -65,6 +71,12 @@ object AppConfig {
     const val DEFAULT_MAX_DURATION = 500
     const val DEFAULT_AUTO_LIKE = false
     const val DEFAULT_LIKE_PROBABILITY = 30
+
+    /** 场景自动识别：默认开启（打开哪个 APP 就用哪套策略） */
+    const val DEFAULT_AUTO_SCENE = true
+
+    /** 卡死自恢复：默认开启（避免刷到底后无脑空转） */
+    const val DEFAULT_AUTO_RECOVER = true
     const val DEFAULT_AD_BLOCK = true
     const val DEFAULT_TIMED_STOP = false
     const val DEFAULT_TIMED_STOP_MINUTES = 30
@@ -120,12 +132,14 @@ object AppConfig {
     )
 
     // ===== 场景 ID =====
-    const val SCENE_SHORT_VIDEO = "short_video"
-    const val SCENE_NEWS = "news"
-    const val SCENE_NOVEL = "novel"
-    const val SCENE_SOCIAL = "social"
-    const val SCENE_LIVE = "live"
-    const val SCENE_CUSTOM = "custom"
+    // 场景 ID 的唯一真源在 SceneIds（不依赖 Android，便于纯 JVM 单元测试）；
+    // 这里保留同名常量作为别名，避免改动所有既有调用点。
+    const val SCENE_SHORT_VIDEO = SceneIds.SHORT_VIDEO
+    const val SCENE_NEWS = SceneIds.NEWS
+    const val SCENE_NOVEL = SceneIds.NOVEL
+    const val SCENE_SOCIAL = SceneIds.SOCIAL
+    const val SCENE_LIVE = SceneIds.LIVE
+    const val SCENE_CUSTOM = SceneIds.CUSTOM
 
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -156,6 +170,37 @@ object AppConfig {
         prefs(context).getString(KEY_CURRENT_SCENE, SCENE_SHORT_VIDEO) ?: SCENE_SHORT_VIDEO
     fun setCurrentScene(context: Context, scene: String) =
         prefs(context).edit().putString(KEY_CURRENT_SCENE, scene).apply()
+
+    // ---------- 场景自动识别（O6） ----------
+    /**
+     * 是否根据前台 APP 自动切换场景模板。
+     * 默认开启：绝大多数用户装了这个应用就是希望「打开哪个 APP 就用哪套策略」。
+     */
+    fun isAutoScene(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_AUTO_SCENE, DEFAULT_AUTO_SCENE)
+    fun setAutoScene(context: Context, value: Boolean) =
+        prefs(context).edit().putBoolean(KEY_AUTO_SCENE, value).apply()
+
+    /** service 层惯用命名的别名 */
+    fun isAutoSceneEnabled(context: Context): Boolean = isAutoScene(context)
+
+    /**
+     * 用户是否手工改过滑动节奏。
+     * 一旦改过，场景自动切换就不再覆盖 interval / duration，尊重用户设置。
+     */
+    fun isIntervalCustomized(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_INTERVAL_CUSTOMIZED, false)
+    fun markIntervalCustomized(context: Context) =
+        prefs(context).edit().putBoolean(KEY_INTERVAL_CUSTOMIZED, true).apply()
+    fun clearIntervalCustomized(context: Context) =
+        prefs(context).edit().putBoolean(KEY_INTERVAL_CUSTOMIZED, false).apply()
+
+    // ---------- 卡死自恢复（O2） ----------
+    /** 是否启用「内容无变化自恢复」。默认开启，可在设置里关掉。 */
+    fun isAutoRecover(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_AUTO_RECOVER, DEFAULT_AUTO_RECOVER)
+    fun setAutoRecover(context: Context, value: Boolean) =
+        prefs(context).edit().putBoolean(KEY_AUTO_RECOVER, value).apply()
 
     // ---------- 高级功能开关 ----------
     fun isAutoLike(context: Context): Boolean =
