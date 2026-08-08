@@ -39,50 +39,35 @@ object NodeFinder {
      * 类名命中常见滚动控件白名单，或节点自身 isScrollable。
      *
      * 优先匹配「真正的列表容器」（RecyclerView / ListView），这些通常才是内容列表；
-     * 外层 ViewPager2 频道页、ScrollView 嵌套等放在第二轮匹配，避免命中过于宽泛的容器。
+     * 未命中则回退到任意可滚动容器（含 ScrollView / WebView / ViewPager 等）或 isScrollable 节点。
      *
      * 返回找到的容器节点（调用方持有，本方法不回收）；遍历产生的其余中间节点会被回收。
+     *
+     * 注意：早期的「两轮 BFS」实现有缺陷——第一轮（listOnly）已把整棵树遍历并回收，
+     * 导致第二轮拿到的是空队列、永远返回 null，ScrollView/WebView/ViewPager 类应用
+     * 永远命中不了节点级滚动，只能走全屏手势兜底（精度下降）。现改为单遍 BFS，
+     * 在遍历过程中同时记录「列表容器」与「任意可滚动容器」两个候选，优先返回前者。
      */
     fun findScrollable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         val visited = HashSet<AccessibilityNodeInfo>()
         visited.add(root)
         val queue = LinkedList<AccessibilityNodeInfo>()
         queue.offer(root)
-        // 第一轮：仅匹配真正的列表类（RecyclerView / ListView）
-        var result = bfsMatch(root, visited, queue, listOnly = true)
-        if (result == null) {
-            // 第二轮：匹配任意可滚动容器（含 ScrollView / WebView / ViewPager 等）
-            result = bfsMatch(root, visited, queue, listOnly = false)
-        }
-        // 回收队列中剩余未处理的节点（保留 root 与 result）
-        while (queue.isNotEmpty()) {
-            queue.poll()?.let { if (it !== root && it !== result) it.recycle() }
-        }
-        return result
-    }
-
-    /**
-     * 单轮 BFS 匹配。listOnly=true 时只认 RecyclerView/ListView；
-     * 返回首个命中的容器，未命中返回 null。queue/visited 在轮次间复用。
-     */
-    private fun bfsMatch(
-        root: AccessibilityNodeInfo,
-        visited: HashSet<AccessibilityNodeInfo>,
-        queue: LinkedList<AccessibilityNodeInfo>,
-        listOnly: Boolean
-    ): AccessibilityNodeInfo? {
+        // 单遍 BFS：优先命中「真正的列表容器」（RecyclerView / ListView），
+        // 未命中则回退到任意可滚动容器（ScrollView / WebView / ViewPager 等）或 isScrollable 节点。
+        var keep: AccessibilityNodeInfo? = null
         var visitedCount = 0
         while (queue.isNotEmpty() && visitedCount < 1500) {
             val current = queue.poll() ?: continue
             visitedCount++
             val className = current.className?.toString().orEmpty()
             val isList = className.endsWith("RecyclerView") || className.endsWith("ListView")
-            val classHit = if (listOnly) isList else SCROLLABLE_CLASSES.any {
-                className.contains(it, ignoreCase = true)
+            val isScrollableClass = SCROLLABLE_CLASSES.any { className.contains(it, ignoreCase = true) }
+            if (keep == null && isList) {
+                keep = current
             }
-            if (classHit || (!listOnly && current.isScrollable)) {
-                // 命中：返回该容器（保留），其余待回收
-                return current
+            if (keep == null && (isScrollableClass || current.isScrollable)) {
+                keep = current
             }
             for (i in 0 until current.childCount) {
                 val child = current.getChild(i) ?: continue
@@ -92,10 +77,14 @@ object NodeFinder {
                     child.recycle()
                 }
             }
-            // 处理完当前节点后回收（保留 root，命中节点已在 return 时跳出）
-            if (current !== root) current.recycle()
+            // 处理完当前节点后回收（保留 root 与 keep；keep 可能为 null 直到命中）
+            if (current !== root && current !== keep) current.recycle()
         }
-        return null
+        // 因达到遍历上限而残留在队列中、尚未处理的节点也要回收（保留 root 与 keep）
+        while (queue.isNotEmpty()) {
+            queue.poll()?.let { if (it !== root && it !== keep) runCatching { it.recycle() } }
+        }
+        return keep
     }
 
     /**

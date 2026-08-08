@@ -72,6 +72,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         /** 每多少个 tick 落盘一次统计增量 */
         private const val STATS_PERSIST_TICKS = 30
 
+        /** 统计 tick 计数（startTick 自增，用于按 STATS_PERSIST_TICKS 落盘） */
+        private var tickCount = 0
+
         // 定时运行闹钟
         const val ACTION_SCHEDULE_START = "cn.ggdoc.autoscroll.SCHEDULE_START"
         const val ACTION_SCHEDULE_END = "cn.ggdoc.autoscroll.SCHEDULE_END"
@@ -474,7 +477,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             var base = HumanTiming.nextIntervalMs(
                 minSec = minIntervalSeconds,
                 maxSec = maxIntervalSeconds,
-                runningMinutes = runningMinutes
+                runningMinutes = runningMinutes.toFloat()
             )
             // 自定义手势序列：外层节奏不得短于序列总时长，避免与序列内部循环抢拍
             if (currentScene == AppConfig.SCENE_CUSTOM && customGestureSequence.isNotEmpty()) {
@@ -638,13 +641,18 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     private fun performScroll() {
         val scene = SceneConfig.getScene(currentScene)
-        try {
-            val rootNode = rootInActiveWindow
-            if (rootNode == null) {
-                performScreenGesture(scene)
-                return
+        val rootNode = try { rootInActiveWindow } catch (e: Exception) { null } ?: run {
+            // 取不到 root：退化为全屏手势，且无需回收节点
+            try { performScreenGesture(scene) } catch (e2: Exception) {
+                Log.e(TAG, "屏幕手势也失败", e2)
             }
-            val scrollableNode = NodeFinder.findScrollable(rootNode)
+            return
+        }
+        // scrollableNode 由 findScrollable 返回且本方法持有，用后必须回收；
+        // 早期版本既不回收 rootNode 也不回收 scrollableNode，节点池耗尽后
+        // rootInActiveWindow 会返回 null（表现为「跑一会儿就不动了」）。
+        val scrollableNode = NodeFinder.findScrollable(rootNode)
+        try {
             if (scrollableNode != null) {
                 performGestureOnNode(scrollableNode, scene)
             } else {
@@ -656,6 +664,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             try { performScreenGesture(scene) } catch (e2: Exception) {
                 Log.e(TAG, "屏幕手势也失败", e2)
             }
+        } finally {
+            // S3：回收本帧取到的节点（Android < 13 节点池有限）。
+            // scrollableNode 可能是 rootNode 自身或其后裔，避免重复回收。
+            runCatching { scrollableNode?.recycle() }
+            if (scrollableNode !== rootNode) runCatching { rootNode.recycle() }
         }
     }
 
@@ -765,8 +778,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             performScroll()
             return
         }
-        // 取消可能仍在进行中的上一次序列
-        customSeqRunnable?.let { handler.removeCallbacks(it) }
+        // S6 修复：自定义序列由 runCustomStep 的链式 postDelayed 自驱循环（每步 waitSec 后
+        // 推进，到末尾 customSeqStep 归零循环）。早期实现每次外层 tick 都 removeCallbacks +
+        // 重置游标再启动，内部循环被反复打断重来，等于双重调度且意图混乱。
+        // 因此：若序列已在运行（customSeqRunnable 非 null），直接交给内部循环驱动，不重复启动；
+        // 仅当序列尚未启动（或已因切场景/停止而自然终止）时才从头启动。
+        if (customSeqRunnable != null) return
         customSeqStep = 0
         runCustomStep(seq)
     }
@@ -788,9 +805,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         val waitMs = (step.waitSec.coerceAtLeast(0) * 1000).toLong()
         val delay = if (waitMs > 0) waitMs else 1L
         customSeqRunnable = Runnable {
-            // 仅当仍处于自定义场景且服务运行中才继续
+            // 仅当仍处于自定义场景且服务运行中才继续；否则终止循环并清理，
+            // 便于下次重新进入自定义场景时由 performCustomSequence 正常重启。
             if (currentScene == AppConfig.SCENE_CUSTOM && isScrolling) {
                 runCustomStep(seq)
+            } else {
+                customSeqRunnable = null
             }
         }
         handler.postDelayed(customSeqRunnable!!, delay)
@@ -1145,7 +1165,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     // ========== 定时停止 ==========
     private fun startTimedStopCountdown() {
-        val totalMs = timedStopMinutes * 60 * 1000L
+        val totalMs = timedStopMinutes.toLong() * 60 * 1000
         timedStopRunnable?.let { handler.removeCallbacks(it) }
         timedStopRunnable = Runnable {
             Log.i(TAG, "定时停止触发")
@@ -1171,7 +1191,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
      * （可能只是当时系统忙，不该永久放弃）。
      */
     private fun startAppRotation() {
-        val intervalMs = rotationMinutes * 60 * 1000L
+        val intervalMs = rotationMinutes.toLong() * 60 * 1000
         rotationRunnable?.let { handler.removeCallbacks(it) }
         val planner = rotationPlanner ?: RotationPlanner(rotationList.toList()).also {
             rotationPlanner = it
@@ -1244,9 +1264,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         tickRunnable = object : Runnable {
             override fun run() {
                 if (!isScrolling) return
+                // S4：周期性续期 WakeLock 超时上限，保证长效运行不中断；
+                // 若进程被系统强杀，未续期的 WakeLock 会在 WAKE_LOCK_TIMEOUT_MS 后自动归还。
+                KeepAliveManager.refresh(this@AutoScrollAccessibilityService)
                 if (timedStop) {
                     val elapsed = (System.currentTimeMillis() - startTimestamp) / 1000
-                    val total = (timedStopMinutes * 60).toLong()
+                    val total = timedStopMinutes.toLong() * 60
                     remainingSeconds = (total - elapsed).coerceAtLeast(0)
                 }
                 tickCount++
@@ -1284,7 +1307,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             details = detailCount - lastPersistedDetails,
             seconds = (nowSeconds - lastPersistSecondsMark).coerceAtLeast(0)
         )
-        if (delta.isEmpty()) return
+        if (delta.isEmpty) return
         try {
             StatsStore.accumulate(this, delta)
             lastPersistedScrolls = scrollCount

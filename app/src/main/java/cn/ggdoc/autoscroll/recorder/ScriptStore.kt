@@ -74,7 +74,21 @@ object ScriptStore {
 
     fun rename(context: Context, fileName: String, newName: String): Boolean {
         val script = load(context, fileName) ?: return false
-        return save(context, script.copy(name = newName), fileName) != null
+        val safeBase = newName.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .takeIf { it.isNotEmpty() } ?: return false
+        val newFileName = "$safeBase$EXT"
+        // 文件名本就一致：仅更新内部 name 字段
+        if (newFileName == fileName) {
+            return save(context, script.copy(name = newName), fileName) != null
+        }
+        // 避免覆盖已存在的脚本
+        if (File(dir(context), newFileName).exists()) return false
+        // L3 修复：原实现只改内部 name 字段、用原 fileName 存盘，文件名不变，
+        // 导致导出时仍是旧文件名、令人困惑。这里真正移动文件到新文件名。
+        val old = File(dir(context), fileName)
+        if (save(context, script.copy(name = newName), newFileName) == null) return false
+        old.delete()
+        return true
     }
 
     /** 导出到外部专属目录，返回目标文件（失败 null） */

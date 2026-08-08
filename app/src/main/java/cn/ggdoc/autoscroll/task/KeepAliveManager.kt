@@ -17,6 +17,13 @@ object KeepAliveManager {
     private var wakeLock: PowerManager.WakeLock? = null
 
     /**
+     * WakeLock 安全持有上限（兜底）：正常情况由 [refresh] 周期性续期，
+     * 但若进程被系统强杀（未走 onDestroy / release），无限持有的 WakeLock
+     * 会永久泄漏、持续耗电。加上超时后，即使未被释放也会在超时后自动归还。
+     */
+    private const val WAKE_LOCK_TIMEOUT_MS = 30 * 60 * 1000L
+
+    /**
      * 获取屏幕常亮
      */
     fun acquire(context: Context) {
@@ -36,10 +43,24 @@ object KeepAliveManager {
                 WAKE_LOCK_TAG
             )
             wakeLock?.setReferenceCounted(false)
-            wakeLock?.acquire()
-            Log.i(TAG, "WakeLock 已获取（CPU 保持运行）")
+            // S4 修复：使用带超时的 acquire，避免进程被强杀后 WakeLock 永久泄漏耗电
+            wakeLock?.acquire(WAKE_LOCK_TIMEOUT_MS)
+            Log.i(TAG, "WakeLock 已获取（CPU 保持运行，超时 ${WAKE_LOCK_TIMEOUT_MS}ms 兜底）")
         } catch (e: Exception) {
             Log.e(TAG, "获取 WakeLock 失败", e)
+        }
+    }
+
+    /**
+     * 周期续期：在持有期间重置超时上限，保证长效运行不中断；
+     * 仅在 WakeLock 已持有时生效。由无障碍服务的 tick 定时调用即可。
+     */
+    fun refresh(context: Context) {
+        if (wakeLock?.isHeld != true) return
+        try {
+            wakeLock?.acquire(WAKE_LOCK_TIMEOUT_MS)
+        } catch (e: Exception) {
+            Log.e(TAG, "续期 WakeLock 失败", e)
         }
     }
 

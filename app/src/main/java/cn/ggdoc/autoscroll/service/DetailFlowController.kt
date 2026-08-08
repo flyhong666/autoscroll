@@ -103,74 +103,92 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         if (!stillAllowed()) return finish()
         val root = service.rootInActiveWindow ?: return finish()
         val container = NodeFinder.findScrollable(root) ?: root
-        val containerRect = Rect().also { container.getBoundsInScreen(it) }
-        if (containerRect.width() <= 0 || containerRect.height() <= 0) return finish()
+        try {
+            val containerRect = Rect().also { container.getBoundsInScreen(it) }
+            if (containerRect.width() <= 0 || containerRect.height() <= 0) return finish()
 
-        // 列表页校验（O3）：改用多信号判定，不再只看 className 是否含 WebView。
-        //
-        // 只看 WebView 的老问题：今日头条、腾讯新闻、知乎的正文页是**原生 RecyclerView**
-        // 渲染的，根本没有 WebView。结果详情页被当成列表页，接着在正文里
-        // 「挑一条可点条目点开」——点到的是评论、关注、举报、相关推荐，行为彻底失控。
-        //
-        // 现在综合正文长度、长段落、详情动作词、可点条目数等信号联合判定，
-        // 并且**只有明确判定为 LIST 才继续点**（UNKNOWN 一律保守收手）。
-        val snapshot = ScreenSnapshot.capture(root, containerRect.height())
-        // 顺带把指纹交给卡死检测：详情流走自己的节奏，不经过主循环
-        service.submitFingerprintFromFlow(snapshot.fingerprint)
+            // 列表页校验（O3）：改用多信号判定，不再只看 className 是否含 WebView。
+            //
+            // 只看 WebView 的老问题：今日头条、腾讯新闻、知乎的正文页是**原生 RecyclerView**
+            // 渲染的，根本没有 WebView。结果详情页被当成列表页，接着在正文里
+            // 「挑一条可点条目点开」——点到的是评论、关注、举报、相关推荐，行为彻底失控。
+            //
+            // 现在综合正文长度、长段落、详情动作词、可点条目数等信号联合判定，
+            // 并且**只有明确判定为 LIST 才继续点**（UNKNOWN 一律保守收手）。
+            //
+            // S1 修复：capture 会把 root 下所有遍历到的节点回收（除 root 外）。container 是
+            // root 的后代，若不加 keep 会被回收，导致下方 collectListItems(container) 访问
+            // 已回收节点（Android < 13 抛异常 / 返回脏数据）。故把 container 作为 keep 保活。
+            val snapshot = ScreenSnapshot.capture(root, containerRect.height(), keep = container)
+            // 顺带把指纹交给卡死检测：详情流走自己的节奏，不经过主循环
+            service.submitFingerprintFromFlow(snapshot.fingerprint)
 
-        val pageType = snapshot.pageType()
-        if (pageType != PageClassifier.PageType.LIST) {
-            Log.d(TAG, "页面判定为 $pageType（非列表页），疑似未返回列表，结束本轮")
-            nextMinTopY = 0
-            return finish()
-        }
-        // 单轮点击次数上限：超过说明大概率没有正确返回列表，主动收手以防乱点
-        if (cycleClicks >= MAX_CYCLE_CLICKS) {
-            Log.w(TAG, "本轮点击次数过多，疑似未返回列表，结束本轮")
-            nextMinTopY = 0
-            return finish()
-        }
-
-        val density = service.resources.displayMetrics.density
-        val minItemHeight = (80 * density).toInt()
-        val items = NodeFinder.collectListItems(container, containerRect, minItemHeight)
-        val pick = items.firstOrNull { it.rect.top >= nextMinTopY - 20 }
-
-        if (pick == null) {
-            if (swipedThisCycle) {
-                // 刚翻过一页仍没有新条目，结束本轮等待下次间隔
-                Log.d(TAG, "暂无可点条目，本轮结束")
+            val pageType = snapshot.pageType()
+            if (pageType != PageClassifier.PageType.LIST) {
+                Log.d(TAG, "页面判定为 $pageType（非列表页），疑似未返回列表，结束本轮")
+                nextMinTopY = 0
                 return finish()
             }
-            // 当前屏点完了：上滑一屏后重新收集
-            swipedThisCycle = true
-            nextMinTopY = 0
-            service.swipeUpOnNodeOrScreen(container)
-            post(Random.nextLong(900, 1400)) { stepPickAndClick() }
-            return
-        }
+            // 单轮点击次数上限：超过说明大概率没有正确返回列表，主动收手以防乱点
+            if (cycleClicks >= MAX_CYCLE_CLICKS) {
+                Log.w(TAG, "本轮点击次数过多，疑似未返回列表，结束本轮")
+                nextMinTopY = 0
+                return finish()
+            }
 
-        // 释放本次未选中的其他候选条目节点（避免节点池占用）
-        items.forEach { if (it !== pick) runCatching { it.node.recycle() } }
-        nextMinTopY = pick.rect.bottom - 10
-        cycleClicks++
-        clickItem(pick)
-        pick.node.recycle()
-        service.countDetailBrowsed()
-        Log.d(TAG, "点开条目 @(${pick.rect.centerX()}, ${pick.rect.centerY()})")
-        post(Random.nextLong(1000, 1800)) { stepDwell() }
+            val density = service.resources.displayMetrics.density
+            val minItemHeight = (80 * density).toInt()
+            val items = NodeFinder.collectListItems(container, containerRect, minItemHeight)
+            val pick = items.firstOrNull { it.rect.top >= nextMinTopY - 20 }
+
+            if (pick == null) {
+                if (swipedThisCycle) {
+                    // 刚翻过一页仍没有新条目，结束本轮等待下次间隔
+                    Log.d(TAG, "暂无可点条目，本轮结束")
+                    return finish()
+                }
+                // 当前屏点完了：上滑一屏后重新收集
+                swipedThisCycle = true
+                nextMinTopY = 0
+                service.swipeUpOnNodeOrScreen(container)
+                post(Random.nextLong(900, 1400)) { stepPickAndClick() }
+                return
+            }
+
+            // 释放本次未选中的其他候选条目节点（避免节点池占用）
+            items.forEach { if (it !== pick) runCatching { it.node.recycle() } }
+            nextMinTopY = pick.rect.bottom - 10
+            cycleClicks++
+            clickItem(pick)
+            pick.node.recycle()
+            service.countDetailBrowsed()
+            Log.d(TAG, "点开条目 @(${pick.rect.centerX()}, ${pick.rect.centerY()})")
+            post(Random.nextLong(1000, 1800)) { stepDwell() }
+        } finally {
+            // S3 修复：回收 root 与 container。Android 13 以下节点池有限，
+            // 不回收会导致 rootInActiveWindow 逐渐返回 null、详情流静默失效。
+            // container 可能等于 root（findScrollable 回退），避免重复回收。
+            runCatching { container.recycle() }
+            if (container !== root) runCatching { root.recycle() }
+        }
     }
 
     private fun clickItem(item: NodeFinder.ListItem) {
         var target: AccessibilityNodeInfo? = item.node
         var depth = 0
         while (target != null && depth < 4) {
-            if (target.isClickable && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                return
-            }
-            target = target.parent
+            val node = target
+            val clicked = node.isClickable &&
+                runCatching { node.performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)
+            // 向上回溯时回收正在离开的节点；item.node 由 stepPickAndClick 的 finally 回收，跳过
+            val parent = try { node.parent } catch (_: Exception) { null }
+            if (node !== item.node) runCatching { node.recycle() }
+            target = parent
             depth++
+            if (clicked) return
         }
+        // 循环因达到深度上限退出时，最后取到的 parent 尚未回收，这里补回收
+        if (target != null && target !== item.node) runCatching { target.recycle() }
         // 兜底：手势点按条目中心
         service.tapScreen(item.rect.centerX().toFloat(), item.rect.centerY().toFloat())
     }
@@ -201,7 +219,7 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             val dwellMs = HumanTiming.nextIntervalMs(
                 minSec = lo,
                 maxSec = hi,
-                runningMinutes = AutoScrollAccessibilityService.runningMinutes
+                runningMinutes = AutoScrollAccessibilityService.runningMinutes.toFloat()
             )
             Log.d(TAG, "随机停留 ${dwellMs}ms 后返回")
             post(dwellMs) { stepBack() }
@@ -219,26 +237,33 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
 
         val root = service.rootInActiveWindow
         val scrollable = root?.let { NodeFinder.findScrollable(it) }
-        if (scrollMode != 2) {
-            val ok = scrollable?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) ?: false
-            if (ok) {
-                scrollMode = 1
-                scrollsLeft--
-            } else if (scrollMode == 1) {
-                // 之前能滚、现在滚不动 => 已到底，读完了
-                Log.d(TAG, "详情页已读完（到底）")
-                post(Random.nextLong(1200, 3500)) { stepBack() }
-                return
-            } else {
-                // ACTION_SCROLL 不可用（WebView 等），降级为手势翻页
-                scrollMode = 2
+        try {
+            if (scrollMode != 2) {
+                val ok = scrollable?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) ?: false
+                if (ok) {
+                    scrollMode = 1
+                    scrollsLeft--
+                } else if (scrollMode == 1) {
+                    // 之前能滚、现在滚不动 => 已到底，读完了
+                    Log.d(TAG, "详情页已读完（到底）")
+                    post(Random.nextLong(1200, 3500)) { stepBack() }
+                    return
+                } else {
+                    // ACTION_SCROLL 不可用（WebView 等），降级为手势翻页
+                    scrollMode = 2
+                }
             }
+            if (scrollMode == 2) {
+                service.swipeUpOnNodeOrScreen(scrollable)
+                scrollsLeft--
+            }
+            post(Random.nextLong(900, 1800)) { stepScrollOnce() }
+        } finally {
+            // S3：回收本帧取到的 root 与 scrollable（Android < 13 节点池有限，
+            // 泄漏会导致 rootInActiveWindow 逐渐返回 null、详情流静默失效）
+            runCatching { scrollable?.recycle() }
+            if (scrollable !== root) runCatching { root?.recycle() }
         }
-        if (scrollMode == 2) {
-            service.swipeUpOnNodeOrScreen(scrollable)
-            scrollsLeft--
-        }
-        post(Random.nextLong(900, 1800)) { stepScrollOnce() }
     }
 
     /** 第 3 步：返回列表 */

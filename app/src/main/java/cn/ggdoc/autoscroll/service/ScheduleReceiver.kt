@@ -12,11 +12,13 @@ import android.util.Log
 class ScheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val action = intent?.action ?: return
+        // L2 修复：先记录收到广播，再执行业务。原实现在 when 之后记录，
+        // 一旦 autoStartBySchedule / autoStopBySchedule 抛异常，日志不会打印且异常外泄。
+        Log.i("ScheduleReceiver", "收到定时广播：$action")
         val svc = AutoScrollAccessibilityService.instance ?: return
         when (action) {
             AutoScrollAccessibilityService.ACTION_SCHEDULE_START -> svc.autoStartBySchedule()
             AutoScrollAccessibilityService.ACTION_SCHEDULE_END -> svc.autoStopBySchedule()
         }
-        Log.i("ScheduleReceiver", "收到定时广播：$action")
     }
 }

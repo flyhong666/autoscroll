@@ -446,8 +446,10 @@ class FloatingWindowService : Service() {
             unregisterReceiver(receiver)
         } catch (_: Exception) {
         }
-        handler.removeCallbacks(longPressRunnable)
-        handler.removeCallbacks(countdownRunnable)
+        // S5 修复：snapToEdge() 会 post 8 个匿名 Runnable 做边缘吸附动画，
+        // 仅移除具名 Runnable 会漏掉它们——服务销毁后它们仍可能触发 updatePosition
+        // 操作已移除的视图而崩溃。直接清空该 handler 上所有待执行回调/消息。
+        handler.removeCallbacksAndMessages(null)
 
         AutoScrollAccessibilityService.instance?.stopScrolling()
 

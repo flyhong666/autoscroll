@@ -36,9 +36,9 @@ class GestureStepAdapter(
         val detail = if (step.isWaitOnly()) {
             "等待 ${step.waitSec} 秒"
         } else {
-            "位置 ${step.xPct}%,${step.yPct}%" +
-                if (step.isSwipe()) " · 距离 ${step.distPct}%" else "" +
-                " · 等待 ${step.waitSec} 秒"
+            "位置 ${step.xPct}%,${step.yPct}%" + (
+                if (step.isSwipe()) " · 距离 ${step.distPct}%" else ""
+            ) + " · 等待 ${step.waitSec} 秒"
         }
         holder.binding.tvStepDetail.text = detail
         holder.binding.btnUp.isEnabled = position > 0

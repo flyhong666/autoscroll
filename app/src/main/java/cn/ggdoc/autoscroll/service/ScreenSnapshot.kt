@@ -66,8 +66,15 @@ object ScreenSnapshot {
      *
      * @param root          当前活动窗口根节点，调用方负责其生命周期（本方法不回收 root）
      * @param screenHeight  屏幕高度，用于估算「列表项」的高度门槛；<=0 时用固定门槛
+     * @param keep          需要存活到本次快照之后的节点（如调用方后续还要用的容器节点）。
+     *                       [capture] 会回收除 [root] 与 [keep] 之外的所有遍历节点，避免
+     *                       use-after-recycle（详见 DetailFlowController.stepPickAndClick）。
      */
-    fun capture(root: AccessibilityNodeInfo?, screenHeight: Int = 0): Snapshot {
+    fun capture(
+        root: AccessibilityNodeInfo?,
+        screenHeight: Int = 0,
+        keep: AccessibilityNodeInfo? = null
+    ): Snapshot {
         if (root == null) return EMPTY
 
         val texts = ArrayList<String>(MAX_FINGERPRINT_TEXTS)
@@ -145,8 +152,8 @@ object ScreenSnapshot {
         } catch (_: Exception) {
             // 遍历期间窗口可能被销毁，节点访问抛异常；用已采到的部分数据继续
         } finally {
-            // 回收所有遍历过的节点（root 归调用方所有）
-            visited.forEach { n -> if (n !== root) runCatching { n.recycle() } }
+            // 回收所有遍历过的节点（root 与 keep 归调用方所有，不得回收）
+            visited.forEach { n -> if (n !== root && n !== keep) runCatching { n.recycle() } }
             queue.clear()
         }
 

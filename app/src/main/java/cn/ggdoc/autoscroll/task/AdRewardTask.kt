@@ -43,10 +43,11 @@ object AdRewardTask {
      */
     fun clickRewardEntry(service: AccessibilityService): String? {
         val candidates = ArrayList<AccessibilityNodeInfo>()
+        // root 在 try 外声明，finally 才能回收（S3）；且需在 return try 之前声明
+        val root = service.rootInActiveWindow ?: return null
         return try {
             val keywords = AppConfig.getAdRewardKeywords(service)
             if (keywords.isEmpty()) return null
-            val root = service.rootInActiveWindow ?: return null
 
             collectNodes(root, candidates)
 
@@ -63,7 +64,11 @@ object AdRewardTask {
 
             val (node, label) = hit
             val target = clickableSelfOrAncestor(node) ?: node
-            if (target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            val clicked = runCatching { target.performAction(AccessibilityNodeInfo.ACTION_CLICK) }
+                .getOrDefault(false)
+            // target 若来自祖先回溯（非 node 自身），用后回收，避免节点池泄漏
+            if (target !== node) runCatching { target.recycle() }
+            if (clicked) {
                 Log.i(TAG, "已点击激励入口：$label")
                 label
             } else {
@@ -76,22 +81,36 @@ object AdRewardTask {
         } finally {
             // 回收候选节点，避免 Android 13 以下节点池耗尽
             candidates.forEach { runCatching { it.recycle() } }
+            // root 若未进入候选列表也要回收
+            if (root != null && root !in candidates) runCatching { root.recycle() }
         }
     }
 
     private fun collectNodes(root: AccessibilityNodeInfo, out: MutableList<AccessibilityNodeInfo>) {
+        val visited = HashSet<AccessibilityNodeInfo>()
+        visited.add(root)
         val queue = LinkedList<Pair<AccessibilityNodeInfo, Int>>()
         queue.offer(root to 0)
         while (queue.isNotEmpty() && out.size < MAX_NODES) {
             val (node, depth) = queue.poll() ?: continue
-            if (depth > MAX_DEPTH) continue
+            if (depth > MAX_DEPTH) {
+                if (node !== root) runCatching { node.recycle() }
+                continue
+            }
             // 仅收集真正可点击的节点，减少误命中正文文本
-            if (labelOf(node).isNotEmpty() && node.isClickable) {
-                out.add(node)
-            }
+            val match = labelOf(node).isNotEmpty() && node.isClickable
+            if (match) out.add(node) // 候选由 clickRewardEntry 的 finally 回收
             for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { queue.offer(it to depth + 1) }
+                val child = node.getChild(i) ?: continue
+                if (visited.add(child)) {
+                    queue.offer(child to depth + 1)
+                } else {
+                    // 重复访问的节点回收，避免环引用导致无限扩展 + 节点池泄漏
+                    runCatching { child.recycle() }
+                }
             }
+            // 处理完当前节点后回收（保留 root 与候选）
+            if (node !== root && !match) runCatching { node.recycle() }
         }
     }
 
@@ -101,12 +120,20 @@ object AdRewardTask {
         return node.contentDescription?.toString()?.trim().orEmpty()
     }
 
+    /**
+     * 找到自身或最近的可点击祖先。
+     *
+     * S3 修复：回溯过程中途经的非可点击祖先会被逐级回收，避免 parent 链泄漏。
+     */
     private fun clickableSelfOrAncestor(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        var current: AccessibilityNodeInfo? = node
+        if (node.isClickable) return node
+        var current = try { node.parent } catch (_: Exception) { null }
         var depth = 0
         while (current != null && depth < 5) {
             if (current.isClickable) return current
-            current = current.parent
+            val parent = try { current.parent } catch (_: Exception) { null }
+            runCatching { current.recycle() } // 回收正在离开的祖先
+            current = parent
             depth++
         }
         return null

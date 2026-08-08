@@ -168,7 +168,13 @@ object ActionRecorder {
             null
         } ?: return null
         val rect = Rect()
-        node.getBoundsInScreen(rect)
+        // S3 修复：event.source 取到的节点用后必须回收，否则 Android 13 以下节点池
+        // 会随事件持续累积而耗尽，导致 rootInActiveWindow 返回 null、录制静默失效。
+        try {
+            node.getBoundsInScreen(rect)
+        } finally {
+            runCatching { node.recycle() }
+        }
         return if (rect.width() > 0 && rect.height() > 0) rect else null
     }
 
