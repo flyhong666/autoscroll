@@ -1,6 +1,5 @@
 [versions]
 agp = "9.3.0"
-kotlin = "2.2.10"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version = "1.13.1" }
@@ -13,4 +12,3 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version = "1.2.1
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
