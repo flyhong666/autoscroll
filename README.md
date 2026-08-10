@@ -8,7 +8,7 @@
 - 6 大预设场景，覆盖主流可滑动应用
 - 智能识别可滚动节点（RecyclerView / ListView / ScrollView / WebView / ViewPager2）
 - 找不到节点时自动回退全屏手势
-- 拟人化参数（随机间隔 + 随机时长 + 随机位置偏移）
+- 拟人化引擎（`human/` 纯逻辑包）：三次贝塞尔弓形轨迹 + easeOutCubic 快起慢收 + ±2.5px 生理抖动；停留时长用对数正态分布（长尾）+ 疲劳曲线 + 偶发长驻留；辅以屏幕指纹卡死分级自恢复、列表 / 详情页分类、多 APP 轮换规划
 
 ### 2. 6 大场景模板
 
@@ -20,6 +20,8 @@
 | 社交动态 | 微博、小红书、知乎 | 4-18s | 支持点赞 |
 | 直播挂机 | 抖音直播、虎牙、斗鱼 | 30-90s | 不滑动只挂机 |
 | 自定义通用 | 所有可滑动应用 | 3-20s | - |
+
+> 各场景采用不同滚动策略：`VERTICAL`（竖向滑动，用于短视频 / 信息流）、`PAGE`（小幅翻页，用于小说 / 图文）、`IDLE`（直播挂机，不滑动只维持亮屏保活）。新闻 / 社交场景额外启用「详情流」：自动从列表点开内容 → 浏览 → 返回，形成拟人浏览闭环。
 
 ### 3. 扩展任务（8 项）
 
@@ -63,7 +65,7 @@
 
 - **双重保险**：必须在任务页先勾选「我已了解封号风险并愿意自担」，再开启开关，功能才会真正生效
 - **可调参数**：尝试间隔（2-60 分钟）、激励入口关键词（可在任务页自由增删）
-- **风控保护**：低电量 / 非 Wi-Fi / 非生效应用清单内时自动跳过，不打断广告观看
+- **风控保护**：低电量 / 非 Wi-Fi 时自动跳过，不打断广告观看
 
 ### 8. 统计看板
 
@@ -78,6 +80,19 @@
 | 运行时长 | 本次服务自启动以来经过的时间 |
 
 数据每秒刷新，停止滚动后清零。
+
+## 🧩 其他内置能力
+
+以下能力已在代码中实现，供进阶使用：
+
+- **详情流（新闻 / 社交）**：自动从信息流列表点开一条内容，停留浏览后返回，循环往复，模拟真人「刷 — 看 — 回」行为。可调：详情页最短 / 最长停留（默认 6–30s）、「完整读完」概率（默认 60%）、单篇最多滚动次数（默认 8，上限 20）。
+- **定时运行窗口**：可设置每日生效时段（起止分钟，支持跨午夜），仅在窗口内自动滚动；窗口外自动暂停。与「定时停止」（运行 N 分钟后停止）是两套独立机制。
+- **翻页 / 挂机模式**：小说场景走小幅整页翻页，直播场景不滑动只挂机保活，均由场景模板自动选定，无需手动配置。
+- **多 APP 轮换应用池**：在「任务」页开启「多 APP 轮换」后，可点「选择轮换应用」从已安装 App 中手动勾选要轮换的包名池；池为空时轮换不生效。默认不限制 App，工具对前台任意应用都按当前场景参数来刷。
+- **自定义手势序列**：自定义场景下可编排「点击 / 双击 / 上滑 / 下滑 / 左滑 / 右滑 / 等待」多步组合并循环执行（兼容旧版单手势配置）。
+- **全局电量 / 仅 Wi-Fi 守卫**：开启后，低电量（低于阈值）或非 Wi-Fi 网络时暂停滚动（同样作用于「看广告得金币」任务）。
+
+> 注：上述能力由 `human/` 纯逻辑包与对应 `service/` 模块实现，均已落地于代码（含 JVM 单元测试）。
 
 ## 📱 使用步骤
 
@@ -94,7 +109,7 @@ APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/
 ### 2. 配置
 
 1. 打开应用 → 「控制」页点「基础参数」→「场景选择」弹窗选择内容类型
-2. 「任务」页开启需要的扩展功能（点赞/广告屏蔽/定时停止/轮换/屏幕常亮；看广告得金币需额外勾选风险确认）
+2. 「任务」页开启需要的扩展功能（点赞/广告屏蔽/定时停止/多 APP 轮换/屏幕常亮；看广告得金币需额外勾选风险确认）
 3. 「控制」页调整基础参数（滑动间隔 + 时长）；如需录制操作脚本，可切到「记录器」Tab
 4. 授予无障碍服务 + 悬浮窗权限
 5. 点击「启动服务」→ 单击悬浮球开始；「任务」页顶部统计看板会实时累计数据
@@ -109,10 +124,21 @@ APK安装包网盘下载地址：[自动刷视频](https://www.guangyapan.com/s/
 
 ```
 cn.ggdoc.autoscroll/
-├── MainActivity.kt                       主界面 TabLayout
+├── MainActivity.kt                       主界面 TabLayout（控制 / 任务 / 记录器）
+├── human/   ★ 纯逻辑层（不依赖 Android，可 JVM 单元测试）
+│   ├── GestureMath.kt                    贝塞尔轨迹几何（纯函数）
+│   ├── HumanTiming.kt                    对数正态节奏 / 疲劳 / 偶发长驻留
+│   ├── HumanGestureDispatcher.kt         分段变速手势派发封装
+│   ├── StuckDetector.kt                  屏幕指纹 + 卡死分级自恢复状态机
+│   ├── PageClassifier.kt                 列表 / 详情页判定
+│   ├── RotationPlanner.kt                多 APP 轮换规划（失败下线 / 复活）
+│   ├── ScheduleUtils.kt                  定时窗口 / 闹钟计算
+│   └── SceneIds.kt                       场景 ID 唯一真源
 ├── config/
-│   ├── AppConfig.kt                      配置持久化（开关 / 参数 / 关键词）
-│   └── SceneConfig.kt                    6 大场景模板
+│   ├── AppConfig.kt                      配置持久化（开关 / 参数 / 关键词）；含场景 ID 别名（SCENE_* = human.SceneIds.*）
+│   ├── SceneConfig.kt                    6 大场景模板
+│   ├── StatsStore.kt                     今日 / 累计统计，跨天归档
+│   └── CustomGestureStep.kt              自定义手势序列一步
 ├── task/
 │   ├── AdBlocker.kt                      广告弹窗识别 + 自动点击
 │   ├── AdRewardTask.kt                   看广告得金币入口扫描（高风险）
@@ -124,15 +150,23 @@ cn.ggdoc.autoscroll/
 │   └── RecordedAction.kt                 动作数据模型
 ├── service/
 │   ├── AutoScrollAccessibilityService.kt 滑动 + 点赞 + 广告屏蔽 + 调度 + 激励 + 统计
+│   ├── DetailFlowController.kt           详情流闭环（列表 → 详情 → 返回）
+│   ├── NodeFinder.kt                     可滚动节点 / 列表项探测
+│   ├── ScreenSnapshot.kt                 单遍 BFS 取指纹 + 页面信号
 │   ├── RecorderOverlayService.kt         录制 / 回放悬浮控制条
-│   └── FloatingWindowService.kt          悬浮窗 + 倒计时 + 通知
+│   ├── FloatingWindowService.kt          悬浮窗 + 倒计时 + 通知
+│   └── ScheduleReceiver.kt               定时广播接收
 └── ui/
     ├── ControlFragment.kt                控制页
-    ├── ScenePickerDialogFragment.kt      场景选择弹窗（从设置入口打开）
-    ├── TaskFragment.kt                   任务页（含统计看板）
+    ├── TaskFragment.kt                   任务页（含统计看板 / 多 APP 轮换）
+    ├── RecorderFragment.kt               记录器页（脚本列表 / 录制 / 回放）
     ├── ScriptActivity.kt                 操作记录器脚本管理
+    ├── SettingsBottomSheet.kt            基础参数 / 场景 / 关键词 弹窗
+    ├── ScenePickerDialogFragment.kt      场景选择弹窗
+    ├── AppPickerDialogFragment.kt        轮换应用多选弹窗
     ├── ScriptAdapter.kt                  脚本列表适配器
-    └── SceneAdapter.kt                   场景列表适配器
+    ├── SceneAdapter.kt                   场景列表适配器
+    └── GestureStepAdapter.kt             自定义手势序列编辑适配器
 ```
 
 ## ⚙️ 参数说明
@@ -142,7 +176,6 @@ cn.ggdoc.autoscroll/
 | :--- | :---: | :--- |
 | 最小/最大滑动间隔 | 1-60s | 两次滑动间随机等待 |
 | 最小/最大滑动时长 | 100-3000ms | 单次手势随机持续时间 |
-| 仅当前场景应用生效 | 开关 | 非场景应用自动跳过 |
 
 ### 任务参数
 | 参数 | 范围 | 说明 |
@@ -164,7 +197,7 @@ cn.ggdoc.autoscroll/
 
 ## 🛠 开发环境
 
-- Android Studio Hedgehog / Iguana 或更新
+- Android Studio Narwhal（2025.1）或更高版本
 - Kotlin 2.2.10
-- Gradle 8.13
-- 最低 Android 7.0（API 24），目标 Android 15（API 35）
+- Gradle 9.6.1（Wrapper 内置，无需单独安装）
+- 最低 Android 7.0（API 24），编译 / 目标 Android 16（API 36）

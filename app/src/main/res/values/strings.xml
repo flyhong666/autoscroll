@@ -47,17 +47,15 @@
     <string name="max_interval">最大间隔</string>
     <string name="min_duration">最小时长</string>
     <string name="max_duration">最大时长</string>
-    <string name="allowed_apps_title">生效应用</string>
-    <string name="allowed_apps_count">已选择 %1$d 个应用</string>
-    <string name="allowed_apps_empty">未限制（对所有应用生效）</string>
 
-    <!-- 应用选择器 -->
-    <string name="app_picker_title">选择生效应用</string>
+    <!-- 应用选择器（场景选择器复用 app_picker_done） -->
+    <string name="rotation_apps_title">选择轮换应用</string>
+    <string name="rotation_apps_count">已选 %1$d 个应用</string>
+    <string name="rotation_apps_empty">未选择（开启后需先选应用）</string>
     <string name="app_picker_search_hint">搜索应用</string>
-    <string name="app_picker_done">完成</string>
-    <string name="app_picker_empty">未找到匹配的应用</string>
     <string name="app_picker_select_all">全选</string>
     <string name="app_picker_clear">清空</string>
+    <string name="app_picker_done">完成</string>
 
     <string name="params_saved">参数已保存</string>
 
@@ -169,14 +167,11 @@
     <string name="toast_ad_blocked">已关闭广告弹窗</string>
     <string name="toast_liked">已自动点赞</string>
     <string name="toast_ad_reward">正在观看激励视频：%1$s</string>
-    <string name="toast_scene_auto_switched">已自动切换场景：%1$s</string>
     <string name="toast_stuck_close_popup">内容无变化，尝试关闭弹窗</string>
     <string name="toast_stuck_press_back">内容无变化，已执行返回</string>
     <string name="toast_stuck_restart_app">内容长时间无变化，正在重启应用</string>
 
-    <!-- ========== 场景自动识别 / 卡死自恢复（优化项） ========== -->
-    <string name="task_auto_scene">场景自动识别</string>
-    <string name="task_auto_scene_summary">打开抖音、头条、小红书等应用时，自动切换到对应的场景策略。自定义场景不会被覆盖。</string>
+    <!-- ========== 卡死自恢复（优化项） ========== -->
     <string name="task_auto_recover">卡死自动恢复</string>
     <string name="task_auto_recover_summary">检测屏幕内容是否真的在变化。连续无变化时依次尝试关闭弹窗、返回上一层、重启应用，避免刷到底后空转。</string>
 

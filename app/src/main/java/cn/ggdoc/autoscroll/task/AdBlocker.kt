@@ -41,24 +41,22 @@ object AdBlocker {
                 val combined = "$text $desc"
 
                 if (keywords.any { combined.contains(it) }) {
-                // 找到目标节点，逐级向上找可点击的祖先，再执行点击
-                val clickTarget = findClickableAncestor(node) ?: node
-                val clicked = performClick(clickTarget)
-                if (clicked) {
-                    closed++
-                    Log.d(TAG, "关闭弹窗：text=$text desc=$desc")
+                    // 找到目标节点，逐级向上找可点击的自身或祖先，再执行点击
+                    val clickTarget = AdNodeKit.clickableSelfOrAncestor(node) ?: node
+                    val clicked = AdNodeKit.click(clickTarget)
+                    if (clicked) {
+                        closed++
+                        Log.d(TAG, "关闭弹窗：text=$text desc=$desc")
+                    }
+                    // clickTarget 若来自祖先回溯（非 node 自身），用后回收，避免节点池泄漏
+                    if (clickTarget !== node) runCatching { clickTarget.recycle() }
                 }
-                // clickTarget 若来自祖先回溯（非 node 自身），用后回收，避免节点池泄漏
-                if (clickTarget !== node) runCatching { clickTarget.recycle() }
-            }
             }
         } catch (e: Exception) {
             Log.e(TAG, "广告屏蔽扫描失败", e)
         } finally {
-            // 回收候选节点，避免 Android 13 以下节点池耗尽导致静默失效
-            candidates.forEach { runCatching { it.recycle() } }
-            // root 若未进入候选列表也要回收（collectClickableNodes 只回收非候选后代节点）
-            if (root != null && root !in candidates) runCatching { root.recycle() }
+            // 回收候选节点与（未进入候选列表的）root，避免 Android 13 以下节点池耗尽
+            AdNodeKit.recycle(root, candidates)
         }
         return closed
     }
@@ -99,38 +97,4 @@ object AdBlocker {
         return isCandidate
     }
 
-    /**
-     * 找到最近的可点击祖先（不含自身；自身是否可点击由调用方判定）。
-     *
-     * S3 修复：回溯过程中途经的非可点击祖先会被逐级回收，避免 parent 链泄漏。
-     * 返回的对象是 [node] 之外的独立节点（调用方用后需回收）。
-     */
-    private fun findClickableAncestor(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        var current = try { node.parent } catch (_: Exception) { null }
-        var depth = 0
-        while (current != null && depth < 5) {
-            if (current.isClickable) return current
-            val parent = try { current.parent } catch (_: Exception) { null }
-            runCatching { current.recycle() } // 回收正在离开的祖先
-            current = parent
-            depth++
-        }
-        return null
-    }
-
-    /**
-     * 执行点击：优先 performAction，失败则尝试点击父节点。
-     *
-     * S3 修复：内部取到的父节点用后回收，避免节点池泄漏。
-     */
-    private fun performClick(node: AccessibilityNodeInfo): Boolean {
-        if (runCatching { node.performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)) {
-            return true
-        }
-        val parent = try { node.parent } catch (_: Exception) { null }
-        val clicked = parent != null &&
-            runCatching { parent.performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)
-        runCatching { parent?.recycle() }
-        return clicked
-    }
 }

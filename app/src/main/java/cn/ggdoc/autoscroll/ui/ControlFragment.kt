@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.ui
 
+import cn.ggdoc.autoscroll.util.registerReceiverSafe
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -187,11 +188,7 @@ class ControlFragment : Fragment() {
             addAction(FloatingWindowService.BROADCAST_STATE_CHANGED)
             addAction(AutoScrollAccessibilityService.BROADCAST_STATE_CHANGED)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            requireContext().registerReceiver(receiver, filter)
-        }
+        requireContext().registerReceiverSafe(receiver, filter)
     }
 
     private fun refreshUI() {

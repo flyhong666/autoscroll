@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingVertical="10dp"
-    android:paddingHorizontal="4dp">
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
 
     <TextView
         android:id="@+id/tvStepIndex"
@@ -15,7 +18,7 @@
         android:textColor="@android:color/white"
         android:textSize="12sp"
         android:background="@drawable/bg_step_index"
-        android:text="1" />
+        tools:text="1" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -29,8 +32,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="@style/TextAppearance.Body"
-            android:textSize="14sp"
-            android:text="单击" />
+        android:textSize="14sp"
+        tools:text="单击" />
 
         <TextView
             android:id="@+id/tvStepDetail"
@@ -38,8 +41,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textColor="@color/text_hint"
-            android:textSize="12sp"
-            android:text="位置 50%,50% · 等待 2 秒" />
+        android:textSize="12sp"
+        tools:text="位置 50%,50% · 等待 2 秒" />
     </LinearLayout>
 
     <ImageButton

@@ -10,8 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:paddingTop="8dp"
         android:paddingBottom="28dp">
 
@@ -148,6 +148,7 @@
                     android:padding="8dp"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_settings"
+                    android:contentDescription="@string/settings_title"
                     app:tint="@color/purple_500"
                     android:background="@drawable/scene_icon_bg" />
 
@@ -180,6 +181,7 @@
                     android:layout_height="22dp"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_right"
+                    android:contentDescription="@null"
                     app:tint="@color/text_hint" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

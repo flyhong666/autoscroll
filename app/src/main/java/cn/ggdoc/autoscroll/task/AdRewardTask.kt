@@ -54,7 +54,7 @@ object AdRewardTask {
             // 命中文案越短越可能是按钮，优先点击
             val hit = candidates
                 .mapNotNull { node ->
-                    val label = labelOf(node)
+                    val label = AdNodeKit.labelOf(node)
                     if (label.isEmpty() || label.length > MAX_TEXT_LEN) null
                     else if (keywords.any { label.contains(it) }) node to label
                     else null
@@ -63,9 +63,8 @@ object AdRewardTask {
                 ?: return null
 
             val (node, label) = hit
-            val target = clickableSelfOrAncestor(node) ?: node
-            val clicked = runCatching { target.performAction(AccessibilityNodeInfo.ACTION_CLICK) }
-                .getOrDefault(false)
+            val target = AdNodeKit.clickableSelfOrAncestor(node) ?: node
+            val clicked = AdNodeKit.click(target)
             // target 若来自祖先回溯（非 node 自身），用后回收，避免节点池泄漏
             if (target !== node) runCatching { target.recycle() }
             if (clicked) {
@@ -79,10 +78,7 @@ object AdRewardTask {
             Log.e(TAG, "激励入口扫描失败", e)
             null
         } finally {
-            // 回收候选节点，避免 Android 13 以下节点池耗尽
-            candidates.forEach { runCatching { it.recycle() } }
-            // root 若未进入候选列表也要回收
-            if (root != null && root !in candidates) runCatching { root.recycle() }
+            AdNodeKit.recycle(root, candidates)
         }
     }
 
@@ -98,7 +94,7 @@ object AdRewardTask {
                 continue
             }
             // 仅收集真正可点击的节点，减少误命中正文文本
-            val match = labelOf(node).isNotEmpty() && node.isClickable
+            val match = AdNodeKit.labelOf(node).isNotEmpty() && node.isClickable
             if (match) out.add(node) // 候选由 clickRewardEntry 的 finally 回收
             for (i in 0 until node.childCount) {
                 val child = node.getChild(i) ?: continue
@@ -114,28 +110,4 @@ object AdRewardTask {
         }
     }
 
-    private fun labelOf(node: AccessibilityNodeInfo): String {
-        val text = node.text?.toString()?.trim().orEmpty()
-        if (text.isNotEmpty()) return text
-        return node.contentDescription?.toString()?.trim().orEmpty()
-    }
-
-    /**
-     * 找到自身或最近的可点击祖先。
-     *
-     * S3 修复：回溯过程中途经的非可点击祖先会被逐级回收，避免 parent 链泄漏。
-     */
-    private fun clickableSelfOrAncestor(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        if (node.isClickable) return node
-        var current = try { node.parent } catch (_: Exception) { null }
-        var depth = 0
-        while (current != null && depth < 5) {
-            if (current.isClickable) return current
-            val parent = try { current.parent } catch (_: Exception) { null }
-            runCatching { current.recycle() } // 回收正在离开的祖先
-            current = parent
-            depth++
-        }
-        return null
-    }
 }

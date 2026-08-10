@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
+import cn.ggdoc.autoscroll.util.registerReceiverSafe
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -147,11 +148,7 @@ class FloatingWindowService : Service() {
             addAction(AutoScrollAccessibilityService.BROADCAST_TASK_EVENT)
             addAction(ACTION_STOP_FROM_ACCESSIBILITY)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(receiver, filter)
-        }
+        registerReceiverSafe(receiver, filter)
 
         // 启动倒计时刷新
         handler.post(countdownRunnable)

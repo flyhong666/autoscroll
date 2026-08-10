@@ -18,7 +18,7 @@
     <!-- 底边分割线 -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="1px"
+        android:layout_height="1dp"
         android:background="@color/border" />
 
     <!-- 底部导航栏 -->

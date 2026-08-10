@@ -10,8 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:paddingTop="8dp"
         android:paddingBottom="36dp">
 
@@ -72,7 +72,8 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingVertical="6dp">
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
 
                         <TextView
                             android:id="@+id/tvStatScroll"
@@ -98,7 +99,8 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingVertical="6dp">
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
 
                         <TextView
                             android:id="@+id/tvStatLike"
@@ -130,7 +132,8 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingVertical="6dp">
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
 
                         <TextView
                             android:id="@+id/tvStatAdBlock"
@@ -156,7 +159,8 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingVertical="6dp">
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
 
                         <TextView
                             android:id="@+id/tvStatAdReward"
@@ -182,7 +186,8 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:paddingVertical="6dp">
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp">
 
                     <TextView
                         android:id="@+id/tvStatTime"
@@ -639,6 +644,59 @@
                         app:thumbColor="@color/teal_700"
                         app:trackColorActive="@color/teal_700"
                         app:trackColorInactive="@color/divider" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/rotationAppsRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:padding="7dp"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_apps"
+                        app:tint="@color/purple_500"
+                        android:contentDescription="@string/rotation_apps_title" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/rotation_apps_title"
+                            android:textAppearance="@style/TextAppearance.Title"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tvRotationAppsSummary"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textAppearance="@style/TextAppearance.Body"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_hint" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_hint"
+                        android:contentDescription="@string/rotation_apps_title" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

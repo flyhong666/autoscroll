@@ -120,20 +120,26 @@ object StatsStore {
         if (delta.isEmpty) return
         rollOverIfNeeded(context, nowMillis)
         val p = prefs(context)
-        p.edit()
-            .putInt(KEY_TODAY_SCROLLS, p.getInt(KEY_TODAY_SCROLLS, 0) + delta.scrolls)
-            .putInt(KEY_TODAY_LIKES, p.getInt(KEY_TODAY_LIKES, 0) + delta.likes)
-            .putInt(KEY_TODAY_AD_BLOCKS, p.getInt(KEY_TODAY_AD_BLOCKS, 0) + delta.adBlocks)
-            .putInt(KEY_TODAY_AD_REWARDS, p.getInt(KEY_TODAY_AD_REWARDS, 0) + delta.adRewards)
-            .putInt(KEY_TODAY_DETAILS, p.getInt(KEY_TODAY_DETAILS, 0) + delta.details)
-            .putLong(KEY_TODAY_SECONDS, p.getLong(KEY_TODAY_SECONDS, 0L) + delta.seconds)
-            .putInt(KEY_TOTAL_SCROLLS, p.getInt(KEY_TOTAL_SCROLLS, 0) + delta.scrolls)
-            .putInt(KEY_TOTAL_LIKES, p.getInt(KEY_TOTAL_LIKES, 0) + delta.likes)
-            .putInt(KEY_TOTAL_AD_BLOCKS, p.getInt(KEY_TOTAL_AD_BLOCKS, 0) + delta.adBlocks)
-            .putInt(KEY_TOTAL_AD_REWARDS, p.getInt(KEY_TOTAL_AD_REWARDS, 0) + delta.adRewards)
-            .putInt(KEY_TOTAL_DETAILS, p.getInt(KEY_TOTAL_DETAILS, 0) + delta.details)
-            .putLong(KEY_TOTAL_SECONDS, p.getLong(KEY_TOTAL_SECONDS, 0L) + delta.seconds)
-            .apply()
+        val e = p.edit()
+        // 今日 / 累计 共用同一组增量，仅 key 前缀不同
+        val intFields = listOf(
+            KEY_TODAY_SCROLLS to delta.scrolls,
+            KEY_TODAY_LIKES to delta.likes,
+            KEY_TODAY_AD_BLOCKS to delta.adBlocks,
+            KEY_TODAY_AD_REWARDS to delta.adRewards,
+            KEY_TODAY_DETAILS to delta.details,
+            KEY_TOTAL_SCROLLS to delta.scrolls,
+            KEY_TOTAL_LIKES to delta.likes,
+            KEY_TOTAL_AD_BLOCKS to delta.adBlocks,
+            KEY_TOTAL_AD_REWARDS to delta.adRewards,
+            KEY_TOTAL_DETAILS to delta.details
+        )
+        for ((key, value) in intFields) {
+            e.putInt(key, p.getInt(key, 0) + value)
+        }
+        e.putLong(KEY_TODAY_SECONDS, p.getLong(KEY_TODAY_SECONDS, 0L) + delta.seconds)
+        e.putLong(KEY_TOTAL_SECONDS, p.getLong(KEY_TOTAL_SECONDS, 0L) + delta.seconds)
+        e.apply()
     }
 
     /** 今日统计 */

@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
+import cn.ggdoc.autoscroll.util.registerReceiverSafe
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -152,11 +153,7 @@ class RecorderOverlayService : Service() {
             addAction(ActionRecorder.BROADCAST_RECORDER_CHANGED)
             addAction(ScriptPlayer.BROADCAST_PLAYER_CHANGED)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(receiver, filter)
-        }
+        registerReceiverSafe(receiver, filter)
         handler.post(blinkRunnable)
     }
 

@@ -9,8 +9,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:paddingTop="10dp"
         android:paddingBottom="24dp">
 
@@ -46,8 +46,8 @@
                 android:layout_height="wrap_content"
                 android:text="@string/apply_recommend"
                 android:textSize="12sp"
-                android:paddingLeft="14dp"
-                android:paddingRight="14dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"
                 app:cornerRadius="12dp"
@@ -79,6 +79,7 @@
                     android:padding="8dp"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_scene_video"
+                    android:contentDescription="@string/scene_entry_title"
                     app:tint="@color/purple_500"
                     android:background="@drawable/scene_icon_bg" />
 
@@ -111,6 +112,7 @@
                     android:layout_height="22dp"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_right"
+                    android:contentDescription="@null"
                     app:tint="@color/text_hint" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -144,7 +146,7 @@
                     android:textColor="@color/purple_700"
                     android:textStyle="bold"
                     android:textSize="15sp"
-                    android:paddingLeft="8dp" />
+                    android:paddingStart="8dp" />
             </LinearLayout>
 
             <com.google.android.material.slider.Slider
@@ -190,7 +192,7 @@
                     android:textColor="@color/purple_700"
                     android:textStyle="bold"
                     android:textSize="15sp"
-                    android:paddingLeft="8dp" />
+                    android:paddingStart="8dp" />
             </LinearLayout>
 
             <com.google.android.material.slider.Slider
@@ -236,7 +238,7 @@
                     android:textColor="@color/purple_700"
                     android:textStyle="bold"
                     android:textSize="15sp"
-                    android:paddingLeft="8dp" />
+                    android:paddingStart="8dp" />
             </LinearLayout>
 
             <com.google.android.material.slider.Slider
@@ -282,7 +284,7 @@
                     android:textColor="@color/purple_700"
                     android:textStyle="bold"
                     android:textSize="15sp"
-                    android:paddingLeft="8dp" />
+                    android:paddingStart="8dp" />
             </LinearLayout>
 
             <com.google.android.material.slider.Slider
@@ -298,66 +300,6 @@
                 app:trackColorActive="@color/teal_700"
                 app:trackColorInactive="@color/divider" />
         </LinearLayout>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardAllowedApps"
-            style="@style/AutoScrollCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:layout_marginBottom="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:rippleColor="@color/purple_200">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="16dp">
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="8dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_apps"
-                    app:tint="@color/purple_500"
-                    android:background="@drawable/scene_icon_bg" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="12dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/allowed_apps_title"
-                        android:textAppearance="@style/TextAppearance.Title"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/tvAllowedAppsSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:textAppearance="@style/TextAppearance.Body"
-                        android:textSize="12.5sp"
-                        android:textColor="@color/text_hint" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_chevron_right"
-                    app:tint="@color/text_hint" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             style="@style/AutoScrollCard"

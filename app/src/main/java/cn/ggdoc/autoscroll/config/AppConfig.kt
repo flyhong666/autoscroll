@@ -19,7 +19,6 @@ object AppConfig {
 
     // ===== 场景 =====
     private const val KEY_CURRENT_SCENE = "current_scene"
-    private const val KEY_AUTO_SCENE = "auto_scene_detect"
     private const val KEY_INTERVAL_CUSTOMIZED = "interval_customized"
 
     // ===== 卡死自恢复 =====
@@ -33,8 +32,8 @@ object AppConfig {
     private const val KEY_TIMED_STOP_MINUTES = "timed_stop_minutes"
     private const val KEY_APP_ROTATION = "app_rotation"
     private const val KEY_ROTATION_MINUTES = "rotation_minutes"
+    private const val KEY_ROTATION_APPS = "rotation_apps"
     private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
-    private const val KEY_ALLOWED_APPS = "allowed_apps"
     private const val KEY_AD_KEYWORDS = "ad_block_keywords"
 
     // ===== 看广告得金币（高风险独立任务） =====
@@ -72,8 +71,6 @@ object AppConfig {
     const val DEFAULT_AUTO_LIKE = false
     const val DEFAULT_LIKE_PROBABILITY = 30
 
-    /** 场景自动识别：默认开启（打开哪个 APP 就用哪套策略） */
-    const val DEFAULT_AUTO_SCENE = true
 
     /** 卡死自恢复：默认开启（避免刷到底后无脑空转） */
     const val DEFAULT_AUTO_RECOVER = true
@@ -108,14 +105,6 @@ object AppConfig {
     const val DEFAULT_CUSTOM_SWIPE_DISTANCE = 70      // 滑动距离占屏幕百分比
     const val MIN_CUSTOM_PCT = 5
     const val MAX_CUSTOM_PCT = 95
-
-    // 自定义手势类型常量
-    const val GESTURE_SWIPE_UP = "swipe_up"
-    const val GESTURE_SWIPE_DOWN = "swipe_down"
-    const val GESTURE_SWIPE_LEFT = "swipe_left"
-    const val GESTURE_SWIPE_RIGHT = "swipe_right"
-    const val GESTURE_TAP = "tap"
-    const val GESTURE_DOUBLE_TAP = "double_tap"
 
     /** 「看广告得金币」入口默认关键词（可在任务页自行增删） */
     val DEFAULT_AD_REWARD_KEYWORDS: Set<String> = setOf(
@@ -171,18 +160,6 @@ object AppConfig {
     fun setCurrentScene(context: Context, scene: String) =
         prefs(context).edit().putString(KEY_CURRENT_SCENE, scene).apply()
 
-    // ---------- 场景自动识别（O6） ----------
-    /**
-     * 是否根据前台 APP 自动切换场景模板。
-     * 默认开启：绝大多数用户装了这个应用就是希望「打开哪个 APP 就用哪套策略」。
-     */
-    fun isAutoScene(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_AUTO_SCENE, DEFAULT_AUTO_SCENE)
-    fun setAutoScene(context: Context, value: Boolean) =
-        prefs(context).edit().putBoolean(KEY_AUTO_SCENE, value).apply()
-
-    /** service 层惯用命名的别名 */
-    fun isAutoSceneEnabled(context: Context): Boolean = isAutoScene(context)
 
     /**
      * 用户是否手工改过滑动节奏。
@@ -237,6 +214,17 @@ object AppConfig {
         prefs(context).getInt(KEY_ROTATION_MINUTES, DEFAULT_ROTATION_MINUTES)
     fun setRotationMinutes(context: Context, value: Int) =
         prefs(context).edit().putInt(KEY_ROTATION_MINUTES, value).apply()
+
+    // ---------- 多 APP 轮换：用户自选的待轮换应用包名池 ----------
+    fun getRotationApps(context: Context): Set<String> {
+        val raw = prefs(context).getString(KEY_ROTATION_APPS, null).orEmpty()
+        if (raw.isBlank()) return emptySet()
+        return raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }
+    fun setRotationApps(context: Context, apps: Set<String>) =
+        prefs(context).edit()
+            .putString(KEY_ROTATION_APPS, apps.joinToString(","))
+            .apply()
 
     fun isKeepScreenOn(context: Context): Boolean =
         prefs(context).getBoolean(KEY_KEEP_SCREEN_ON, DEFAULT_KEEP_SCREEN_ON)
@@ -328,11 +316,11 @@ object AppConfig {
 
     fun getCustomSwipeDistance(context: Context): Int =
         prefs(context).getInt(KEY_CUSTOM_SWIPE_DISTANCE, DEFAULT_CUSTOM_SWIPE_DISTANCE)
-            .coerceIn(20, 90)
+            .coerceIn(MIN_CUSTOM_PCT, MAX_CUSTOM_PCT)
 
     fun setCustomSwipeDistance(context: Context, value: Int) =
         prefs(context).edit()
-            .putInt(KEY_CUSTOM_SWIPE_DISTANCE, value.coerceIn(20, 90))
+            .putInt(KEY_CUSTOM_SWIPE_DISTANCE, value.coerceIn(MIN_CUSTOM_PCT, MAX_CUSTOM_PCT))
             .apply()
 
     // ---------- 自定义手势序列（可编排：手势 + 等待秒数 循环） ----------
@@ -362,11 +350,6 @@ object AppConfig {
     fun hasCustomGestureSequence(context: Context): Boolean =
         getCustomGestureSequence(context).any { !it.isWaitOnly() }
 
-    fun getAllowedApps(context: Context): Set<String> =
-        prefs(context).getStringSet(KEY_ALLOWED_APPS, emptySet()) ?: emptySet()
-
-    fun setAllowedApps(context: Context, apps: Set<String>) =
-        prefs(context).edit().putStringSet(KEY_ALLOWED_APPS, LinkedHashSet(apps)).apply()
 
     // ---------- 广告屏蔽关键词 ----------
     fun getAdKeywords(context: Context): Set<String> {
@@ -425,17 +408,6 @@ object AppConfig {
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .toSet()
-    }
-
-    /**
-     * 判断某个前台包名是否允许自动滚动：
-     * 清单为空 = 不限制（对所有应用生效）；否则仅允许清单内的应用。
-     */
-    fun isAppAllowed(context: Context, packageName: String?): Boolean {
-        if (packageName.isNullOrBlank()) return false
-        val apps = getAllowedApps(context)
-        if (apps.isEmpty()) return true
-        return apps.contains(packageName)
     }
 
     // ---------- 校验 ----------

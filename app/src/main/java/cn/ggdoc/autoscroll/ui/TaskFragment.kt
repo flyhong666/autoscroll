@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.ui
 
+import cn.ggdoc.autoscroll.util.registerReceiverSafe
 import android.app.TimePickerDialog
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -69,6 +70,8 @@ class TaskFragment : Fragment() {
     private lateinit var likeProbabilityContainer: View
     private lateinit var timedStopContainer: View
     private lateinit var rotationContainer: View
+    private lateinit var rotationAppsRow: View
+    private lateinit var tvRotationAppsSummary: TextView
     private lateinit var scheduleTimeContainer: View
     private lateinit var batteryThresholdContainer: View
     private lateinit var adRewardIntervalContainer: View
@@ -123,11 +126,7 @@ class TaskFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         val filter = IntentFilter(AutoScrollAccessibilityService.BROADCAST_STATE_CHANGED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(stateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            requireContext().registerReceiver(stateReceiver, filter)
-        }
+        requireContext().registerReceiverSafe(stateReceiver, filter)
         refreshStats()
     }
 
@@ -175,6 +174,8 @@ class TaskFragment : Fragment() {
         likeProbabilityContainer = v.findViewById(R.id.likeProbabilityContainer)
         timedStopContainer = v.findViewById(R.id.timedStopContainer)
         rotationContainer = v.findViewById(R.id.rotationContainer)
+        rotationAppsRow = v.findViewById(R.id.rotationAppsRow)
+        tvRotationAppsSummary = v.findViewById(R.id.tvRotationAppsSummary)
         scheduleTimeContainer = v.findViewById(R.id.scheduleTimeContainer)
         batteryThresholdContainer = v.findViewById(R.id.batteryThresholdContainer)
         adRewardIntervalContainer = v.findViewById(R.id.adRewardIntervalContainer)
@@ -232,7 +233,9 @@ class TaskFragment : Fragment() {
         }
         switchAppRotation.setOnCheckedChangeListener { _, isChecked ->
             rotationContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+            rotationAppsRow.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
+        rotationAppsRow.setOnClickListener { openAppPicker() }
         switchSchedule.setOnCheckedChangeListener { _, isChecked ->
             scheduleTimeContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
@@ -323,6 +326,8 @@ class TaskFragment : Fragment() {
         likeProbabilityContainer.visibility = if (switchAutoLike.isChecked) View.VISIBLE else View.GONE
         timedStopContainer.visibility = if (switchTimedStop.isChecked) View.VISIBLE else View.GONE
         rotationContainer.visibility = if (switchAppRotation.isChecked) View.VISIBLE else View.GONE
+        rotationAppsRow.visibility = if (switchAppRotation.isChecked) View.VISIBLE else View.GONE
+        updateRotationAppsSummary()
         scheduleTimeContainer.visibility = if (switchSchedule.isChecked) View.VISIBLE else View.GONE
         batteryThresholdContainer.visibility = if (switchBatteryGuard.isChecked) View.VISIBLE else View.GONE
 
@@ -353,6 +358,27 @@ class TaskFragment : Fragment() {
         sliderDetailMaxScrolls.value = AppConfig.getDetailMaxScrolls(ctx).toFloat()
             .coerceIn(sliderDetailMaxScrolls.valueFrom, sliderDetailMaxScrolls.valueTo)
         tvDetailMaxScrolls.text = sliderDetailMaxScrolls.value.toInt().toString()
+    }
+
+    private fun updateRotationAppsSummary() {
+        val count = AppConfig.getRotationApps(requireContext()).size
+        tvRotationAppsSummary.text = if (count == 0) {
+            getString(R.string.rotation_apps_empty)
+        } else {
+            getString(R.string.rotation_apps_count, count)
+        }
+    }
+
+    private fun openAppPicker() {
+        val dialog = AppPickerDialogFragment()
+        dialog.initialSelection = AppConfig.getRotationApps(requireContext())
+        dialog.onConfirm = { set ->
+            AppConfig.setRotationApps(requireContext(), set)
+            updateRotationAppsSummary()
+            // 实时刷新服务内的轮换池，无需重启滚动
+            AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+        }
+        dialog.show(childFragmentManager, "rotation_app_picker")
     }
 
     private fun saveSettings() {

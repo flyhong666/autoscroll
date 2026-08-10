@@ -5,8 +5,8 @@
     android:layout_height="match_parent"
     android:background="@color/bg_page"
     android:orientation="vertical"
-    android:paddingLeft="20dp"
-    android:paddingRight="20dp">
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -30,8 +30,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="14dp"
-        app:cardBackgroundColor="#FFF7E6"
-        app:strokeColor="#FFE0A3">
+        app:cardBackgroundColor="@color/tip_bg"
+        app:strokeColor="@color/tip_stroke">
 
         <TextView
             android:id="@+id/tvScriptTip"
@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:padding="14dp"
             android:text="@string/script_tip"
-            android:textColor="#8A5A00"
+            android:textColor="@color/tip_text"
             android:textSize="12sp"
             android:lineSpacingExtra="3dp" />
     </com.google.android.material.card.MaterialCardView>

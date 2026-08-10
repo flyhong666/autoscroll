@@ -17,8 +17,9 @@ import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
 
 /**
- * 基础参数设置底部弹窗：滑动间隔 / 时长 + 生效应用（用户自选已安装 APP）
+ * 基础参数设置底部弹窗：滑动间隔 / 时长
  * 从控制页的「设置」入口打开，避免控制页过长需要滚动。
+ * 场景由用户在 UI 手动选择，工具对前台任何 App 都按当前场景参数来刷。
  */
 class SettingsBottomSheet : BottomSheetDialogFragment() {
 
@@ -37,14 +38,9 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     private lateinit var tvMaxDuration: TextView
     private lateinit var cardSceneEntry: MaterialCardView
     private lateinit var tvSceneSummary: TextView
-    private lateinit var cardAllowedApps: MaterialCardView
-    private lateinit var tvAllowedAppsSummary: TextView
     private lateinit var etAdKeywords: TextInputEditText
     private lateinit var btnApplyRecommend: MaterialButton
     private lateinit var btnSaveSettings: MaterialButton
-
-    /** 当前选中的生效应用包名集合（未保存前仅存于内存） */
-    private var selectedApps: MutableSet<String> = mutableSetOf()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -59,7 +55,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         loadSettingsToUI()
 
         cardSceneEntry.setOnClickListener { openScenePicker() }
-        cardAllowedApps.setOnClickListener { openAppPicker() }
         btnApplyRecommend.setOnClickListener { applyRecommendParams() }
         btnSaveSettings.setOnClickListener { saveSettings() }
     }
@@ -75,8 +70,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         tvMaxDuration = v.findViewById(R.id.tvMaxDuration)
         cardSceneEntry = v.findViewById(R.id.cardSceneEntry)
         tvSceneSummary = v.findViewById(R.id.tvSceneSummary)
-        cardAllowedApps = v.findViewById(R.id.cardAllowedApps)
-        tvAllowedAppsSummary = v.findViewById(R.id.tvAllowedAppsSummary)
         etAdKeywords = v.findViewById(R.id.etAdKeywords)
         btnApplyRecommend = v.findViewById(R.id.btnApplyRecommend)
         btnSaveSettings = v.findViewById(R.id.btnSaveSettings)
@@ -112,8 +105,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         tvMinDuration.text = "${sliderMinDuration.value.toInt()}ms"
         tvMaxDuration.text = "${sliderMaxDuration.value.toInt()}ms"
 
-        selectedApps = AppConfig.getAllowedApps(ctx).toMutableSet()
-        updateAllowedAppsSummary()
         updateSceneSummary()
 
         etAdKeywords.setText(AppConfig.getAdKeywords(ctx).joinToString(","))
@@ -132,24 +123,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             onSceneChanged?.invoke()
         }
         dialog.show(childFragmentManager, "scene_picker")
-    }
-
-    private fun updateAllowedAppsSummary() {
-        tvAllowedAppsSummary.text = if (selectedApps.isEmpty()) {
-            getString(R.string.allowed_apps_empty)
-        } else {
-            getString(R.string.allowed_apps_count, selectedApps.size)
-        }
-    }
-
-    private fun openAppPicker() {
-        val dialog = AppPickerDialogFragment()
-        dialog.initialSelection = selectedApps.toSet()
-        dialog.onConfirm = { set ->
-            selectedApps = set.toMutableSet()
-            updateAllowedAppsSummary()
-        }
-        dialog.show(childFragmentManager, "app_picker")
     }
 
     private fun applyRecommendParams() {
@@ -187,7 +160,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         AppConfig.setMaxInterval(ctx, maxI)
         AppConfig.setMinDuration(ctx, minD)
         AppConfig.setMaxDuration(ctx, maxD)
-        AppConfig.setAllowedApps(ctx, selectedApps)
         AppConfig.setAdKeywords(ctx, AppConfig.parseKeywords(etAdKeywords.text.toString()))
         AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
         Toast.makeText(ctx, R.string.params_saved, Toast.LENGTH_SHORT).show()

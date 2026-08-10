@@ -29,7 +29,6 @@ import cn.ggdoc.autoscroll.config.StatsStore
 import cn.ggdoc.autoscroll.human.HumanGestureDispatcher
 import cn.ggdoc.autoscroll.human.HumanTiming
 import cn.ggdoc.autoscroll.human.RotationPlanner
-import cn.ggdoc.autoscroll.human.SceneDetector
 import cn.ggdoc.autoscroll.human.ScheduleUtils
 import cn.ggdoc.autoscroll.human.StuckDetector
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
@@ -56,9 +55,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         const val EVENT_AD_BLOCK = "ad_block"
         const val EVENT_LIKE = "like"
         const val EVENT_AD_REWARD = "ad_reward"
-
-        /** 场景自动识别触发的切换（O6） */
-        const val EVENT_SCENE_AUTO = "scene_auto"
 
         /** 卡死自恢复动作（O2） */
         const val EVENT_STUCK_RECOVER = "stuck_recover"
@@ -118,8 +114,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             private set
         var keepScreenOn: Boolean = AppConfig.DEFAULT_KEEP_SCREEN_ON
             private set
-        var allowedApps: Set<String> = emptySet()
-            private set
 
         // 定时运行 / 保护
         var scheduleEnabled: Boolean = AppConfig.DEFAULT_SCHEDULE_ENABLED
@@ -149,16 +143,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         var detailReadAllProbability: Int = AppConfig.DEFAULT_DETAIL_READ_ALL_PROBABILITY
             private set
         var detailMaxScrolls: Int = AppConfig.DEFAULT_DETAIL_MAX_SCROLLS
-            private set
-
-        // 自定义手势
-        var customGestureType: String = AppConfig.DEFAULT_CUSTOM_GESTURE_TYPE
-            private set
-        var customTapX: Int = AppConfig.DEFAULT_CUSTOM_TAP_X
-            private set
-        var customTapY: Int = AppConfig.DEFAULT_CUSTOM_TAP_Y
-            private set
-        var customSwipeDistance: Int = AppConfig.DEFAULT_CUSTOM_SWIPE_DISTANCE
             private set
 
         // 自定义手势序列（可编排：手势 + 等待秒数，循环执行）
@@ -263,7 +247,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 // 换了 APP 等于换了内容源，卡死计数清零避免误判
                 stuckDetector.reset()
                 stuckSameCount = 0
-                maybeAutoSwitchScene(pkg)
                 broadcastState()
             }
         }
@@ -280,46 +263,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     private var lastAdScanTime = 0L
-
-    /**
-     * 场景自动识别（O6）：前台 APP 变化时，按包名把场景切到对应模板。
-     *
-     * 为什么需要：原来切了 APP 但场景还停在上一个——用短视频的策略去刷新闻，
-     * 滑动幅度、间隔、点赞全是错的。
-     *
-     * 三条保护：
-     * - 需用户在设置里开启「场景自动识别」才生效
-     * - 自定义场景是用户手工编排的，永不被自动覆盖
-     * - 系统 UI / 桌面 / 本应用自身不触发切换
-     */
-    private fun maybeAutoSwitchScene(pkg: String) {
-        if (!AppConfig.isAutoSceneEnabled(this)) return
-        if (pkg == packageName) return
-        val target = SceneDetector.sceneOf(pkg) ?: return
-        if (!SceneDetector.shouldSwitch(currentScene, pkg)) return
-        if (target == currentScene) return
-
-        currentScene = target
-        AppConfig.setCurrentScene(this, target)
-        // 场景切换后同步该场景的推荐节奏（用户未手工改过时才跟随）
-        applySceneRecommendIfDefault(target)
-        detailFlow.resetCursor()
-        Log.i(TAG, "场景自动识别：$pkg -> $target")
-        sendTaskEvent(EVENT_SCENE_AUTO, getString(R.string.toast_scene_auto_switched, target))
-    }
-
-    /**
-     * 场景自动切换后跟随该场景的推荐滑动参数。
-     * 仅在用户没有手工调过节奏时生效，避免覆盖用户的自定义设置。
-     */
-    private fun applySceneRecommendIfDefault(sceneId: String) {
-        if (AppConfig.isIntervalCustomized(this)) return
-        val scene = SceneConfig.getScene(sceneId)
-        minIntervalSeconds = scene.recommendMinInterval
-        maxIntervalSeconds = scene.recommendMaxInterval
-        minDurationMs = scene.recommendMinDuration
-        maxDurationMs = scene.recommendMaxDuration
-    }
 
     override fun onInterrupt() {
         stopScrolling()
@@ -340,7 +283,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         appRotation = AppConfig.isAppRotation(this)
         rotationMinutes = AppConfig.getRotationMinutes(this)
         keepScreenOn = AppConfig.isKeepScreenOn(this)
-        allowedApps = AppConfig.getAllowedApps(this)
         scheduleEnabled = AppConfig.isScheduleEnabled(this)
         scheduleStartMin = AppConfig.getScheduleStartMin(this)
         scheduleEndMin = AppConfig.getScheduleEndMin(this)
@@ -353,18 +295,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         detailDwellMax = AppConfig.getDetailDwellMax(this)
         detailReadAllProbability = AppConfig.getDetailReadAllProbability(this)
         detailMaxScrolls = AppConfig.getDetailMaxScrolls(this)
-        customGestureType = AppConfig.getCustomGestureType(this)
-        customTapX = AppConfig.getCustomTapX(this)
-        customTapY = AppConfig.getCustomTapY(this)
-        customSwipeDistance = AppConfig.getCustomSwipeDistance(this)
         customGestureSequence = AppConfig.getCustomGestureSequence(this)
 
-        // 重建轮换列表：若用户设置了生效应用清单，则在其范围内轮换
+        // 轮换列表：由用户在「多 APP 轮换」里从已安装应用自选的包名池；
+        // 场景本身仍只由用户在 UI 手动选择，工具对前台任何 App 都按当前场景参数来刷。
         rotationList.clear()
-        rotationList.addAll(
-            if (allowedApps.isNotEmpty()) allowedApps
-            else SceneConfig.getScenePackages(currentScene)
-        )
+        rotationList.addAll(AppConfig.getRotationApps(this))
         rotationIndex = 0
 
         Log.d(
@@ -515,14 +451,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 生效应用过滤：清单为空=不限制；否则仅允许清单内的应用
-        if (allowedApps.isNotEmpty() && foregroundPackage != null &&
-            !allowedApps.contains(foregroundPackage)
-        ) {
-            Log.v(TAG, "过滤：当前包名<$foregroundPackage>不在生效应用清单中，跳过")
-            return
-        }
-
         // 1. 广告屏蔽
         tryAdBlock()
 
@@ -536,11 +464,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             SceneConfig.ScrollMode.PAGE -> {
                 // 小说：翻页 + 偶尔小幅上滑兜底
                 performPageTurn()
-                scrollCount++
-            }
-            SceneConfig.ScrollMode.DOUBLE_COLUMN -> {
-                // 社交动态：双列瀑布流交叉滑动（含点赞）
-                performDoubleColumnScroll()
                 scrollCount++
             }
             SceneConfig.ScrollMode.VERTICAL -> {
@@ -673,44 +596,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 社交动态：双列瀑布流交叉滑动。
-     * 左右两列交替命中——偶数轮略偏左（命中右列），奇数轮略偏右（命中左列），
-     * 配合场景中设定的上下滑动比例，模拟真人手指在信息流中上下扫动的手感。
-     */
-    private fun performDoubleColumnScroll() {
-        val scene = SceneConfig.getScene(currentScene)
-        try {
-            val (w, h) = getScreenSize()
-            if (w <= 0 || h <= 0) return
-            val cross = scene.swipeCrossXRatio
-            val centerX = if (doubleColumnToggle) {
-                // 偶数轮：起始点略偏左，终点回到中线右侧 -> 命中右列卡片
-                w * (0.5f - cross)
-            } else {
-                // 奇数轮：起始点略偏右，终点回到中线左侧 -> 命中左列卡片
-                w * (0.5f + cross)
-            }
-            doubleColumnToggle = !doubleColumnToggle
-            val startY = h * scene.swipeStartYRatio
-            val endY = h * scene.swipeEndYRatio
-            // 加入 ±6% 随机抖动，避免每次完全一致的轨迹
-            val jitterX = centerX + (Random.nextFloat() - 0.5f) * w * 0.12f
-            dispatchSwipe(
-                jitterX, startY, jitterX, endY,
-                randomDuration(minBias = 30L), "double_column"
-            )
-            Log.d(TAG, "社交双列滑动（${if (doubleColumnToggle) "左列" else "右列"}）")
-        } catch (e: Exception) {
-            Log.e(TAG, "双列滑动失败，回退普通滑动", e)
-            performScroll()
-        }
-    }
-
-    /** 双列交叉滑动的左右交替标志 */
-    @Volatile
-    private var doubleColumnToggle = false
-
-    /**
      * 小说场景：点按屏幕翻页
      * - 85% 概率点右侧翻下一页（多数阅读器右侧为前进区）
      * - 10% 概率左滑翻页（兼容滑动翻页的阅读器）
@@ -764,13 +649,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 自定义场景：执行用户配置的手势
-     * 支持：上滑/下滑/左滑/右滑/单击/双击
-     */
-    /**
      * 自定义通用场景：按用户编排的手势序列逐步执行。
      * 每一步执行后等待该步指定的秒数，再执行下一步；序列末尾自动从头循环。
-     * 序列为空时降级为旧版单手势 / 整屏上滑。
+     * 序列为空时降级为整屏上滑。
      */
     private fun performCustomSequence() {
         val seq = customGestureSequence
@@ -850,67 +731,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 dispatchSwipe(startX, y, endX, y, randomDuration(), "custom_swipe_right")
             }
             else -> performScreenGesture(SceneConfig.getScene(currentScene))
-        }
-    }
-
-    /**
-     * 兼容旧版单手势入口（无序列时使用）。
-     */
-    private fun performCustomGesture() {
-        val (w, h) = getScreenSize()
-        if (w <= 0 || h <= 0) return
-        val xPct = customTapX / 100f
-        val yPct = customTapY / 100f
-        val distPct = customSwipeDistance / 100f
-        // 加入小幅随机偏移（±5%）使手势更自然
-        val jitterX = (Random.nextFloat() - 0.5f) * 0.10f
-        val jitterY = (Random.nextFloat() - 0.5f) * 0.10f
-
-        when (customGestureType) {
-            AppConfig.GESTURE_TAP -> {
-                val x = w * (xPct + jitterX).coerceIn(0.05f, 0.95f)
-                val y = h * (yPct + jitterY).coerceIn(0.05f, 0.95f)
-                tapScreen(x, y, 60L)
-                Log.d(TAG, "自定义手势：单击 (${"%.0f".format(xPct * 100)}%, ${"%.0f".format(yPct * 100)}%)")
-            }
-            AppConfig.GESTURE_DOUBLE_TAP -> {
-                val x = w * (xPct + jitterX).coerceIn(0.05f, 0.95f)
-                val y = h * (yPct + jitterY).coerceIn(0.05f, 0.95f)
-                performDoubleClick(x, y)
-                Log.d(TAG, "自定义手势：双击 (${"%.0f".format(xPct * 100)}%, ${"%.0f".format(yPct * 100)}%)")
-            }
-            AppConfig.GESTURE_SWIPE_UP -> {
-                val cx = w * (xPct + jitterX).coerceIn(0.10f, 0.90f)
-                val startY = h * ((yPct + distPct / 2f) + jitterY).coerceIn(0.10f, 0.95f)
-                val endY = (startY - h * distPct).coerceIn(0.05f, startY - 0.05f * h)
-                dispatchSwipe(cx, startY, cx, endY, randomDuration(), "custom_swipe_up")
-                Log.d(TAG, "自定义手势：上滑")
-            }
-            AppConfig.GESTURE_SWIPE_DOWN -> {
-                val cx = w * (xPct + jitterX).coerceIn(0.10f, 0.90f)
-                val startY = h * ((yPct - distPct / 2f) + jitterY).coerceIn(0.05f, 0.90f)
-                val endY = (startY + h * distPct).coerceIn(startY + 0.05f * h, 0.95f * h)
-                dispatchSwipe(cx, startY, cx, endY, randomDuration(), "custom_swipe_down")
-                Log.d(TAG, "自定义手势：下滑")
-            }
-            AppConfig.GESTURE_SWIPE_LEFT -> {
-                val cy = h * (yPct + jitterY).coerceIn(0.10f, 0.90f)
-                val startX = w * ((xPct + distPct / 2f) + jitterX).coerceIn(0.10f, 0.95f)
-                val endX = (startX - w * distPct).coerceIn(0.05f, startX - 0.05f * w)
-                dispatchSwipe(startX, cy, endX, cy, randomDuration(), "custom_swipe_left")
-                Log.d(TAG, "自定义手势：左滑")
-            }
-            AppConfig.GESTURE_SWIPE_RIGHT -> {
-                val cy = h * (yPct + jitterY).coerceIn(0.10f, 0.90f)
-                val startX = w * ((xPct - distPct / 2f) + jitterX).coerceIn(0.05f, 0.90f)
-                val endX = (startX + w * distPct).coerceIn(startX + 0.05f * w, 0.95f * w)
-                dispatchSwipe(startX, cy, endX, cy, randomDuration(), "custom_swipe_right")
-                Log.d(TAG, "自定义手势：右滑")
-            }
-            else -> {
-                // 降级为上滑
-                performScreenGesture(SceneConfig.getScene(currentScene))
-            }
         }
     }
 
@@ -1046,12 +866,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     /** 广告屏蔽入口（供详情流在周期节点调用） */
     fun runAdBlockCheck() = tryAdBlock()
 
-    /** 保护策略 + 生效应用清单 + 看广告期综合校验 */
+    /** 保护策略 + 看广告期综合校验 */
     fun isFlowAllowedToAct(): Boolean {
         if (isWatchingAdReward) return false
         if (isBlockedByPolicy()) return false
-        val pkg = foregroundPackage
-        if (allowedApps.isNotEmpty() && pkg != null && !allowedApps.contains(pkg)) return false
         return true
     }
 
@@ -1106,13 +924,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         if (!isScrolling || !adReward) return
         // 保护策略生效时（如低电量 / 非 Wi-Fi）不做激励任务
         if (isBlockedByPolicy()) {
-            scheduleAdReward()
-            return
-        }
-        // 生效应用过滤：不在清单内的应用不尝试
-        if (allowedApps.isNotEmpty() && foregroundPackage != null &&
-            !allowedApps.contains(foregroundPackage)
-        ) {
             scheduleAdReward()
             return
         }

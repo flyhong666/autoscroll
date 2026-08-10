@@ -26,6 +26,11 @@
     <color name="danger">#EF4444</color>
     <color name="danger_bg">#FFF1F0</color>
 
+    <!-- 提示卡片 -->
+    <color name="tip_bg">#FFF7E6</color>
+    <color name="tip_stroke">#FFE0A3</color>
+    <color name="tip_text">#8A5A00</color>
+
     <!-- 悬浮窗 -->
     <color name="floating_bg">#CC2F6BFF</color>
     <color name="floating_stroke">#FFFFFF</color>

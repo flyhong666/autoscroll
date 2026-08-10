@@ -2,134 +2,80 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/bottom_sheet_bg"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:paddingTop="10dp"
-    android:paddingBottom="16dp">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <!-- 标题行 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="12dp">
+        android:padding="16dp">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/app_picker_title"
+            android:text="@string/rotation_apps_title"
             android:textAppearance="@style/TextAppearance.Title"
             android:textSize="17sp" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPickerDone"
-            style="@style/AutoScrollButton"
+            android:id="@+id/btnAppPickerSelectAll"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_picker_done"
-            android:textSize="12sp"
-            android:paddingLeft="18dp"
-            android:paddingRight="18dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            app:backgroundTint="@color/purple_500"
-            app:cornerRadius="12dp" />
+            android:text="@string/app_picker_select_all" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAppPickerClear"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_picker_clear" />
     </LinearLayout>
 
-    <!-- 搜索框 -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxStrokeColor="@color/purple_500">
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:hint="@string/app_picker_search_hint"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etSearch"
+            android:id="@+id/etAppSearch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/app_picker_search_hint"
-            android:inputType="text"
-            android:imeOptions="actionDone"
-            android:textSize="14sp" />
+            android:inputType="text" />
     </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- 全选 / 清空 + 计数 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
-
-        <TextView
-            android:id="@+id/tvPickerCount"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="@color/text_hint" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSelectAll"
-            style="@style/AutoScrollButton.Outline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_picker_select_all"
-            android:textSize="12sp"
-            android:paddingLeft="14dp"
-            android:paddingRight="14dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
-            app:strokeColor="@color/purple_500"
-            android:textColor="@color/purple_700"
-            app:cornerRadius="12dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnClear"
-            style="@style/AutoScrollButton.Outline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/app_picker_clear"
-            android:textSize="12sp"
-            android:paddingLeft="14dp"
-            android:paddingRight="14dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
-            app:strokeColor="@color/teal_700"
-            android:textColor="@color/teal_700"
-            app:cornerRadius="12dp" />
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:background="@color/border"
-        android:layout_marginBottom="4dp" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvApps"
         android:layout_width="match_parent"
-        android:layout_height="340dp"
-        android:scrollbars="vertical"
-        android:clipToPadding="false" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingTop="4dp" />
 
-    <TextView
-        android:id="@+id/tvPickerEmpty"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingTop="28dp"
-        android:paddingBottom="28dp"
-        android:text="@string/app_picker_empty"
-        android:textSize="13sp"
-        android:textColor="@color/text_hint"
-        android:visibility="gone" />
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical"
+        android:padding="12dp">
 
+        <TextView
+            android:id="@+id/tvAppCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_hint"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAppPickerDone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_picker_done" />
+    </LinearLayout>
 </LinearLayout>
