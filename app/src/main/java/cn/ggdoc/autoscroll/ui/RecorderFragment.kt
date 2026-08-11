@@ -2,6 +2,7 @@ package cn.ggdoc.autoscroll.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -194,19 +195,66 @@ class RecorderFragment : Fragment() {
     private fun onMoreClicked(entry: ScriptStore.Entry, anchor: View) {
         val menu = PopupMenu(requireContext(), anchor)
         menu.menu.add(0, MENU_DETAIL, 0, R.string.script_menu_detail)
-        menu.menu.add(0, MENU_RENAME, 1, R.string.script_menu_rename)
-        menu.menu.add(0, MENU_EXPORT, 2, R.string.script_menu_export)
-        menu.menu.add(0, MENU_DELETE, 3, R.string.script_menu_delete)
+        menu.menu.add(0, MENU_EDIT, 1, R.string.script_menu_edit)
+        menu.menu.add(0, MENU_RENAME, 2, R.string.script_menu_rename)
+        menu.menu.add(0, MENU_EXPORT, 3, R.string.script_menu_export)
+        menu.menu.add(0, MENU_DELETE, 4, R.string.script_menu_delete)
+        menu.menu.add(0, MENU_IMPORT, 5, R.string.script_menu_import)
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 MENU_DETAIL -> showDetail(entry)
+                MENU_EDIT -> openEditor(entry)
                 MENU_RENAME -> showRename(entry)
                 MENU_EXPORT -> exportScript(entry)
                 MENU_DELETE -> confirmDelete(entry)
+                MENU_IMPORT -> showImportPicker()
             }
             true
         }
         menu.show()
+    }
+
+    private fun openEditor(entry: ScriptStore.Entry) {
+        if (!isAdded) return
+        val fm = parentFragmentManager
+        if (fm.isStateSaved) return
+        ScriptEditorDialogFragment.newInstance(entry.fileName) { refreshList() }
+            .show(fm, "ScriptEditorDialog")
+    }
+
+    /**
+     * 展示外部专属目录 scripts/ 下的可导入文件列表。
+     * 选中后通过 [ScriptStore.importFromExternal] 复制到私有目录并刷新。
+     */
+    private fun showImportPicker() {
+        val ctx = requireContext()
+        val files = ScriptStore.listExternalImportable(ctx)
+        if (files.isEmpty()) {
+            MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.script_menu_import)
+                .setMessage("外部目录（Android/data/${ctx.packageName}/files/scripts）下没有可导入的脚本。\n\n先从某条脚本点「导出」，或把 .json 脚本文件放到上述目录后再导入。")
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
+        val labels = files.map { it.name }.toTypedArray()
+        var chosen = -1
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.script_menu_import)
+            .setSingleChoiceItems(labels, -1) { _, which -> chosen = which }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton("导入") { _, _ ->
+                if (chosen < 0) return@setPositiveButton
+                val src = files[chosen]
+                val newName = ScriptStore.importFromExternal(ctx, src)
+                if (newName != null) {
+                    toast(getString(R.string.editor_import_done, newName))
+                    refreshList()
+                } else {
+                    toast(R.string.editor_import_failed)
+                }
+            }
+            .show()
     }
 
     private fun showDetail(entry: ScriptStore.Entry) {
@@ -306,12 +354,15 @@ class RecorderFragment : Fragment() {
     }
 
     private fun toast(resId: Int) = Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show()
+    private fun toast(msg: CharSequence) = Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
 
     companion object {
         private const val MENU_DETAIL = 1
-        private const val MENU_RENAME = 2
-        private const val MENU_EXPORT = 3
-        private const val MENU_DELETE = 4
+        private const val MENU_EDIT = 2
+        private const val MENU_RENAME = 3
+        private const val MENU_EXPORT = 4
+        private const val MENU_DELETE = 5
+        private const val MENU_IMPORT = 6
         private const val MAX_DETAIL_LINES = 80
     }
 }

@@ -105,6 +105,55 @@ object ScriptStore {
         null
     }
 
+    /**
+     * 从外部专属目录导入 .json 脚本文件到私有目录。
+     *
+     * 同名冲突时自动在文件名后追加 "_1" "_2" 避免覆盖。
+     *
+     * @return 导入成功返回新文件名，失败返回 null
+     */
+    fun importFromExternal(context: Context, extFile: File): String? = try {
+        if (!extFile.exists() || !extFile.name.endsWith(EXT)) return null
+        // 校验 JSON 合法性：能解析才算有效脚本
+        val parsed = readScript(extFile) ?: return null
+        // 去重：计算目标名，冲突则自增编号
+        var targetName = extFile.name
+        val base = targetName.removeSuffix(EXT)
+        var i = 1
+        val ctxDir = dir(context)
+        while (File(ctxDir, targetName).exists()) {
+            targetName = "${base}_${i}${EXT}"
+            i++
+        }
+        val target = File(ctxDir, targetName)
+        extFile.copyTo(target, overwrite = false)
+        // 若外部文件 name 字段为空，给个兜底
+        if (parsed.name.isBlank()) {
+            val safeName = base.takeIf { it.isNotBlank() } ?: defaultScriptName()
+            save(context, parsed.copy(name = safeName), targetName)
+        }
+        targetName
+    } catch (e: Exception) {
+        Log.e(TAG, "导入脚本失败：${extFile.name}", e)
+        null
+    }
+
+    /**
+     * 列出外部专属目录 scripts/ 下所有可导入的 .json 文件。
+     * 用于给用户展示「选择导入」列表，不用走 SAF 选择器，避免存储权限申请。
+     */
+    fun listExternalImportable(context: Context): List<File> = try {
+        val extRoot = context.getExternalFilesDir(null) ?: return emptyList()
+        val extDir = File(extRoot, DIR_NAME)
+        if (!extDir.exists()) emptyList()
+        else extDir.listFiles { f ->
+            f.isFile && f.name.endsWith(EXT) && !File(dir(context), f.name).exists()
+        }?.sortedByDescending { it.lastModified() }?.toList() ?: emptyList()
+    } catch (e: Exception) {
+        Log.e(TAG, "列出外部脚本失败", e)
+        emptyList()
+    }
+
     fun defaultScriptName(): String =
         "录制_" + SimpleDateFormat("MMdd_HHmm", Locale.getDefault()).format(Date())
 

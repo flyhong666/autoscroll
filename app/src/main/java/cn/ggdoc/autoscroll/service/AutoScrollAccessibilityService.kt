@@ -189,10 +189,79 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var scrollTask: Runnable? = null
     private var timedStopRunnable: Runnable? = null
-    private var rotationRunnable: Runnable? = null
-    private var tickRunnable: Runnable? = null
-    private var adRewardRunnable: Runnable? = null
-    private var adRewardWatchRunnable: Runnable? = null
+
+    // ========== Service 拆分：4 个独立 Controller ==========
+    // 通过 object 表达式实现各自的 ServiceFace 接口，避免 Service 类头膨胀。
+    // 使用 lazy 保证上下文准备完毕后再初始化。
+
+    private val statsFace = object : StatsController.ServiceFace {
+        override val isScrolling: Boolean get() = this@AutoScrollAccessibilityService.let { AutoScrollAccessibilityService.isScrolling }
+        override val runningSeconds: Long get() = this@AutoScrollAccessibilityService.runningSeconds
+        override val timedStop: Boolean get() = this@AutoScrollAccessibilityService.timedStop
+        override val timedStopMinutes: Int get() = this@AutoScrollAccessibilityService.timedStopMinutes
+        override var remainingSeconds: Long
+            get() = this@AutoScrollAccessibilityService.remainingSeconds
+            set(value) { this@AutoScrollAccessibilityService.remainingSeconds = value }
+        override val startTimestamp: Long get() = this@AutoScrollAccessibilityService.startTimestamp
+        override fun broadcastState() = this@AutoScrollAccessibilityService.broadcastState()
+    }
+    private val statsController: StatsController by lazy { StatsController(this, handler, statsFace) }
+
+    private val rotationFace = object : RotationController.ServiceFace {
+        override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
+        override val appRotationEnabled: Boolean get() = this@AutoScrollAccessibilityService.appRotation
+        override val rotationMinutes: Int get() = this@AutoScrollAccessibilityService.rotationMinutes
+        override val rotationList: List<String> get() = this@AutoScrollAccessibilityService.rotationList
+        override val foregroundPackage: String? get() = this@AutoScrollAccessibilityService.foregroundPackage
+        override val packageName: String get() = this@AutoScrollAccessibilityService.packageName
+        override fun sendTaskEvent(type: String, msg: String) =
+            this@AutoScrollAccessibilityService.sendTaskEvent(type, msg)
+        override fun resetStuckDetector() {
+            this@AutoScrollAccessibilityService.let {
+                stuckDetector.reset()
+                stuckSameCount = 0
+            }
+        }
+    }
+    private val rotationController: RotationController by lazy { RotationController(this, handler, rotationFace) }
+
+    private val adRewardFace = object : AdRewardController.ServiceFace {
+        override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
+        override val adRewardEnabled: Boolean get() = this@AutoScrollAccessibilityService.adReward
+        override val adRewardMinutes: Int get() = this@AutoScrollAccessibilityService.adRewardMinutes
+        override val adBlockEnabled: Boolean get() = this@AutoScrollAccessibilityService.adBlock
+        override var adRewardCount: Int
+            get() = this@AutoScrollAccessibilityService.adRewardCount
+            set(value) { this@AutoScrollAccessibilityService.adRewardCount = value }
+        override var isWatchingAdReward: Boolean
+            get() = this@AutoScrollAccessibilityService.isWatchingAdReward
+            set(value) { this@AutoScrollAccessibilityService.isWatchingAdReward = value }
+        override fun isBlockedByPolicy(): Boolean = this@AutoScrollAccessibilityService.isBlockedByPolicy()
+        override fun tryAdBlockNow(): Int {
+            val closed = AdBlocker.scanAndClose(this@AutoScrollAccessibilityService)
+            if (closed > 0) {
+                this@AutoScrollAccessibilityService.adBlockCount += closed
+                this@AutoScrollAccessibilityService.sendTaskEvent(EVENT_AD_BLOCK, getString(R.string.toast_ad_blocked))
+            }
+            return closed
+        }
+        override fun sendTaskEvent(type: String, msg: String) =
+            this@AutoScrollAccessibilityService.sendTaskEvent(type, msg)
+        override fun broadcastState() = this@AutoScrollAccessibilityService.broadcastState()
+        override fun scheduleNextAdReward() = adRewardController.schedule()
+    }
+    private val adRewardController: AdRewardController by lazy { AdRewardController(this, handler, adRewardFace) }
+
+    private val scheduleFace = object : ScheduleController.ServiceFace {
+        override val scheduleEnabled: Boolean get() = this@AutoScrollAccessibilityService.scheduleEnabled
+        override val scheduleStartMin: Int get() = this@AutoScrollAccessibilityService.scheduleStartMin
+        override val scheduleEndMin: Int get() = this@AutoScrollAccessibilityService.scheduleEndMin
+        override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
+        override fun sendBroadcast(intent: Intent) = this@AutoScrollAccessibilityService.sendBroadcast(intent)
+        override fun startScrolling() = this@AutoScrollAccessibilityService.startScrolling()
+        override fun stopScrolling() = this@AutoScrollAccessibilityService.stopScrolling()
+    }
+    private val scheduleController: ScheduleController by lazy { ScheduleController(this, scheduleFace) }
 
     @Volatile
     private var foregroundPackage: String? = null
@@ -332,43 +401,23 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
         isScrolling = true
         startTimestamp = System.currentTimeMillis()
-        // 本次运行的会话计数器清零；跨会话的累计数据由 StatsStore 持久化保存，
-        // 不受这里影响（见 persistStatsDelta 的增量写入设计）
         scrollCount = 0
         likeCount = 0
         adBlockCount = 0
         adRewardCount = 0
         detailCount = 0
         stuckSameCount = 0
-        resetStatsBaseline()
+        statsController.resetBaseline()
         stuckDetector.reset()
-        rotationPlanner = if (rotationList.isNotEmpty()) RotationPlanner(rotationList.toList()) else null
         isWatchingAdReward = false
         detailFlow.resetCursor()
         Log.i(TAG, "开始自动滚动，场景=$currentScene")
 
-        // 屏幕常亮
-        if (keepScreenOn) {
-            KeepAliveManager.acquire(this)
-        }
-
-        // 启动定时停止倒计时
-        if (timedStop) {
-            startTimedStopCountdown()
-        }
-
-        // 启动 APP 轮换
-        if (appRotation && rotationList.isNotEmpty()) {
-            startAppRotation()
-        }
-
-        // 启动「看广告得金币」周期任务（高风险，默认关闭）
-        if (adReward) {
-            scheduleAdReward()
-        }
-
-        // 启动每秒 tick（更新剩余时间）
-        startTick()
+        if (keepScreenOn) KeepAliveManager.acquire(this)
+        if (timedStop) startTimedStopCountdown()
+        rotationController.start()
+        adRewardController.schedule()
+        statsController.startTick()
 
         scheduleNextScroll(immediate = true)
         broadcastState()
@@ -377,17 +426,15 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     fun stopScrolling() {
         if (!isScrolling) return
         // 先落盘再翻转标志：runningSeconds 依赖 isScrolling，顺序反了会丢掉本次时长
-        persistStatsDelta()
+        statsController.stop()
+        rotationController.stop()
+        adRewardController.stop()
         isScrolling = false
         isWatchingAdReward = false
         detailFlow.cancel()
         scrollTask?.let { handler.removeCallbacks(it); scrollTask = null }
         stuckCheckRunnable?.let { handler.removeCallbacks(it); stuckCheckRunnable = null }
         timedStopRunnable?.let { handler.removeCallbacks(it); timedStopRunnable = null }
-        rotationRunnable?.let { handler.removeCallbacks(it); rotationRunnable = null }
-        tickRunnable?.let { handler.removeCallbacks(it); tickRunnable = null }
-        adRewardRunnable?.let { handler.removeCallbacks(it); adRewardRunnable = null }
-        adRewardWatchRunnable?.let { handler.removeCallbacks(it); adRewardWatchRunnable = null }
         customSeqRunnable?.let { handler.removeCallbacks(it); customSeqRunnable = null }
 
         KeepAliveManager.release()
@@ -1143,10 +1190,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     /** 今日累计统计（供 UI 展示） */
-    fun getTodayStats(): StatsStore.Stats = StatsStore.today(this)
+    fun getTodayStats(): StatsStore.Stats = statsController.getTodayStats()
 
     /** 历史总计统计（供 UI 展示） */
-    fun getTotalStats(): StatsStore.Stats = StatsStore.total(this)
+    fun getTotalStats(): StatsStore.Stats = statsController.getTotalStats()
 
     // ========== 屏幕尺寸 ==========
     private fun getScreenSize(): Pair<Int, Int> {

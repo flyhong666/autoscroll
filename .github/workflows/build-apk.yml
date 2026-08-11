@@ -42,6 +42,37 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # ---- 质量门禁：单元测试 + Lint（在 release 构建前拦截编译/逻辑错误）----
+      # testDebugUnitTest 会编译 main + test 源码，能提前暴露类似
+      # `Unresolved reference 'Build'` 这种导入遗漏问题，避免等到 assembleRelease 才失败。
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      # lintDebug 生成 HTML/XML 报告；首期非阻断（abortOnError=false），
+      # 仅上传报告让问题可见，待历史告警清理后再改为强制阻断。
+      - name: Run lint
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+          retention-days: 14
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: |
+            app/build/reports/lint-results-*.html
+            app/build/reports/lint-results-*.xml
+          retention-days: 14
+
       # 解密正式签名 keystore（仅当仓库配置了 SIGNING_KEYSTORE_BASE64 secret 时执行）
       - name: Decode signing keystore
         if: ${{ env.HAS_KEYSTORE == 'true' }}

@@ -35,8 +35,19 @@ android {
     }
 
     buildTypes {
-        release {
+        debug {
+            // debug 也启用 minify 可以本地复现 R8 删除/重命名类导致的运行时崩溃，
+            // 但会拖慢增量构建；这里保持关闭，仅在 release 严格校验。
             isMinifyEnabled = false
+        }
+        release {
+            // 开启 R8 代码混淆 + 资源压缩：
+            //  - 体积更小（约 -30%~50%）
+            //  - 反编译后业务逻辑被混淆，无障碍自动化类应用尤其需要
+            //  - 移除未使用代码，减少 65535 方法数压力
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // 保留 Kotlin 元数据，避免反射 / data class 序列化失效
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -57,6 +68,23 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = false
+    }
+    // lint 配置：CI 跑 lintDebug 生成报告。
+    // 首期保持非阻断（abortOnError=false）——项目已存在若干历史告警，
+    // 先把报告接进来让问题可见，待清理后再改为 true 强制阻断。
+    lint {
+        abortOnError = false
+        warningsAsErrors = false
+        checkReleaseBuilds = false
+        // 无障碍服务必然声明大量权限且面向所有 App，关掉相关噪音
+        disable += setOf(
+            "GoogleAppIndexingWarning",
+            "PackageManagerGetSignatures",
+            "UnusedResources"
+        )
+        // HTML 报告更直观，CI 上传 artifact 便于排查
+        htmlReport = true
+        xmlReport = true
     }
 }
 

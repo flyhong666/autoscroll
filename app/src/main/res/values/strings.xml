@@ -239,9 +239,34 @@
     <string name="script_play_hint">回放时会自动打开录制时的目标 APP，请勿手动操作屏幕。点击悬浮条可随时终止。</string>
 
     <string name="script_menu_detail">查看步骤</string>
+    <string name="script_menu_edit">编辑步骤</string>
+    <string name="script_menu_import">导入脚本</string>
     <string name="script_menu_rename">重命名</string>
     <string name="script_menu_export">导出</string>
     <string name="script_menu_delete">删除</string>
+    <!-- 脚本编辑器 -->
+    <string name="editor_title">编辑脚本：%1$s</string>
+    <string name="editor_subtitle">共 %1$d 步 · 长按拖拽排序，点击可编辑，右侧 X 删除</string>
+    <string name="editor_empty">（脚本为空）</string>
+    <string name="editor_step_delete">删除本步</string>
+    <string name="editor_step_edit">编辑本步</string>
+    <string name="editor_add_wait">+ 在末尾插入「等待」</string>
+    <string name="editor_add_click">+ 在末尾插入「点击」</string>
+    <string name="editor_save">保存修改</string>
+    <string name="editor_saved">脚本已更新，共 %1$d 步</string>
+    <string name="editor_save_failed">保存失败</string>
+    <string name="editor_import_done">已导入脚本「%1$s」</string>
+    <string name="editor_import_failed">导入失败：文件格式错误或不存在</string>
+    <string name="editor_action_click">点击</string>
+    <string name="editor_action_long_click">长按</string>
+    <string name="editor_action_swipe">滑动</string>
+    <string name="editor_action_wait">等待</string>
+    <string name="editor_edit_title">编辑第 %1$d 步</string>
+    <string name="editor_edit_type">动作类型</string>
+    <string name="editor_edit_delay">与上一步间隔（毫秒）</string>
+    <string name="editor_edit_duration">手势持续（毫秒）</string>
+    <string name="editor_edit_xy">坐标（X, Y）</string>
+    <string name="editor_edit_xy2">终点坐标（X2, Y2）</string>
     <string name="script_detail_header">目标应用：%1$s\n步骤数：%2$d\n预计耗时：约 %3$d 秒</string>
     <string name="script_export_done">已导出到：\n%1$s</string>
     <string name="script_delete_confirm">确定删除脚本「%1$s」？此操作不可撤销。</string>
