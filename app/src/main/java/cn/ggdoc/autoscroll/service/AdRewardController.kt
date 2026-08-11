@@ -1,24 +1,33 @@
 package cn.ggdoc.autoscroll.service
 
 import android.content.Context
-import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.task.AdBlocker
 import cn.ggdoc.autoscroll.task.AdRewardTask
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /**
  * 看广告得金币（激励视频）任务控制器。
  *
  * 从 [AutoScrollAccessibilityService] 抽离：
- *  - 周期性尝试（adRewardRunnable）
- *  - 进入激励视频后的观看期轮询（adRewardWatchRunnable）
+ *  - 周期性尝试（scheduleJob）
+ *  - 进入激励视频后的观看期轮询（watchJob）
  *  - 风控：保护策略（低电量/非 Wi-Fi/时间窗口）生效时跳过本轮
+ *
+ * 调度由内部 [CoroutineScope]（主线程）驱动：schedule() 启动一个
+ * `delay(interval) → tryEnter()` 协程；watchJob 用 `while(isActive)` 轮询。
+ * stop() 取消全部协程。
  */
 class AdRewardController(
     private val context: Context,
-    private val handler: Handler,
     private val serviceProvider: ServiceFace
 ) {
 
@@ -37,8 +46,9 @@ class AdRewardController(
         fun scheduleNextAdReward()
     }
 
-    private var adRewardRunnable: Runnable? = null
-    private var adRewardWatchRunnable: Runnable? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var scheduleJob: Job? = null
+    private var watchJob: Job? = null
 
     @Volatile
     private var watching = false
@@ -54,23 +64,28 @@ class AdRewardController(
     /** 开启激励任务周期调度（service.startScrolling 后调用） */
     fun schedule() {
         if (!serviceProvider.isScrolling || !serviceProvider.adRewardEnabled) return
-        adRewardRunnable?.let { handler.removeCallbacks(it) }
-        val task = Runnable { tryEnter() }
-        adRewardRunnable = task
-        handler.postDelayed(task, serviceProvider.adRewardMinutes * 60_000L)
+        scheduleJob?.cancel()
+        val intervalMs = serviceProvider.adRewardMinutes * 60_000L
+        scheduleJob = scope.launch {
+            delay(intervalMs)
+            tryEnter()
+        }
         Log.d(serviceProvider.TAG, "已安排激励任务，${serviceProvider.adRewardMinutes} 分钟后尝试")
     }
 
     fun stop() {
-        adRewardRunnable?.let { handler.removeCallbacks(it); adRewardRunnable = null }
-        adRewardWatchRunnable?.let { handler.removeCallbacks(it); adRewardWatchRunnable = null }
+        scheduleJob?.cancel()
+        scheduleJob = null
+        watchJob?.cancel()
+        watchJob = null
         setWatching(false)
     }
 
     /** 配置发生变更时的重置（运行中重新排下一次） */
     fun onConfigChanged() {
         if (!serviceProvider.isScrolling) return
-        adRewardRunnable?.let { handler.removeCallbacks(it); adRewardRunnable = null }
+        scheduleJob?.cancel()
+        scheduleJob = null
         if (serviceProvider.adRewardEnabled) schedule()
     }
 
@@ -99,33 +114,34 @@ class AdRewardController(
     }
 
     private fun startWatch() {
-        adRewardWatchRunnable?.let { handler.removeCallbacks(it) }
+        watchJob?.cancel()
         val deadline = SystemClock.elapsedRealtime() + AdRewardTask.WATCH_TIMEOUT_MS
-        val poll = object : Runnable {
-            override fun run() {
-                if (!serviceProvider.isScrolling) {
-                    setWatching(false)
-                    return
+        watchJob = scope.launch {
+            delay(AdRewardTask.FIRST_CLOSE_DELAY_MS)
+            try {
+                while (isActive && serviceProvider.isScrolling) {
+                    var closed = 0
+                    if (serviceProvider.adBlockEnabled) {
+                        val svc = context as? AutoScrollAccessibilityService
+                        if (svc == null) return@launch
+                        closed = AdBlocker.scanAndClose(svc)
+                    }
+                    if (closed > 0) serviceProvider.tryAdBlockNow()
+                    if (closed > 0 || SystemClock.elapsedRealtime() >= deadline) {
+                        finishWatch()
+                        return@launch
+                    }
+                    delay(AdRewardTask.CLOSE_POLL_MS)
                 }
-                var closed = 0
-                if (serviceProvider.adBlockEnabled) {
-                    closed = AdBlocker.scanAndClose(context as? AutoScrollAccessibilityService ?: return)
-                }
-                if (closed > 0) serviceProvider.tryAdBlockNow() // 走 Service 的计数/事件
-                if (closed > 0 || SystemClock.elapsedRealtime() >= deadline) {
-                    finishWatch()
-                } else {
-                    handler.postDelayed(this, AdRewardTask.CLOSE_POLL_MS)
-                }
+            } finally {
+                if (watching) setWatching(false)
             }
         }
-        adRewardWatchRunnable = poll
-        handler.postDelayed(poll, AdRewardTask.FIRST_CLOSE_DELAY_MS)
     }
 
     private fun finishWatch() {
         setWatching(false)
-        adRewardWatchRunnable?.let { handler.removeCallbacks(it); adRewardWatchRunnable = null }
+        watchJob = null
         Log.d(serviceProvider.TAG, "激励视频观看结束，恢复滚动")
         serviceProvider.broadcastState()
         schedule()

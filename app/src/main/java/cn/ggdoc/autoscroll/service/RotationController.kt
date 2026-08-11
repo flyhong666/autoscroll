@@ -2,27 +2,31 @@ package cn.ggdoc.autoscroll.service
 
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
 import android.util.Log
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.human.RotationPlanner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /**
  * 多 APP 轮换控制器。
  *
  * 从 [AutoScrollAccessibilityService] 抽离：
- *  - 周期轮换调度（rotationRunnable）
- *  - 目标应用启动 + 延时回查前台包名（launchAndVerify）
+ *  - 周期轮换调度（rotationJob）
+ *  - 目标应用启动 + 延时回查前台包名（launchAndVerify → verifyJob）
  *  - 连续失败下线 / 全局复活
  *
- * 设计约定：
- *  - [start] 必须在 service.isScrolling=true 之后调用
- *  - [stop] 在 stopScrolling 清理 Runnable 阶段调用
- *  - 外部调用方更新 foregroundPackage 后轮换会用到最新值
+ * 调度由内部 [CoroutineScope]（主线程）驱动：start() 启动一个
+ * `while(isScrolling) { ...; delay(interval) }` 协程；verifyJob 用独立协程
+ * 做延时回查。stop() 取消全部协程。
  */
 class RotationController(
     private val context: Context,
-    private val handler: Handler,
     private val serviceProvider: ServiceFace
 ) {
 
@@ -43,41 +47,42 @@ class RotationController(
         private const val ROTATION_VERIFY_DELAY_MS = 3500L
     }
 
-    private var rotationRunnable: Runnable? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var rotationJob: Job? = null
+    private var verifyJob: Job? = null
     private var rotationPlanner: RotationPlanner? = null
 
     fun start() {
         if (!serviceProvider.appRotationEnabled || serviceProvider.rotationList.isEmpty()) return
-        rotationRunnable?.let { handler.removeCallbacks(it) }
+        rotationJob?.cancel()
         val intervalMs = serviceProvider.rotationMinutes.toLong() * 60 * 1000
         val planner = rotationPlanner ?: RotationPlanner(serviceProvider.rotationList).also {
             rotationPlanner = it
         }
-        val runnable = object : Runnable {
-            override fun run() {
-                if (!serviceProvider.isScrolling) return
+        rotationJob = scope.launch {
+            while (isActive && serviceProvider.isScrolling) {
                 val targetPkg = planner.next()
                 if (targetPkg == null) {
                     Log.w(serviceProvider.TAG, "轮换：无可用 APP，跳过本轮")
-                    handler.postDelayed(this, intervalMs)
-                    return
+                } else {
+                    launchAndVerify(planner, targetPkg)
                 }
-                launchAndVerify(planner, targetPkg)
-                handler.postDelayed(this, intervalMs)
+                delay(intervalMs)
             }
         }
-        rotationRunnable = runnable
-        handler.postDelayed(runnable, intervalMs)
     }
 
     fun stop() {
-        rotationRunnable?.let { handler.removeCallbacks(it); rotationRunnable = null }
+        rotationJob?.cancel()
+        rotationJob = null
+        verifyJob?.cancel()
+        verifyJob = null
     }
 
     /** 服务端轮换列表 / 开关被用户修改后调用：重置调度链并按新参数重启（若运行中） */
     fun onRotationConfigChanged() {
         rotationPlanner = null
-        rotationRunnable?.let { handler.removeCallbacks(it); rotationRunnable = null }
+        stop()
         if (serviceProvider.isScrolling) start()
     }
 
@@ -102,8 +107,11 @@ class RotationController(
             return
         }
 
-        handler.postDelayed({
-            if (!serviceProvider.isScrolling) return@postDelayed
+        // 延时回查：给系统留出冷启动时间
+        verifyJob?.cancel()
+        verifyJob = scope.launch {
+            delay(ROTATION_VERIFY_DELAY_MS)
+            if (!serviceProvider.isScrolling) return@launch
             val ok = planner.isSwitchSuccessful(targetPkg, serviceProvider.foregroundPackage)
             if (ok) {
                 planner.markSuccess(targetPkg)
@@ -121,6 +129,6 @@ class RotationController(
                         if (offline) "，已临时下线" else "，将在下轮重试"
                 )
             }
-        }, ROTATION_VERIFY_DELAY_MS)
+        }
     }
 }

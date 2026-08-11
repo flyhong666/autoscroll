@@ -1,26 +1,29 @@
 package cn.ggdoc.autoscroll.service
 
 import android.content.Context
-import android.content.Intent
-import android.os.Handler
-import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.config.StatsStore
 import cn.ggdoc.autoscroll.task.KeepAliveManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /**
  * 每秒 tick 控制器 + 统计增量落盘 + WakeLock 续期。
  *
  * 从 [AutoScrollAccessibilityService] 抽离：
  *  - startTick() 每秒（或 5 秒）触发广播、KeepAlive 续期、每 30 tick 落盘
- *  - persistStatsDelta() 自上次基线以来的增量写入 [StatsStore]
+ *  - persistDelta() 自上次基线以来的增量写入 [StatsStore]
  *  - resetBaseline() 每次 startScrolling 调用
  *
- * 依赖 Service 提供：
- *  - [serviceProvider]：取 runningSeconds / isScrolling / timedStop / remainingSeconds / broadcastState
+ * 调度由内部 [CoroutineScope]（主线程）驱动：startTick 启动一个
+ * `while(isScrolling) { ...; delay(interval) }` 协程，stop() 取消该协程。
  */
 class StatsController(
     private val context: Context,
-    private val handler: Handler,
     private val serviceProvider: ServiceFace
 ) {
 
@@ -38,7 +41,8 @@ class StatsController(
         private const val STATS_PERSIST_TICKS = 30
     }
 
-    private var tickRunnable: Runnable? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var tickJob: Job? = null
     private var tickCount = 0
 
     private var lastPersistedScrolls = 0
@@ -58,11 +62,10 @@ class StatsController(
     }
 
     fun startTick() {
-        tickRunnable?.let { handler.removeCallbacks(it) }
+        tickJob?.cancel()
         tickCount = 0
-        val runnable = object : Runnable {
-            override fun run() {
-                if (!serviceProvider.isScrolling) return
+        tickJob = scope.launch {
+            while (isActive && serviceProvider.isScrolling) {
                 KeepAliveManager.refresh(context)
                 if (serviceProvider.timedStop) {
                     val elapsed = (System.currentTimeMillis() - serviceProvider.startTimestamp) / 1000
@@ -76,16 +79,15 @@ class StatsController(
                 // 未开启定时停止时降频广播，减少耗电
                 val interval = if (serviceProvider.timedStop) 1000L else 5000L
                 serviceProvider.broadcastState()
-                handler.postDelayed(this, interval)
+                delay(interval)
             }
         }
-        tickRunnable = runnable
-        handler.post(runnable)
     }
 
     fun stop() {
+        tickJob?.cancel()
+        tickJob = null
         persistDelta()
-        tickRunnable?.let { handler.removeCallbacks(it); tickRunnable = null }
     }
 
     /** 把当前内存计数器的增量写入 [StatsStore]。stopScrolling 先调这个再翻转 isScrolling。 */

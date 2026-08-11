@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.viewpager2)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

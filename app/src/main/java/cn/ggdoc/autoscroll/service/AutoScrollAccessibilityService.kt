@@ -1,9 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Path
@@ -28,13 +25,17 @@ import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.config.StatsStore
 import cn.ggdoc.autoscroll.human.HumanGestureDispatcher
 import cn.ggdoc.autoscroll.human.HumanTiming
-import cn.ggdoc.autoscroll.human.RotationPlanner
-import cn.ggdoc.autoscroll.human.ScheduleUtils
 import cn.ggdoc.autoscroll.human.StuckDetector
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.task.AdBlocker
-import cn.ggdoc.autoscroll.task.AdRewardTask
 import cn.ggdoc.autoscroll.task.KeepAliveManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 import kotlin.random.Random
 
@@ -61,15 +62,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
         /** 手势派发后等多久再采集指纹：手势时长上限 + 渲染缓冲 */
         private const val STUCK_CHECK_BUFFER_MS = 900
-
-        /** 轮换后回查前台包名的延时，给系统留出冷启动时间 */
-        private const val ROTATION_VERIFY_DELAY_MS = 3500L
-
-        /** 每多少个 tick 落盘一次统计增量 */
-        private const val STATS_PERSIST_TICKS = 30
-
-        /** 统计 tick 计数（startTick 自增，用于按 STATS_PERSIST_TICKS 落盘） */
-        private var tickCount = 0
 
         // 定时运行闹钟
         const val ACTION_SCHEDULE_START = "cn.ggdoc.autoscroll.SCHEDULE_START"
@@ -186,9 +178,16 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             private set
     }
 
-    private val handler = Handler(Looper.getMainLooper())
-    private var scrollTask: Runnable? = null
-    private var timedStopRunnable: Runnable? = null
+    /** 手势派发专用 Handler：仅传给 HumanGestureDispatcher.dispatchSwipe/dispatchDoubleTap，
+     *  用于 dispatchGesture 回调线程化。不用于其他延时调度（那些已改为协程）。 */
+    private val gestureHandler = Handler(Looper.getMainLooper())
+
+    /** Service 级协程作用域：所有延时调度（滚动/卡死检测/定时停止/自定义序列/广告扫描/点赞）
+     *  均通过此 scope.launch + delay 驱动。stopScrolling 取消各 Job，onDestroy 取消整个 scope。 */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private var scrollJob: Job? = null
+    private var timedStopJob: Job? = null
 
     // ========== Service 拆分：4 个独立 Controller ==========
     // 通过 object 表达式实现各自的 ServiceFace 接口，避免 Service 类头膨胀。
@@ -205,7 +204,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         override val startTimestamp: Long get() = this@AutoScrollAccessibilityService.startTimestamp
         override fun broadcastState() = this@AutoScrollAccessibilityService.broadcastState()
     }
-    private val statsController: StatsController by lazy { StatsController(this, handler, statsFace) }
+    private val statsController: StatsController by lazy { StatsController(this, statsFace) }
 
     private val rotationFace = object : RotationController.ServiceFace {
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
@@ -223,7 +222,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             }
         }
     }
-    private val rotationController: RotationController by lazy { RotationController(this, handler, rotationFace) }
+    private val rotationController: RotationController by lazy { RotationController(this, rotationFace) }
 
     private val adRewardFace = object : AdRewardController.ServiceFace {
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
@@ -250,7 +249,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         override fun broadcastState() = this@AutoScrollAccessibilityService.broadcastState()
         override fun scheduleNextAdReward() = adRewardController.schedule()
     }
-    private val adRewardController: AdRewardController by lazy { AdRewardController(this, handler, adRewardFace) }
+    private val adRewardController: AdRewardController by lazy { AdRewardController(this, adRewardFace) }
 
     private val scheduleFace = object : ScheduleController.ServiceFace {
         override val scheduleEnabled: Boolean get() = this@AutoScrollAccessibilityService.scheduleEnabled
@@ -270,19 +269,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     private val rotationList = mutableListOf<String>()
     private var rotationIndex = 0
 
-    /** 轮换规划器：校验切换是否真的成功，连续失败的包名临时下线 */
-    private var rotationPlanner: RotationPlanner? = null
-
     /** 卡死检测：内容指纹连续无变化时分级自恢复 */
     private val stuckDetector = StuckDetector()
 
-    /** 上一次统计落盘时各计数器的快照，用于计算增量 */
-    private var lastPersistedScrolls = 0
-    private var lastPersistedLikes = 0
-    private var lastPersistedAdBlocks = 0
-    private var lastPersistedAdRewards = 0
-    private var lastPersistedDetails = 0
-    private var lastPersistSecondsMark = 0L
+    // 统计增量基线状态已移至 StatsController（lastPersisted* 字段）。
 
     /** 详情流控制器（新闻 / 社交场景） */
     private val detailFlow = DetailFlowController(this)
@@ -292,7 +282,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         _instance = WeakReference(this)
         Log.i(TAG, "无障碍服务已连接")
         loadConfigFromPrefs()
-        if (scheduleEnabled) scheduleAlarms()
+        scheduleController.scheduleAlarms()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -326,7 +316,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             // 限频：避免每次内容变化都扫描
             if (SystemClock.elapsedRealtime() - lastAdScanTime > 2000) {
                 lastAdScanTime = SystemClock.elapsedRealtime()
-                handler.post { tryAdBlock() }
+                scope.launch { tryAdBlock() }
             }
         }
     }
@@ -432,10 +422,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         isScrolling = false
         isWatchingAdReward = false
         detailFlow.cancel()
-        scrollTask?.let { handler.removeCallbacks(it); scrollTask = null }
-        stuckCheckRunnable?.let { handler.removeCallbacks(it); stuckCheckRunnable = null }
-        timedStopRunnable?.let { handler.removeCallbacks(it); timedStopRunnable = null }
-        customSeqRunnable?.let { handler.removeCallbacks(it); customSeqRunnable = null }
+        scrollJob?.cancel(); scrollJob = null
+        stuckCheckJob?.cancel(); stuckCheckJob = null
+        timedStopJob?.cancel(); timedStopJob = null
+        customSeqJob?.cancel(); customSeqJob = null
 
         KeepAliveManager.release()
         remainingSeconds = 0
@@ -448,15 +438,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     private fun scheduleNextScroll(immediate: Boolean = false) {
         if (!isScrolling) return
-        scrollTask?.let { handler.removeCallbacks(it) }
+        scrollJob?.cancel()
 
         val delayMs = if (immediate) {
             0L
         } else {
             // O4：间隔改用「对数正态 + 疲劳曲线 + 偶发长驻留」三层叠加。
-            // 原来是 Random.nextInt(lo, hi) 均匀分布——真人的停留时间是长尾的：
-            // 大多数内容 2~4 秒划走，偶尔遇到感兴趣的会看十几秒；
-            // 并且刷得越久节奏越慢（疲劳），均匀分布完全没有这些特征。
             var base = HumanTiming.nextIntervalMs(
                 minSec = minIntervalSeconds,
                 maxSec = maxIntervalSeconds,
@@ -470,7 +457,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             base
         }
 
-        scrollTask = Runnable {
+        scrollJob = scope.launch {
+            delay(delayMs)
+            if (!isScrolling) return@launch
             val scene = SceneConfig.getScene(currentScene)
             // 新闻 / 社交：列表-详情拟人浏览（点开→浏览→返回），由详情流控制器接管本轮节奏
             if (scene.useDetailFlow) {
@@ -480,7 +469,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 scheduleNextScroll()
             }
         }
-        handler.postDelayed(scrollTask!!, delayMs)
     }
 
     // ========== 单次滚动 + 任务执行 ==========
@@ -539,7 +527,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     // ========== O2：内容指纹 + 无变化自恢复 ==========
 
-    private var stuckCheckRunnable: Runnable? = null
+    private var stuckCheckJob: Job? = null
 
     /**
      * 手势后延时采集屏幕指纹。
@@ -549,10 +537,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
      */
     private fun scheduleStuckCheck() {
         if (!AppConfig.isAutoRecover(this)) return
-        stuckCheckRunnable?.let { handler.removeCallbacks(it) }
+        stuckCheckJob?.cancel()
         val delay = (maxDurationMs + STUCK_CHECK_BUFFER_MS).toLong()
-        stuckCheckRunnable = Runnable { runStuckCheck() }
-        handler.postDelayed(stuckCheckRunnable!!, delay)
+        stuckCheckJob = scope.launch {
+            delay(delay)
+            runStuckCheck()
+        }
     }
 
     private fun runStuckCheck() {
@@ -706,18 +696,18 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             performScroll()
             return
         }
-        // S6 修复：自定义序列由 runCustomStep 的链式 postDelayed 自驱循环（每步 waitSec 后
-        // 推进，到末尾 customSeqStep 归零循环）。早期实现每次外层 tick 都 removeCallbacks +
+        // S6 修复：自定义序列由 runCustomStep 的协程链自驱循环（每步 waitSec 后
+        // 推进，到末尾 customSeqStep 归零循环）。早期实现每次外层 tick 都 cancel +
         // 重置游标再启动，内部循环被反复打断重来，等于双重调度且意图混乱。
-        // 因此：若序列已在运行（customSeqRunnable 非 null），直接交给内部循环驱动，不重复启动；
+        // 因此：若序列已在运行（customSeqJob 非 null），直接交给内部循环驱动，不重复启动；
         // 仅当序列尚未启动（或已因切场景/停止而自然终止）时才从头启动。
-        if (customSeqRunnable != null) return
+        if (customSeqJob != null) return
         customSeqStep = 0
         runCustomStep(seq)
     }
 
     private var customSeqStep = 0
-    private var customSeqRunnable: Runnable? = null
+    private var customSeqJob: Job? = null
 
     private fun runCustomStep(seq: List<CustomGestureStep>) {
         if (customSeqStep >= seq.size) customSeqStep = 0 // 循环
@@ -732,16 +722,16 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 避免末步 waitSec=0 导致序列驻留、需等外层重新触发才能继续。
         val waitMs = (step.waitSec.coerceAtLeast(0) * 1000).toLong()
         val delay = if (waitMs > 0) waitMs else 1L
-        customSeqRunnable = Runnable {
+        customSeqJob = scope.launch {
+            delay(delay)
             // 仅当仍处于自定义场景且服务运行中才继续；否则终止循环并清理，
             // 便于下次重新进入自定义场景时由 performCustomSequence 正常重启。
             if (currentScene == AppConfig.SCENE_CUSTOM && isScrolling) {
                 runCustomStep(seq)
             } else {
-                customSeqRunnable = null
+                customSeqJob = null
             }
         }
-        handler.postDelayed(customSeqRunnable!!, delay)
     }
 
     /** 执行序列中的单步手势 */
@@ -829,7 +819,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             startX = startX, startY = startY,
             endX = endX, endY = endY,
             durationMs = durationMs,
-            handler = handler
+            handler = gestureHandler
         ) { completed ->
             if (completed) {
                 Log.v(TAG, "[$source] 手势完成 ${durationMs}ms")
@@ -837,9 +827,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 Log.w(TAG, "[$source] 手势被取消")
                 // 仅在「节点滚动手势」被系统取消时，回退一次全屏上滑兜底。
                 // tap / 双击 / 自定义手势被取消不应退化成全屏上滑，否则会与详情流的
-                // Handler 延时链抢拍，破坏拟人节奏。
+                // 协程延时链抢拍，破坏拟人节奏。
                 if (source == "node") {
-                    handler.post { performScreenGesture(SceneConfig.getScene(currentScene)) }
+                    scope.launch { performScreenGesture(SceneConfig.getScene(currentScene)) }
                 }
             }
         }
@@ -863,7 +853,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 概率判定
         if (Random.nextInt(100) >= likeProbability) return
 
-        handler.postDelayed({ performAutoLikeNow() }, 500)
+        scope.launch {
+            delay(500)
+            performAutoLikeNow()
+        }
     }
 
     /**
@@ -871,7 +864,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
      * 真人双击的两次触点总会有几像素偏差、间隔在 80~160ms 之间浮动。
      */
     private fun performDoubleClick(x: Float, y: Float) {
-        HumanGestureDispatcher.dispatchDoubleTap(this, x, y, handler)
+        HumanGestureDispatcher.dispatchDoubleTap(this, x, y, gestureHandler)
     }
 
     // ========== 供详情流 / 翻页复用的手势接口 ==========
@@ -955,239 +948,24 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
     }
 
-    // ========== 看广告得金币（高风险，默认关闭） ==========
-
-    /** 安排下一次「看广告得金币」尝试 */
-    private fun scheduleAdReward() {
-        if (!isScrolling || !adReward) return
-        adRewardRunnable?.let { handler.removeCallbacks(it) }
-        val task = Runnable { tryAdReward() }
-        adRewardRunnable = task
-        handler.postDelayed(task, adRewardMinutes * 60_000L)
-        Log.d(TAG, "已安排激励任务，${adRewardMinutes} 分钟后尝试")
-    }
-
-    private fun tryAdReward() {
-        if (!isScrolling || !adReward) return
-        // 保护策略生效时（如低电量 / 非 Wi-Fi）不做激励任务
-        if (isBlockedByPolicy()) {
-            scheduleAdReward()
-            return
-        }
-
-        val label = AdRewardTask.clickRewardEntry(this)
-        if (label == null) {
-            Log.d(TAG, "未找到激励入口，等待下个周期")
-            scheduleAdReward()
-            return
-        }
-
-        adRewardCount++
-        isWatchingAdReward = true
-        Log.i(TAG, "已进入激励视频：$label（累计 $adRewardCount）")
-        sendTaskEvent(EVENT_AD_REWARD, getString(R.string.toast_ad_reward, label))
-        broadcastState()
-        startAdRewardWatch()
-    }
-
-    /** 观看期：暂停滚动，周期性尝试点掉「关闭 / 跳过」按钮回到原页面 */
-    private fun startAdRewardWatch() {
-        adRewardWatchRunnable?.let { handler.removeCallbacks(it) }
-        val deadline = SystemClock.elapsedRealtime() + AdRewardTask.WATCH_TIMEOUT_MS
-        val poll = object : Runnable {
-            override fun run() {
-                if (!isScrolling) {
-                    isWatchingAdReward = false
-                    return
-                }
-                val closed = AdBlocker.scanAndClose(this@AutoScrollAccessibilityService)
-                if (closed > 0) adBlockCount += closed
-                if (closed > 0 || SystemClock.elapsedRealtime() >= deadline) {
-                    finishAdRewardWatch()
-                } else {
-                    handler.postDelayed(this, AdRewardTask.CLOSE_POLL_MS)
-                }
-            }
-        }
-        adRewardWatchRunnable = poll
-        handler.postDelayed(poll, AdRewardTask.FIRST_CLOSE_DELAY_MS)
-    }
-
-    private fun finishAdRewardWatch() {
-        isWatchingAdReward = false
-        adRewardWatchRunnable?.let { handler.removeCallbacks(it); adRewardWatchRunnable = null }
-        Log.d(TAG, "激励视频观看结束，恢复滚动")
-        broadcastState()
-        scheduleAdReward()
-    }
+    // 看广告得金币（激励视频）逻辑已整体移至 AdRewardController。
 
     // ========== 定时停止 ==========
     private fun startTimedStopCountdown() {
         val totalMs = timedStopMinutes.toLong() * 60 * 1000
-        timedStopRunnable?.let { handler.removeCallbacks(it) }
-        timedStopRunnable = Runnable {
+        timedStopJob?.cancel()
+        timedStopJob = scope.launch {
+            delay(totalMs)
             Log.i(TAG, "定时停止触发")
             sendTaskEvent(EVENT_TIMED_STOP, getString(R.string.toast_timed_stop_triggered))
             stopScrolling()
-            // 通知悬浮窗服务也停止
             sendBroadcast(Intent("cn.ggdoc.autoscroll.STOP_FROM_ACCESSIBILITY").setPackage(packageName))
         }
-        handler.postDelayed(timedStopRunnable!!, totalMs)
     }
 
-    // ========== 多 APP 轮换（O7：校验启动结果） ==========
+    // 多 APP 轮换逻辑已整体移至 RotationController。
 
-    /**
-     * APP 轮换。
-     *
-     * 原实现的问题：`getLaunchIntentForPackage` 返回 null（应用未安装/被禁用）时
-     * 直接吞掉，`startActivity` 抛异常也只打个日志——**然后照样认为切换成功**，
-     * 接着对着一个根本没起来的 APP 空刷一整个轮换周期。
-     *
-     * 现在交给 [RotationPlanner]：延时回查前台包名验证是否真的切过去了，
-     * 失败计数累计到 3 次的包名临时下线，全部下线时整体复活重试
-     * （可能只是当时系统忙，不该永久放弃）。
-     */
-    private fun startAppRotation() {
-        val intervalMs = rotationMinutes.toLong() * 60 * 1000
-        rotationRunnable?.let { handler.removeCallbacks(it) }
-        val planner = rotationPlanner ?: RotationPlanner(rotationList.toList()).also {
-            rotationPlanner = it
-        }
-        rotationRunnable = object : Runnable {
-            override fun run() {
-                if (!isScrolling) return
-                val targetPkg = planner.next()
-                if (targetPkg == null) {
-                    Log.w(TAG, "轮换：无可用 APP，跳过本轮")
-                    handler.postDelayed(this, intervalMs)
-                    return
-                }
-                rotationIndex = rotationList.indexOf(targetPkg).coerceAtLeast(0)
-                launchAndVerify(planner, targetPkg)
-                handler.postDelayed(this, intervalMs)
-            }
-        }
-        handler.postDelayed(rotationRunnable!!, intervalMs)
-    }
-
-    /** 启动目标 APP 并在延时后回查前台包名，确认切换是否真的生效 */
-    private fun launchAndVerify(planner: RotationPlanner, targetPkg: String) {
-        val launchIntent = try {
-            packageManager.getLaunchIntentForPackage(targetPkg)
-        } catch (e: Exception) {
-            Log.e(TAG, "查询 $targetPkg 启动入口失败", e)
-            null
-        }
-        if (launchIntent == null) {
-            // 未安装 / 被禁用 / 无启动入口：直接记失败，不必等回查
-            val offline = planner.markFailure(targetPkg)
-            Log.w(TAG, "轮换：$targetPkg 无启动入口${if (offline) "，已临时下线" else ""}")
-            return
-        }
-        try {
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(launchIntent)
-        } catch (e: Exception) {
-            val offline = planner.markFailure(targetPkg)
-            Log.e(TAG, "轮换：启动 $targetPkg 失败${if (offline) "，已临时下线" else ""}", e)
-            return
-        }
-
-        // 延时回查：给系统留出冷启动时间
-        handler.postDelayed({
-            if (!isScrolling) return@postDelayed
-            val ok = planner.isSwitchSuccessful(targetPkg, foregroundPackage)
-            if (ok) {
-                planner.markSuccess(targetPkg)
-                stuckDetector.reset()
-                stuckSameCount = 0
-                Log.d(TAG, "轮换：已切换到 $targetPkg")
-                sendTaskEvent(EVENT_APP_ROTATION, getString(R.string.toast_app_rotation, targetPkg))
-            } else {
-                val offline = planner.markFailure(targetPkg)
-                Log.w(
-                    TAG,
-                    "轮换：切换 $targetPkg 未生效（前台=$foregroundPackage）" +
-                        if (offline) "，已临时下线" else "，将在下轮重试"
-                )
-            }
-        }, ROTATION_VERIFY_DELAY_MS)
-    }
-
-    // ========== 每秒 tick：更新剩余时间 + 刷新统计看板 + 统计落盘 ==========
-    private fun startTick() {
-        tickRunnable?.let { handler.removeCallbacks(it) }
-        tickCount = 0
-        tickRunnable = object : Runnable {
-            override fun run() {
-                if (!isScrolling) return
-                // S4：周期性续期 WakeLock 超时上限，保证长效运行不中断；
-                // 若进程被系统强杀，未续期的 WakeLock 会在 WAKE_LOCK_TIMEOUT_MS 后自动归还。
-                KeepAliveManager.refresh(this@AutoScrollAccessibilityService)
-                if (timedStop) {
-                    val elapsed = (System.currentTimeMillis() - startTimestamp) / 1000
-                    val total = timedStopMinutes.toLong() * 60
-                    remainingSeconds = (total - elapsed).coerceAtLeast(0)
-                }
-                tickCount++
-                // O5：每 30 个 tick 落盘一次增量。不每次都写是因为
-                // SharedPreferences 频繁提交会拖累主线程且无谓磨损闪存。
-                if (tickCount % STATS_PERSIST_TICKS == 0) {
-                    persistStatsDelta()
-                }
-                // 未开启定时停止时，倒计时无变化，降频到每 5 秒广播一次，减少耗电；
-                // 开启定时停止时每秒广播，保证悬浮窗倒计时实时刷新。
-                val interval = if (timedStop) 1000L else 5000L
-                broadcastState()
-                handler.postDelayed(this, interval)
-            }
-        }
-        handler.post(tickRunnable!!)
-    }
-
-    // ========== O5：统计持久化 ==========
-
-    /**
-     * 把自上次落盘以来的**增量**写入 [StatsStore]。
-     *
-     * 用增量而不是覆盖：内存计数器在每次 startScrolling 时清零，
-     * 若直接覆盖写，重启一次滚动今日数据就被抹掉了。
-     * 增量累加则天然支持「多次启停累计」和「跨天自动滚动」。
-     */
-    private fun persistStatsDelta() {
-        val nowSeconds = runningSeconds
-        val delta = StatsStore.Stats(
-            scrolls = scrollCount - lastPersistedScrolls,
-            likes = likeCount - lastPersistedLikes,
-            adBlocks = adBlockCount - lastPersistedAdBlocks,
-            adRewards = adRewardCount - lastPersistedAdRewards,
-            details = detailCount - lastPersistedDetails,
-            seconds = (nowSeconds - lastPersistSecondsMark).coerceAtLeast(0)
-        )
-        if (delta.isEmpty) return
-        try {
-            StatsStore.accumulate(this, delta)
-            lastPersistedScrolls = scrollCount
-            lastPersistedLikes = likeCount
-            lastPersistedAdBlocks = adBlockCount
-            lastPersistedAdRewards = adRewardCount
-            lastPersistedDetails = detailCount
-            lastPersistSecondsMark = nowSeconds
-        } catch (e: Exception) {
-            Log.e(TAG, "统计落盘失败", e)
-        }
-    }
-
-    /** 重置增量基线（每次开始滚动时调用） */
-    private fun resetStatsBaseline() {
-        lastPersistedScrolls = 0
-        lastPersistedLikes = 0
-        lastPersistedAdBlocks = 0
-        lastPersistedAdRewards = 0
-        lastPersistedDetails = 0
-        lastPersistSecondsMark = 0L
-    }
+    // 每秒 tick / 统计增量落盘 / 基线重置逻辑已整体移至 StatsController。
 
     /** 今日累计统计（供 UI 展示） */
     fun getTodayStats(): StatsStore.Stats = statsController.getTodayStats()
@@ -1234,94 +1012,29 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     // ========== 定时运行 / 保护策略 ==========
 
-    /** 任务页保存后调用：重新加载配置并安排/取消定时闹钟 */
+    /** 任务页保存后调用：重新加载配置并安排/取消定时闹钟；同时让运行中的轮换/激励按新参数重启 */
     fun onScheduleConfigChanged() {
         loadConfigFromPrefs()
-        if (scheduleEnabled) scheduleAlarms() else cancelAlarms()
+        scheduleController.onScheduleConfigChanged()
+        if (isScrolling) {
+            rotationController.onRotationConfigChanged()
+            adRewardController.onConfigChanged()
+        }
     }
 
     /** 由 ScheduleReceiver 在「开始时间」触发：若在窗口内且未运行则自动开始 */
-    fun autoStartBySchedule() {
-        if (!scheduleEnabled) return
-        if (isWithinWindow() && !isScrolling) {
-            startScrolling()
-            Toast.makeText(this, "定时开始：自动滚动已启动", Toast.LENGTH_SHORT).show()
-        }
-    }
+    fun autoStartBySchedule() = scheduleController.autoStartBySchedule()
 
     /** 由 ScheduleReceiver 在「结束时间」触发：自动停止 */
-    fun autoStopBySchedule() {
-        if (isScrolling) {
-            stopScrolling()
-            Toast.makeText(this, "定时结束：已自动停止", Toast.LENGTH_SHORT).show()
-        }
-    }
+    fun autoStopBySchedule() = scheduleController.autoStopBySchedule()
 
-    /** 安排下一次开始/结束闹钟（每日精确触发） */
-    private fun scheduleAlarms() {
-        cancelAlarms()
-        val am = getSystemService(ALARM_SERVICE) as AlarmManager
-        // Android 12+ 用户可收回精确闹钟权限（Android 14 起新安装默认不授予），
-        // 未授权时 setExactAndAllowWhileIdle 会抛 SecurityException，降级为非精确闹钟
-        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        try {
-            if (canExact) {
-                am.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    nextAlarmMillis(scheduleStartMin),
-                    makePendingIntent(ACTION_SCHEDULE_START)
-                )
-                am.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    nextAlarmMillis(scheduleEndMin),
-                    makePendingIntent(ACTION_SCHEDULE_END)
-                )
-            } else {
-                Log.w(TAG, "无精确闹钟权限，降级为普通闹钟")
-                am.set(
-                    AlarmManager.RTC_WAKEUP,
-                    nextAlarmMillis(scheduleStartMin),
-                    makePendingIntent(ACTION_SCHEDULE_START)
-                )
-                am.set(
-                    AlarmManager.RTC_WAKEUP,
-                    nextAlarmMillis(scheduleEndMin),
-                    makePendingIntent(ACTION_SCHEDULE_END)
-                )
-            }
-            Log.i(TAG, "定时闹钟已安排：${formatMinute(scheduleStartMin)} ~ ${formatMinute(scheduleEndMin)}")
-        } catch (e: Exception) {
-            Log.e(TAG, "安排定时闹钟失败", e)
-        }
-    }
+    // 定时闹钟（安排 / 取消 / PendingIntent 构造）逻辑已整体移至 ScheduleController。
 
-    private fun cancelAlarms() {
-        val am = getSystemService(ALARM_SERVICE) as AlarmManager
-        am.cancel(makePendingIntent(ACTION_SCHEDULE_START))
-        am.cancel(makePendingIntent(ACTION_SCHEDULE_END))
-    }
-
-    private fun makePendingIntent(action: String): PendingIntent {
-        val intent = Intent(this, ScheduleReceiver::class.java).apply { this.action = action }
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
-        val reqCode = if (action == ACTION_SCHEDULE_START) 1 else 2
-        return PendingIntent.getBroadcast(this, reqCode, intent, flags)
-    }
-
-    /** 下一个目标分钟对应的触发时刻（今天若已过则顺延到明天） */
-    private fun nextAlarmMillis(targetMin: Int): Long =
-        ScheduleUtils.nextAlarmMillis(targetMin)
-
-    /** 当前是否处于定时运行窗口内（支持跨午夜） */
-    private fun isWithinWindow(): Boolean {
-        if (!scheduleEnabled) return true
-        return ScheduleUtils.isWithinWindow(ScheduleUtils.nowMinute(), scheduleStartMin, scheduleEndMin)
-    }
+    // 下一个目标分钟触发时刻已由 ScheduleController 计算。
 
     /** 综合保护策略：任一不满足则暂停本次滚动 */
     private fun isBlockedByPolicy(): Boolean {
-        if (scheduleEnabled && !isWithinWindow()) return true
+        if (scheduleEnabled && !scheduleController.isWithinWindow()) return true
         if (batteryGuardEnabled && !isBatteryOk()) return true
         if (wifiOnly && !isWifiConnected()) return true
         return false
@@ -1347,10 +1060,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun formatMinute(min: Int): String = ScheduleUtils.formatMinute(min)
-
     override fun onDestroy() {
         stopScrolling()
+        scope.cancel()
         _instance?.clear()
         if (_instance?.get() == null) _instance = null
         super.onDestroy()
