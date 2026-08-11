@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import cn.ggdoc.autoscroll.R
-import cn.ggdoc.autoscroll.task.AdBlocker
 import cn.ggdoc.autoscroll.task.AdRewardTask
 import cn.ggdoc.autoscroll.util.AppLog
 import kotlinx.coroutines.CoroutineScope
@@ -37,7 +36,6 @@ class AdRewardController(
         val isScrolling: Boolean
         val adRewardEnabled: Boolean
         val adRewardMinutes: Int
-        val adBlockEnabled: Boolean
         var adRewardCount: Int
         var isWatchingAdReward: Boolean
         fun isBlockedByPolicy(): Boolean
@@ -49,6 +47,17 @@ class AdRewardController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + AppLog.coroutineExceptionHandler)
     private var scheduleJob: Job? = null
     private var watchJob: Job? = null
+
+    /** 进入观看期的时刻（elapsedRealtime），用于「到账确认」的最短观看保护 */
+    private var watchStartElapsed = 0L
+
+    /** 「到账确认」最短观看时长：小于此时长收到的到账 Toast 视为误判，不提前结束 */
+    private companion object {
+        const val MIN_WATCH_BEFORE_RECEIVED_MS = 15_000L
+
+        /** 点掉「关闭/领取」按钮后到结束观看的宽限：给奖励结算留时间，避免提前恢复滚动 */
+        const val REWARD_SETTLE_GRACE_MS = 5_000L
+    }
 
     @Volatile
     private var watching = false
@@ -89,9 +98,15 @@ class AdRewardController(
     /** 配置发生变更时的重置（运行中重新排下一次） */
     fun onConfigChanged() {
         if (!serviceProvider.isScrolling) return
-        scheduleJob?.cancel()
-        scheduleJob = null
-        if (serviceProvider.adRewardEnabled) schedule()
+        if (serviceProvider.adRewardEnabled) {
+            scheduleJob?.cancel()
+            scheduleJob = null
+            schedule()
+        } else {
+            // 功能被关闭（开关或风险确认被取消）：立即停止进行中的观看期，
+            // 否则会一直看完当前广告并在超时后才恢复滚动
+            stop()
+        }
     }
 
     private fun tryEnter() {
@@ -120,19 +135,25 @@ class AdRewardController(
 
     private fun startWatch() {
         watchJob?.cancel()
+        watchStartElapsed = SystemClock.elapsedRealtime()
         val deadline = SystemClock.elapsedRealtime() + AdRewardTask.WATCH_TIMEOUT_MS
         watchJob = scope.launch {
             delay(AdRewardTask.FIRST_CLOSE_DELAY_MS)
             try {
                 while (isActive && serviceProvider.isScrolling) {
-                    var closed = 0
-                    if (serviceProvider.adBlockEnabled) {
-                        val svc = context as? AutoScrollAccessibilityService
-                        if (svc == null) return@launch
-                        closed = AdBlocker.scanAndClose(svc)
+                    // 观看期扫描「关闭/跳过/领取」按钮：**不受广告屏蔽开关限制**——
+                    // 否则用户关闭广告屏蔽后，广告结束页无人点击，会永久卡在广告页。
+                    // tryAdBlockNow 内部完成单次扫描 + 计数 + 广播并返回关闭数，
+                    // 避免原先「先 scanAndClose 再 tryAdBlockNow」对同一帧重复扫描。
+                    val closed = serviceProvider.tryAdBlockNow()
+                    if (closed > 0) {
+                        // 已点掉关闭/领取按钮：奖励结算需要一点时间，延迟片刻再结束观看，
+                        // 避免「广告还没结算就恢复滚动」导致白看一次
+                        delay(REWARD_SETTLE_GRACE_MS)
+                        finishWatch()
+                        return@launch
                     }
-                    if (closed > 0) serviceProvider.tryAdBlockNow()
-                    if (closed > 0 || SystemClock.elapsedRealtime() >= deadline) {
+                    if (SystemClock.elapsedRealtime() >= deadline) {
                         finishWatch()
                         return@launch
                     }
@@ -142,6 +163,18 @@ class AdRewardController(
                 if (watching) setWatching(false)
             }
         }
+    }
+
+    /**
+     * Toast 监听「到账确认」回调：观看期收到「金币已到账」等 Toast 时提前结束观看，
+     * 比固定超时更准、更省电。
+     */
+    fun onRewardReceived() {
+        if (!watching) return
+        // 最短观看保护：至少观看 MIN_WATCH_BEFORE_RECEIVED_MS，防止误判 Toast 打断广告
+        if (SystemClock.elapsedRealtime() - watchStartElapsed < MIN_WATCH_BEFORE_RECEIVED_MS) return
+        Log.d(serviceProvider.TAG, "激励视频：检测到账 Toast，结束观看")
+        finishWatch()
     }
 
     private fun finishWatch() {

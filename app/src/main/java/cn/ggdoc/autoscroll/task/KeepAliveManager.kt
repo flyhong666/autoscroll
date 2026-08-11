@@ -17,6 +17,15 @@ object KeepAliveManager {
     private var wakeLock: PowerManager.WakeLock? = null
 
     /**
+     * 引用计数：acquire / release 必须配对。
+     *
+     * 滚动任务与录制/回放悬浮条共享同一个 WakeLock（isHeld 幂等），
+     * 若一方释放直接把锁放掉，另一方的「屏幕常亮」会被悄悄取消。
+     * 计数归零才真正 release，避免跨任务误伤。
+     */
+    private var refCount = 0
+
+    /**
      * WakeLock 安全持有上限（兜底）：正常情况由 [refresh] 周期性续期，
      * 但若进程被系统强杀（未走 onDestroy / release），无限持有的 WakeLock
      * 会永久泄漏、持续耗电。加上超时后，即使未被释放也会在超时后自动归还。
@@ -28,9 +37,11 @@ object KeepAliveManager {
      */
     fun acquire(context: Context) {
         if (wakeLock?.isHeld == true) {
-            Log.d(TAG, "WakeLock 已持有，跳过")
+            refCount++
+            Log.d(TAG, "WakeLock 已持有，引用计数 +1（$refCount）")
             return
         }
+        refCount = 1
         try {
             val pm = context.applicationContext
                 .getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -48,6 +59,7 @@ object KeepAliveManager {
             Log.i(TAG, "WakeLock 已获取（CPU 保持运行，超时 ${WAKE_LOCK_TIMEOUT_MS}ms 兜底）")
         } catch (e: Exception) {
             Log.e(TAG, "获取 WakeLock 失败", e)
+            refCount = 0
         }
     }
 
@@ -65,9 +77,14 @@ object KeepAliveManager {
     }
 
     /**
-     * 释放屏幕常亮
+     * 释放屏幕常亮（引用计数归零才真正释放）。
      */
     fun release() {
+        if (refCount > 0) refCount--
+        if (refCount > 0) {
+            Log.d(TAG, "仍有 ${refCount} 个持有者，暂不释放 WakeLock")
+            return
+        }
         try {
             if (wakeLock?.isHeld == true) {
                 wakeLock?.release()

@@ -29,14 +29,14 @@
             android:text="@string/task_subtitle"
             android:textAppearance="@style/TextAppearance.Body"
             android:textSize="13sp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="@dimen/spacing_medium" />
 
         <!-- 统计看板 -->
         <com.google.android.material.card.MaterialCardView
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="@dimen/spacing_medium">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -214,7 +214,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -245,7 +245,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -292,7 +292,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -325,7 +325,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -362,6 +362,33 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:text="@string/task_detail_flow_switch"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchDetailFlow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/detailFlowParamsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="@string/task_detail_dwell_min"
                         android:textAppearance="@style/TextAppearance.Body"
                         android:textSize="13sp" />
@@ -377,7 +404,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderDetailDwellMin"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="2"
                         android:valueTo="60"
@@ -415,7 +442,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderDetailDwellMax"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="5"
                         android:valueTo="180"
@@ -453,7 +480,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderDetailReadAll"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="0"
                         android:valueTo="100"
@@ -490,7 +517,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderDetailMaxScrolls"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="2"
                         android:valueTo="20"
@@ -501,6 +528,7 @@
                         app:trackColorActive="@color/teal_700"
                         app:trackColorInactive="@color/divider" />
                 </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -509,7 +537,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -541,7 +569,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:layout_width="0dp"
@@ -562,7 +590,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderTimedStopMinutes"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="1"
                         android:valueTo="180"
@@ -581,7 +609,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -613,7 +641,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:layout_width="0dp"
@@ -634,7 +662,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderRotationMinutes"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="1"
                         android:valueTo="60"
@@ -652,7 +680,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="@dimen/spacing_small"
                     android:clickable="true"
                     android:focusable="true"
                     android:background="?attr/selectableItemBackground">
@@ -671,7 +699,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical"
-                        android:layout_marginStart="12dp">
+                        android:layout_marginStart="@dimen/spacing_small">
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -706,7 +734,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -749,7 +777,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:layout_marginStart="12dp" />
+                        android:layout_marginStart="@dimen/spacing_small" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -757,7 +785,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:id="@+id/tvFilterSummary"
@@ -784,7 +812,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -816,7 +844,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -847,7 +875,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -882,7 +910,7 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/task_schedule_add_window"
                         app:backgroundTint="@color/purple_500"
-                        app:cornerRadius="12dp" />
+                        app:cornerRadius="@dimen/spacing_small" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -892,7 +920,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -925,7 +953,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -957,7 +985,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:layout_width="0dp"
@@ -978,7 +1006,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderBatteryThreshold"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="5"
                         android:valueTo="50"
@@ -997,7 +1025,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -1030,7 +1058,7 @@
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="@dimen/spacing_small">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -1101,7 +1129,7 @@
                     android:layout_marginTop="8dp"
                     android:layout_marginStart="4dp"
                     android:background="@color/danger_bg"
-                    android:padding="12dp"
+                    android:padding="@dimen/spacing_small"
                     android:text="@string/task_ad_reward_risk"
                     android:textAppearance="@style/TextAppearance.Body"
                     android:textSize="12sp"
@@ -1114,7 +1142,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:layout_width="0dp"
@@ -1135,7 +1163,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderAdRewardInterval"
-                        android:layout_width="160dp"
+                        android:layout_width="@dimen/slider_row_width"
                         android:layout_height="wrap_content"
                         android:valueFrom="2"
                         android:valueTo="60"
@@ -1153,7 +1181,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="@dimen/spacing_small">
 
                     <TextView
                         android:layout_width="wrap_content"

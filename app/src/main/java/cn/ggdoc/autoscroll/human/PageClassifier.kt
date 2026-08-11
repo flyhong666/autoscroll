@@ -36,14 +36,14 @@ object PageClassifier {
         val totalTextLength: Int = 0,
         /** 单个文本节点的最大长度 —— 正文段落通常很长 */
         val maxSingleTextLength: Int = 0,
-        /** 是否存在「评论 / 分享 / 收藏 / 写评论」等详情页专属控件 */
+        /** 是否存在「详情页专属」动作词（写评论 / 展开全文 / 正文…，仅强词） */
         val hasDetailActionWords: Boolean = false,
         /** 是否存在「返回」按钮/箭头 */
         val hasBackAffordance: Boolean = false,
+        /** 是否命中列表特征词（推荐 / 关注 / 热榜…），与详情判定互斥 */
+        val hasListHint: Boolean = false,
         /** 满足列表项尺寸的候选条目数量 */
-        val listItemCount: Int = 0,
-        /** 可点击节点总数 */
-        val clickableCount: Int = 0
+        val listItemCount: Int = 0
     )
 
     /** 正文长度阈值：超过即视为中等信号 */
@@ -55,11 +55,16 @@ object PageClassifier {
     /** 列表项数量下限：低于此值不像列表页 */
     const val FEW_ITEMS_THRESHOLD = 5
 
-    /** 详情页动作词（用于 service 层采集时匹配） */
+    /**
+     * 详情页动作词（强词）——只有这些词能独立构成「详情页」证据。
+     *
+     * H4 修复：词表刻意**不包含**「评论 / 分享 / 收藏 / 点赞」这类弱词——
+     * 信息流**列表卡片**上普遍带「评论 328」「点赞」标签，把它们计入详情信号
+     * 会导致长列表页被误判为详情页、详情流在列表页空转。采集端只匹配强词。
+     */
     val DETAIL_ACTION_WORDS = listOf(
         "写评论", "说点什么", "发表评论", "全部评论", "查看全部评论",
-        "评论", "分享", "收藏", "转发", "点赞", "相关推荐", "阅读原文",
-        "展开全文", "正文", "作者", "责任编辑"
+        "阅读原文", "展开全文", "正文", "作者", "责任编辑"
     )
 
     /** 列表页特征词（出现即削弱详情页判定） */
@@ -81,21 +86,28 @@ object PageClassifier {
 
         // ---- 中等信号计分 ----
         var detailScore = 0
-        // 正文总量大
-        if (s.totalTextLength >= LONG_TEXT_THRESHOLD) detailScore++
+        // 正文总量大：但列表项充足时该信号不可靠（信息流卡片标题+摘要很容易超 500 字）
+        if (s.totalTextLength >= LONG_TEXT_THRESHOLD && s.listItemCount < FEW_ITEMS_THRESHOLD) detailScore++
         // 存在长段落（列表标题很少超过 120 字）
         if (s.maxSingleTextLength >= LONG_PARAGRAPH_THRESHOLD) detailScore++
-        // 存在详情页专属动作控件
+        // 存在详情页专属动作控件（仅强词）
         if (s.hasDetailActionWords) detailScore++
         // 可点条目很少（正文页几乎没有等高卡片）
         if (s.listItemCount < FEW_ITEMS_THRESHOLD) detailScore++
+        // 存在明确的返回入口（正文页几乎必有，列表页通常没有）
+        if (s.hasBackAffordance) detailScore++
+        // 列表特征词与详情判定互斥：抵消一票，避免「推荐/关注」等词把列表页带偏
+        if (s.hasListHint) detailScore--
 
         // 任意两个中等信号互相印证即判详情页
         if (detailScore >= 2) return PageType.DETAIL
 
-        // ---- 列表页正向判定：条目充足且没有明显正文特征 ----
+        // ---- 列表页正向判定：条目充足、无正文特征、且没有详情动作词 ----
+        // H4 修复：短段落详情页 + 底部「相关推荐」卡片 ≥5 个时，若无详情强词仍会被
+        // 判成 LIST（在详情页乱点）。有详情强词时绝不判 LIST。
         if (s.listItemCount >= FEW_ITEMS_THRESHOLD &&
-            s.maxSingleTextLength < LONG_PARAGRAPH_THRESHOLD
+            s.maxSingleTextLength < LONG_PARAGRAPH_THRESHOLD &&
+            !s.hasDetailActionWords
         ) {
             return PageType.LIST
         }
@@ -107,8 +119,7 @@ object PageClassifier {
     fun isSafeToPickItem(s: Signals): Boolean = classify(s) == PageType.LIST
 
     /**
-     * 文本是否命中详情页动作词。
-     * 供 service 层采集屏幕时逐节点匹配，避免把词表复制到采集代码里。
+     * 文本是否命中详情页动作词（仅强词，供 service 层采集时逐节点匹配）。
      */
     fun containsDetailAction(text: String): Boolean {
         if (text.isEmpty()) return false

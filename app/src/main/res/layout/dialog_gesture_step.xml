@@ -44,12 +44,31 @@
 
         <TextView
             android:id="@+id/tvWait"
-            android:layout_width="56dp"
+            android:layout_width="@dimen/slider_value_width"
             android:layout_height="wrap_content"
             android:gravity="end"
             android:text="@string/custom_gesture_wait_value"
             android:textSize="13sp" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvKeywordLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/custom_gesture_keyword"
+        android:textSize="13sp"
+        android:textColor="@color/text_hint"
+        android:visibility="gone" />
+
+    <EditText
+        android:id="@+id/etKeyword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/custom_gesture_keyword_hint"
+        android:inputType="text"
+        android:maxLines="1"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tvPosLabel"
@@ -78,7 +97,7 @@
 
         <TextView
             android:id="@+id/tvX"
-            android:layout_width="56dp"
+            android:layout_width="@dimen/slider_value_width"
             android:layout_height="wrap_content"
             android:gravity="end"
             android:text="@string/custom_gesture_x_value"
@@ -103,7 +122,7 @@
 
         <TextView
             android:id="@+id/tvY"
-            android:layout_width="56dp"
+            android:layout_width="@dimen/slider_value_width"
             android:layout_height="wrap_content"
             android:gravity="end"
             android:text="@string/custom_gesture_y_value"
@@ -137,7 +156,7 @@
 
         <TextView
             android:id="@+id/tvDist"
-            android:layout_width="56dp"
+            android:layout_width="@dimen/slider_value_width"
             android:layout_height="wrap_content"
             android:gravity="end"
             android:text="@string/custom_gesture_dist_value"

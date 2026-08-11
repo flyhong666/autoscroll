@@ -1,6 +1,8 @@
 package cn.ggdoc.autoscroll.task
 
 import android.view.accessibility.AccessibilityNodeInfo
+import java.util.HashSet
+import java.util.LinkedList
 
 /**
  * 广告相关节点的共享工具。
@@ -9,6 +11,9 @@ import android.view.accessibility.AccessibilityNodeInfo
  * 这些逻辑原本各写一份（约 80 行重复，且易漂移）。此处抽出唯一实现。
  */
 object AdNodeKit {
+
+    /** 单次 BFS 遍历的节点上限，防止超大页面拖慢主线程 */
+    private const val MAX_VISIT = 1500
 
     /** 取节点文案：优先 text，其次 contentDescription（裁剪空白） */
     fun labelOf(node: AccessibilityNodeInfo): String {
@@ -51,9 +56,85 @@ object AdNodeKit {
         return clicked
     }
 
-    /** 回收候选节点与（未进入候选列表的）root，避免 Android 13 以下节点池泄漏 */
+    /**
+     * 在窗口树中查找「文案包含 [keyword] 的可点击控件」（BFS）。
+     *
+     * 收集所有命中并取「文案最短」的节点（最像按钮，避免 BFS 先命中外层
+     * 大卡片），再经 [clickableSelfOrAncestor] 归一为可点击节点。
+     * 返回节点由调用方用后回收（可能等于 [root] 本身）；未找到返回 null。
+     * 遍历产生的其余中间节点全部回收，避免节点池泄漏；有遍历上限防超大页面。
+     */
+    fun findClickableByText(root: AccessibilityNodeInfo, keyword: String): AccessibilityNodeInfo? {
+        if (keyword.isBlank()) return null
+        val visited = HashSet<AccessibilityNodeInfo>()
+        val queue = LinkedList<AccessibilityNodeInfo>()
+        visited.add(root)
+        queue.offer(root)
+        var best: AccessibilityNodeInfo? = null
+        var bestSource: AccessibilityNodeInfo? = null
+        var bestLen = Int.MAX_VALUE
+        var visitedCount = 0
+        while (queue.isNotEmpty() && visitedCount < MAX_VISIT) {
+            val node = queue.poll() ?: continue
+            visitedCount++
+            val label = labelOf(node)
+            if (label.contains(keyword)) {
+                val target = if (node.isClickable) node else clickableSelfOrAncestor(node)
+                if (target != null && label.length < bestLen) {
+                    best = target
+                    bestSource = node
+                    bestLen = label.length
+                }
+            }
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                if (visited.add(child)) queue.offer(child)
+                // 重复访问的节点不在此回收：可能仍在队列中待处理，统一在下方清理
+            }
+        }
+        // 回收遍历过的所有节点：保留 root、best（调用方负责）与 bestSource（下方单独回收）
+        visited.forEach { n ->
+            if (n !== root && n !== best && n !== bestSource) runCatching { n.recycle() }
+        }
+        if (bestSource != null && bestSource !== best) runCatching { bestSource.recycle() }
+        return best
+    }
+
+    /**
+     * 在窗口树中查找「文案包含 [keyword]」的任意可见节点（不要求可点击）。
+     *
+     * 用于「条件分支」等只看文本是否出现的场景。返回命中节点或 null，调用方用后回收
+     * （可能等于 [root] 本身）；遍历产生的其余中间节点全部回收。
+     */
+    fun findNodeByText(root: AccessibilityNodeInfo, keyword: String): AccessibilityNodeInfo? {
+        if (keyword.isBlank()) return null
+        val visited = HashSet<AccessibilityNodeInfo>()
+        val queue = LinkedList<AccessibilityNodeInfo>()
+        visited.add(root)
+        queue.offer(root)
+        var found: AccessibilityNodeInfo? = null
+        var visitedCount = 0
+        while (queue.isNotEmpty() && found == null && visitedCount < MAX_VISIT) {
+            val node = queue.poll() ?: continue
+            visitedCount++
+            if (labelOf(node).contains(keyword)) {
+                found = node
+                break
+            }
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                if (visited.add(child)) queue.offer(child)
+            }
+        }
+        visited.forEach { n -> if (n !== root && n !== found) runCatching { n.recycle() } }
+        return found
+    }
+
+    /** 回收候选节点与 root，避免 Android 13 以下节点池泄漏 */
     fun recycle(root: AccessibilityNodeInfo?, candidates: List<AccessibilityNodeInfo>) {
-        candidates.forEach { runCatching { it.recycle() } }
-        if (root != null && root !in candidates) runCatching { root.recycle() }
+        // 修复：root 自身可能是候选节点（可点击且有文案）——若用 `root !in candidates`
+        // 判断会漏回收 root。这里保证 root 恰好回收一次，候选列表里跳过它即可。
+        candidates.forEach { if (it !== root) runCatching { it.recycle() } }
+        root?.let { runCatching { it.recycle() } }
     }
 }

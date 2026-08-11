@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
-import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.human.HumanTiming
 import cn.ggdoc.autoscroll.human.PageClassifier
 import cn.ggdoc.autoscroll.util.AppLog
@@ -193,10 +192,17 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             val clicked = node.isClickable &&
                 runCatching { node.performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)
             val parent = try { node.parent } catch (_: Exception) { null }
+            // 回收当前节点：item.node 归调用方（stepPickAndClick）回收，其余在此回收
             if (node !== item.node) runCatching { node.recycle() }
+            if (clicked) {
+                // 点击成功：刚取出的 parent 本应成为下一轮 target，这里必须一并回收，
+                // 否则每次成功点击泄漏 1 个节点，Android 13 以下节点池会被耗尽
+                // （表现为 rootInActiveWindow 逐渐返回 null、详情流静默失效）。
+                if (parent != null && parent !== item.node) runCatching { parent.recycle() }
+                return
+            }
             target = parent
             depth++
-            if (clicked) return
         }
         if (target != null && target !== item.node) runCatching { target.recycle() }
         // 兜底：手势点按条目中心
@@ -209,7 +215,8 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         service.runAdBlockCheck()
 
         // 社交场景：按点赞概率双击详情页（部分 APP 双击即点赞）
-        val scene = SceneConfig.getScene(AutoScrollAccessibilityService.currentScene)
+        // 场景解析走 service.resolvedScene：自动识别场景时按前台包名映射
+        val scene = service.resolvedScene
         if (scene.supportAutoLike && AutoScrollAccessibilityService.autoLike &&
             Random.nextInt(100) < AutoScrollAccessibilityService.likeProbability
         ) {

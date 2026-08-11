@@ -149,6 +149,12 @@ object ScriptPlayer {
             finish()
             return
         }
+        // 条件分支：屏幕未出现指定文本则跳过本步，直接进入下一步
+        if (action.condition.isNotBlank() && !conditionSatisfied(service, action.condition)) {
+            Log.d(TAG, "条件未满足（未见「${action.condition}」），跳过第 ${stepIndex + 1} 步")
+            handler.post(advance)
+            return
+        }
         val duration = (action.duration / speed).toLong().coerceIn(30L, 30_000L)
         val advance = Runnable { advanceStep() }
         // 双击：连发两次短按，两次之间留出人类间隔
@@ -196,15 +202,28 @@ object ScriptPlayer {
             return
         }
         var firstDone = false
+        val fireSecond = Runnable {
+            // H3 修复：第二次 dispatchGesture 之前服务可能已断开 / 系统拒绝手势——
+            // 抛异常会直接崩溃主线程 Handler，返回 false 则回调永不触发导致播放卡死。
+            // 两种情况都必须兜底推进。
+            if (!isPlaying) {
+                advance.run()
+                return@Runnable
+            }
+            val ok = try {
+                service.dispatchGesture(gesture, cb, handler)
+            } catch (e: Exception) {
+                Log.e(TAG, "双击第二次 dispatchGesture 异常", e)
+                false
+            }
+            if (!ok) handler.post(advance)
+        }
         val cb = object : AccessibilityService.GestureResultCallback() {
             override fun onCompleted(g: GestureDescription?) {
                 if (!isPlaying) return
                 if (!firstDone) {
                     firstDone = true
-                    handler.postDelayed({
-                        if (isPlaying) service.dispatchGesture(gesture, cb, handler)
-                        else advance.run()
-                    }, 70L)
+                    handler.postDelayed(fireSecond, 70L)
                 } else {
                     advance.run()
                 }
@@ -214,10 +233,7 @@ object ScriptPlayer {
                 if (!isPlaying) return
                 if (!firstDone) {
                     firstDone = true
-                    handler.postDelayed({
-                        if (isPlaying) service.dispatchGesture(gesture, cb, handler)
-                        else advance.run()
-                    }, 70L)
+                    handler.postDelayed(fireSecond, 70L)
                 } else {
                     advance.run()
                 }
@@ -230,6 +246,25 @@ object ScriptPlayer {
             false
         }
         if (!ok) handler.postDelayed(advance, duration)
+    }
+
+    /** 条件分支判定：当前窗口可见文本是否包含 [keyword]（不要求可点击） */
+    private fun conditionSatisfied(service: AccessibilityService, keyword: String): Boolean {
+        val root = try {
+            service.rootInActiveWindow
+        } catch (e: Exception) {
+            Log.w(TAG, "条件判定：取根节点失败", e)
+            null
+        } ?: return false
+        val hit = try {
+            cn.ggdoc.autoscroll.task.AdNodeKit.findNodeByText(root, keyword)
+        } catch (e: Exception) {
+            Log.w(TAG, "条件判定：扫描失败", e)
+            null
+        }
+        if (hit != null && hit !== root) runCatching { hit.recycle() }
+        runCatching { root.recycle() }
+        return hit != null
     }
 
     private fun buildGesture(a: RecordedAction, duration: Long): GestureDescription? {

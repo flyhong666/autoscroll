@@ -112,10 +112,13 @@ class ControlFragment : Fragment() {
     }
 
     private fun openSettingsSheet() {
+        val fm = childFragmentManager
+        // M4 修复：onSaveInstanceState 之后 show() 会抛 IllegalStateException
+        if (fm.isStateSaved || fm.isDestroyed) return
         val sheet = SettingsBottomSheet()
         sheet.onSaved = { refreshParamSummary() }
         sheet.onSceneChanged = { refreshUI() }
-        sheet.show(childFragmentManager, "SettingsBottomSheet")
+        sheet.show(fm, "SettingsBottomSheet")
     }
 
     private fun refreshParamSummary() {

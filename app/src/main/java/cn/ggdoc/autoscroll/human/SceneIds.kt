@@ -17,9 +17,11 @@ object SceneIds {
     const val SOCIAL = "social"
     const val LIVE = "live"
     const val CUSTOM = "custom"
+    /** 自动识别：按前台应用包名映射到最合适的场景模板 */
+    const val AUTO = "auto"
 
     /** 全部场景 ID，顺序与 UI 展示一致 */
-    val ALL = listOf(SHORT_VIDEO, NEWS, NOVEL, SOCIAL, LIVE, CUSTOM)
+    val ALL = listOf(SHORT_VIDEO, NEWS, NOVEL, SOCIAL, LIVE, CUSTOM, AUTO)
 
     /** 是否为合法场景 ID */
     fun isValid(id: String?): Boolean = id != null && id in ALL

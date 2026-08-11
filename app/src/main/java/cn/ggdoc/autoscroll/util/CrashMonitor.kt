@@ -28,15 +28,22 @@ object CrashMonitor {
         AppLog.init(context.applicationContext)
         previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            AppLog.e("Crash", "未捕获异常 @ ${thread.name}", throwable)
-            writeCrashFile(throwable)
+            // M3 修复：崩溃处理器内部绝不允许再抛异常（否则 previous handler 不会被执行，
+            // 系统默认的崩溃行为被破坏）。这里把业务逻辑整体包起来。
+            try {
+                AppLog.e("Crash", "未捕获异常 @ ${thread.name}", throwable)
+                writeCrashFile(throwable)
+            } catch (ignored: Throwable) {
+                // 吞掉，保证 previous handler 一定能被调用
+            }
             previous?.uncaughtException(thread, throwable)
         }
     }
 
     private fun writeCrashFile(throwable: Throwable) {
         val ctx = appContext ?: return
-        val dir = File(ctx.getExternalFilesDir(null), "crashes")
+        // M3 修复：getExternalFilesDir 可能返回 null（存储不可用），回退到 filesDir
+        val dir = File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "crashes")
         if (!dir.exists()) dir.mkdirs()
         // 仅保留最近 20 个崩溃文件，避免无限增长
         runCatching {
@@ -45,7 +52,8 @@ object CrashMonitor {
                 ?.dropLast(20)
                 ?.forEach { it.delete() }
         }
-        val ts = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        // M3 修复：文件名加毫秒，避免同一秒内多次崩溃互相覆盖
+        val ts = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         val file = File(dir, "crash_$ts.txt")
         runCatching {
             file.writeText(

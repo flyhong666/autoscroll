@@ -30,7 +30,15 @@ class ScriptEditorDialogFragment : DialogFragment() {
     companion object {
         private const val ARG_FILE_NAME = "file_name"
 
-        fun newInstance(fileName: String, onSaved: () -> Unit): ScriptEditorDialogFragment {
+        /**
+         * 宿主刷新回调接口：宿主实现后配合 [setTargetFragment] 使用，
+         * 旋转重建后 targetFragment 由 FragmentManager 恢复，回调不丢失。
+         */
+        interface OnScriptEditedListener {
+            fun onScriptEdited()
+        }
+
+        fun newInstance(fileName: String, onSaved: (() -> Unit)? = null): ScriptEditorDialogFragment {
             return ScriptEditorDialogFragment().apply {
                 arguments = Bundle().apply { putString(ARG_FILE_NAME, fileName) }
                 this.onSavedCallback = onSaved
@@ -102,7 +110,7 @@ class ScriptEditorDialogFragment : DialogFragment() {
                     type = RecordedAction.TYPE_CLICK,
                     x = cx, y = cy,
                     duration = 60L, delay = 0L,
-                    desc = "中央点击（新建）"
+                    desc = getString(R.string.editor_new_center_click)
                 )
             )
             refreshAll()
@@ -139,7 +147,7 @@ class ScriptEditorDialogFragment : DialogFragment() {
     private fun onStepDelete(pos: Int) {
         if (pos < 0 || pos >= steps.size) return
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("删除第 ${pos + 1} 步？")
+            .setTitle(getString(R.string.editor_delete_step, pos + 1))
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.script_menu_delete) { _, _ ->
                 steps.removeAt(pos)
@@ -181,22 +189,22 @@ class ScriptEditorDialogFragment : DialogFragment() {
         val swipeIdx = types.indexOfFirst { it.first == RecordedAction.TYPE_SWIPE }
 
         val etX = EditText(ctx).apply {
-            hint = "X（像素）"
+            hint = ctx.getString(R.string.editor_hint_x)
             setText(s.x.toString())
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
         val etY = EditText(ctx).apply {
-            hint = "Y（像素）"
+            hint = ctx.getString(R.string.editor_hint_y)
             setText(s.y.toString())
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
         val etX2 = EditText(ctx).apply {
-            hint = "X2（滑动终点，像素）"
+            hint = ctx.getString(R.string.editor_hint_x2)
             setText(s.x2.toString())
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
         val etY2 = EditText(ctx).apply {
-            hint = "Y2（滑动终点，像素）"
+            hint = ctx.getString(R.string.editor_hint_y2)
             setText(s.y2.toString())
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
@@ -215,6 +223,11 @@ class ScriptEditorDialogFragment : DialogFragment() {
             setText(s.desc)
             inputType = android.text.InputType.TYPE_CLASS_TEXT
         }
+        val etCondition = EditText(ctx).apply {
+            hint = ctx.getString(R.string.editor_edit_condition)
+            setText(s.condition)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+        }
 
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -231,6 +244,13 @@ class ScriptEditorDialogFragment : DialogFragment() {
             setTextColor(resources.getColor(R.color.text_secondary, ctx.theme))
         }, lp)
 
+        // M5 修复：可编辑字段放进独立容器，切换类型时重建容器内容，
+        // 避免「按初始类型添加字段、切换类型后布局不更新」的问题
+        val fieldsContainer = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+        }
+        container.addView(fieldsContainer, lp)
+
         val typeLabels = types.map { it.second }.toTypedArray()
         val typeSelectedIdx = types.indexOfFirst { it.first == s.type }.coerceAtLeast(0)
         var chosenTypeIdx = typeSelectedIdx
@@ -245,12 +265,35 @@ class ScriptEditorDialogFragment : DialogFragment() {
             val duration = etDuration.text?.toString()?.toLongOrNull()?.coerceAtLeast(0)
                 ?: if (t == RecordedAction.TYPE_LONG_CLICK) 600L else 60L
             val desc = etDesc.text?.toString()?.trim() ?: s.desc
-            s.copy(type = t, x = x, y = y, x2 = x2, y2 = y2, delay = delay, duration = duration, desc = desc)
+            val condition = etCondition.text?.toString()?.trim().orEmpty()
+            s.copy(
+                type = t, x = x, y = y, x2 = x2, y2 = y2,
+                delay = delay, duration = duration, desc = desc, condition = condition
+            )
+        }
+
+        fun rebuildFields() {
+            fieldsContainer.removeAllViews()
+            fieldsContainer.addView(etDelay, lp)
+            fieldsContainer.addView(etDuration, lp)
+            fieldsContainer.addView(etDesc, lp)
+            fieldsContainer.addView(etCondition, lp)
+            if (chosenTypeIdx != waitIdx) {
+                fieldsContainer.addView(etX, lp)
+                fieldsContainer.addView(etY, lp)
+                if (chosenTypeIdx == swipeIdx) {
+                    fieldsContainer.addView(etX2, lp)
+                    fieldsContainer.addView(etY2, lp)
+                }
+            }
         }
 
         val dlg = MaterialAlertDialogBuilder(ctx)
             .setTitle(ctx.getString(R.string.editor_edit_title, pos + 1))
-            .setSingleChoiceItems(typeLabels, typeSelectedIdx) { _, which -> chosenTypeIdx = which }
+            .setSingleChoiceItems(typeLabels, typeSelectedIdx) { _, which ->
+                chosenTypeIdx = which
+                rebuildFields()
+            }
             .setView(container)
             .setNegativeButton(android.R.string.cancel, null)
             .setNeutralButton(R.string.editor_duplicate) { _, _ ->
@@ -264,19 +307,7 @@ class ScriptEditorDialogFragment : DialogFragment() {
             }
             .create()
 
-        dlg.setOnShowListener {
-            container.addView(etDelay, lp)
-            container.addView(etDuration, lp)
-            container.addView(etDesc, lp)
-            if (chosenTypeIdx != waitIdx) {
-                container.addView(etX, lp)
-                container.addView(etY, lp)
-                if (chosenTypeIdx == swipeIdx) {
-                    container.addView(etX2, lp)
-                    container.addView(etY2, lp)
-                }
-            }
-        }
+        dlg.setOnShowListener { rebuildFields() }
         dlg.show()
     }
 
@@ -291,11 +322,22 @@ class ScriptEditorDialogFragment : DialogFragment() {
                 getString(R.string.editor_saved, steps.size),
                 Toast.LENGTH_SHORT
             ).show()
-            onSavedCallback?.invoke()
+            notifySaved()
             dismiss()
         } else {
             Toast.makeText(requireContext(), R.string.editor_save_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** M5 修复：回调经 targetFragment 跨重建存活；普通字段回调优先（向后兼容） */
+    private fun notifySaved() {
+        if (onSavedCallback != null) {
+            onSavedCallback?.invoke()
+            return
+        }
+        (targetFragment as? OnScriptEditedListener)?.onScriptEdited()
+            ?: (parentFragment as? OnScriptEditedListener)?.onScriptEdited()
+            ?: (activity as? OnScriptEditedListener)?.onScriptEdited()
     }
 
     // ---------- Adapter ----------
@@ -342,7 +384,8 @@ class ScriptEditorDialogFragment : DialogFragment() {
                 else -> a.type
             }
             val desc = if (a.desc.isNotBlank()) "「${a.desc}」" else ""
-            holder.tvAction.text = "$actionStr $desc"
+            val cond = if (a.condition.isNotBlank()) "【若见「${a.condition}」】" else ""
+            holder.tvAction.text = "$actionStr $desc $cond"
             holder.tvMeta.text = buildString {
                 append(ctx.getString(R.string.editor_edit_delay).take(4))
                 append(" ${a.delay}ms · ")

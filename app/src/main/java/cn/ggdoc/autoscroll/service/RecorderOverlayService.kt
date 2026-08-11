@@ -246,12 +246,22 @@ class RecorderOverlayService : Service() {
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 handler.removeCallbacks(longPressRunnable)
                 val wasDragging = isDragging || longPressTriggered
                 isDragging = false
                 longPressTriggered = false
                 if (!wasDragging) onTapped() else snapToEdge()
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                // M1 修复：系统抢占触摸（通知栏下拉、来电、其他窗口抢焦点）会收到 CANCEL，
+                // 此时绝不能当「点击」处理，否则录制会被意外结束保存 / 回放被意外终止。
+                // 只做清理：移除长按回调、复位状态。
+                handler.removeCallbacks(longPressRunnable)
+                isDragging = false
+                longPressTriggered = false
                 return true
             }
         }

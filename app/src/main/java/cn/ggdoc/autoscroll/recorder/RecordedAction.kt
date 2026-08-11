@@ -23,7 +23,12 @@ data class RecordedAction(
     /** 距上一步的等待时间（ms） */
     val delay: Long = 0L,
     /** 可读描述（控件文字 / 类名），仅用于展示 */
-    val desc: String = ""
+    val desc: String = "",
+    /**
+     * 条件分支（功能3）：仅当屏幕出现包含此文本的内容时才执行本步，
+     * 否则跳过本步直接进入下一步。留空表示无条件执行。
+     */
+    val condition: String = ""
 ) {
 
     fun toJson(): JSONObject = JSONObject().apply {
@@ -37,6 +42,7 @@ data class RecordedAction(
         put("duration", duration)
         put("delay", delay)
         if (desc.isNotEmpty()) put("desc", desc)
+        if (condition.isNotEmpty()) put("condition", condition)
     }
 
     /** 脚本详情里展示的一行摘要 */
@@ -49,8 +55,9 @@ data class RecordedAction(
             TYPE_DOUBLE_TAP -> "双击 ($x, $y)"
             else -> type
         }
+        val cond = if (condition.isNotBlank()) "【若见「$condition」】" else ""
         val tail = if (desc.isNotEmpty()) "「$desc」" else ""
-        return "${index + 1}. 等待${delay}ms · $head $tail"
+        return "${index + 1}. 等待${delay}ms · $cond $head $tail"
     }
 
     companion object {
@@ -68,7 +75,8 @@ data class RecordedAction(
             y2 = o.optInt("y2"),
             duration = o.optLong("duration"),
             delay = o.optLong("delay"),
-            desc = o.optString("desc", "")
+            desc = o.optString("desc", ""),
+            condition = o.optString("condition", "")
         )
     }
 }

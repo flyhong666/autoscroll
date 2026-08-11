@@ -58,6 +58,7 @@ object AppConfig {
     private const val KEY_APP_FILTER_LIST = "app_filter_list"
 
     // ===== 详情流（新闻 / 社交场景：点开→浏览→返回） =====
+    private const val KEY_DETAIL_FLOW_ENABLED = "detail_flow_enabled"
     private const val KEY_DETAIL_DWELL_MIN = "detail_dwell_min_seconds"
     private const val KEY_DETAIL_DWELL_MAX = "detail_dwell_max_seconds"
     private const val KEY_DETAIL_READ_ALL_PROBABILITY = "detail_read_all_probability"
@@ -144,6 +145,7 @@ object AppConfig {
     const val SCENE_SOCIAL = SceneIds.SOCIAL
     const val SCENE_LIVE = SceneIds.LIVE
     const val SCENE_CUSTOM = SceneIds.CUSTOM
+    const val SCENE_AUTO = SceneIds.AUTO
 
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -227,6 +229,8 @@ object AppConfig {
 
     fun getRotationMinutes(context: Context): Int =
         prefs(context).getInt(KEY_ROTATION_MINUTES, DEFAULT_ROTATION_MINUTES)
+            // 修复：prefs 被写坏为 0/负数时，轮换协程会忙循环连续启动 Activity，强制 clamp
+            .coerceIn(1, 24 * 60)
     fun setRotationMinutes(context: Context, value: Int) =
         prefs(context).edit().putInt(KEY_ROTATION_MINUTES, value).apply()
 
@@ -344,6 +348,12 @@ object AppConfig {
             .apply()
 
     // ---------- 详情流（新闻 / 社交） ----------
+    /** 详情流开关：默认开启；关闭后新闻 / 社交场景退化为纯滑动 */
+    fun isDetailFlowEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DETAIL_FLOW_ENABLED, true)
+    fun setDetailFlowEnabled(context: Context, value: Boolean) =
+        prefs(context).edit().putBoolean(KEY_DETAIL_FLOW_ENABLED, value).apply()
+
     fun getDetailDwellMin(context: Context): Int =
         prefs(context).getInt(KEY_DETAIL_DWELL_MIN, DEFAULT_DETAIL_DWELL_MIN)
     fun setDetailDwellMin(context: Context, value: Int) =

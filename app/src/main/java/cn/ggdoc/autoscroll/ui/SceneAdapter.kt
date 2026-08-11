@@ -38,8 +38,8 @@ class SceneAdapter(
         holder.tvName.text = ctx.getString(scene.nameRes)
         holder.tvDesc.text = ctx.getString(scene.descRes)
         holder.tvTags.text = buildString {
-            append("推荐间隔 ").append(scene.recommendMinInterval).append("-").append(scene.recommendMaxInterval).append("s")
-            if (scene.supportAutoLike) append(" · 支持点赞")
+            append(ctx.getString(R.string.scene_tags_interval, scene.recommendMinInterval, scene.recommendMaxInterval))
+            if (scene.supportAutoLike) append(ctx.getString(R.string.scene_tags_like))
         }
         holder.ivSelected.visibility = if (scene.id == selectedId) View.VISIBLE else View.GONE
         holder.itemView.setOnClickListener { onSelect(scene) }

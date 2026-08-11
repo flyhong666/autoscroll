@@ -13,10 +13,8 @@
 
     <!-- Tab 标题 -->
     <string name="tab_control">控制</string>
-    <string name="tab_scene">场景</string>
     <string name="tab_task">任务</string>
     <string name="tab_recorder">记录器</string>
-    <string name="tab_script">记录器</string>
 
     <!-- 状态文本 -->
     <string name="status_accessibility_enabled">无障碍服务：已启用</string>
@@ -52,12 +50,38 @@
     <string name="rotation_apps_title">选择轮换应用</string>
     <string name="rotation_apps_count">已选 %1$d 个应用</string>
     <string name="rotation_apps_empty">未选择（开启后需先选应用）</string>
+    <string name="rotation_apps_loading">正在加载应用列表…</string>
     <string name="app_picker_search_hint">搜索应用</string>
     <string name="app_picker_select_all">全选</string>
     <string name="app_picker_clear">清空</string>
     <string name="app_picker_done">完成</string>
 
     <string name="params_saved">参数已保存</string>
+    <string name="params_error">参数错误：%1$s</string>
+
+    <!-- 场景列表标签 -->
+    <string name="scene_tags_interval">推荐间隔 %1$d-%2$ds</string>
+    <string name="scene_tags_like"> · 支持点赞</string>
+
+    <!-- 手势步骤列表 -->
+    <string name="gesture_detail_wait">等待 %1$d 秒</string>
+    <string name="gesture_detail_tap_text">点击「%1$s」 · 等待 %2$d 秒</string>
+    <string name="gesture_detail_pos">位置 %1$d%%,%2$d%%</string>
+    <string name="gesture_detail_dist"> · 距离 %1$d%%</string>
+    <string name="gesture_detail_wait_tail"> · 等待 %1$d 秒</string>
+    <string name="gesture_keyword_empty">未填关键词</string>
+
+    <!-- 脚本编辑器 -->
+    <string name="editor_new_center_click">中央点击（新建）</string>
+    <string name="editor_delete_step">删除第 %1$d 步？</string>
+    <string name="editor_hint_x">X（像素）</string>
+    <string name="editor_hint_y">Y（像素）</string>
+    <string name="editor_hint_x2">X2（滑动终点，像素）</string>
+    <string name="editor_hint_y2">Y2（滑动终点，像素）</string>
+
+    <!-- 定时运行 Toast -->
+    <string name="toast_schedule_auto_start">定时开始：自动滚动已启动</string>
+    <string name="toast_schedule_auto_stop">定时结束：已自动停止</string>
 
     <!-- 场景 -->
     <string name="scene_title">选择场景</string>
@@ -74,6 +98,8 @@
     <string name="scene_live_desc">抖音直播、虎牙、斗鱼等长时间挂机</string>
     <string name="scene_custom">自定义通用</string>
     <string name="scene_custom_desc">所有可滑动应用通用</string>
+    <string name="scene_auto">自动识别</string>
+    <string name="scene_auto_desc">按当前 APP 自动匹配最合适的场景模板</string>
     <string name="scene_selected">已选择</string>
     <string name="scene_entry_title">场景选择</string>
     <string name="scene_entry_summary">当前：%1$s</string>
@@ -92,32 +118,17 @@
     <!-- 详情流（新闻 / 社交场景） -->
     <string name="task_detail_flow">详情流（新闻 / 社交场景）</string>
     <string name="task_detail_flow_summary">模拟真人浏览：从上到下顺序点开列表条目 → 进详情页浏览 → 返回列表继续，可见条目点完自动上滑一屏</string>
+    <string name="task_detail_flow_switch">启用详情流（关闭后纯滑动）</string>
     <string name="task_detail_dwell_min">详情页最短停留</string>
     <string name="task_detail_dwell_max">详情页最长停留</string>
     <string name="task_detail_read_all">完整读完概率</string>
     <string name="task_detail_max_scrolls">单篇最多翻页</string>
 
     <!-- 场景操作方式标签 -->
-    <string name="flow_swipe">全屏滑动</string>
-    <string name="flow_detail">详情流</string>
-    <string name="flow_page_tap">点按翻页</string>
-    <string name="flow_idle">只挂机</string>
-    <string name="flow_custom">自定义手势</string>
 
     <!-- 自定义手势配置 -->
     <string name="custom_gesture_title">自定义手势</string>
-    <string name="custom_gesture_summary">选择手势类型与位置，适用于所有可滑动应用</string>
     <string name="custom_gesture_type">手势类型</string>
-    <string name="gesture_swipe_up">向上滑动</string>
-    <string name="gesture_swipe_down">向下滑动</string>
-    <string name="gesture_swipe_left">向左滑动</string>
-    <string name="gesture_swipe_right">向右滑动</string>
-    <string name="gesture_tap">单击</string>
-    <string name="gesture_double_tap">双击</string>
-    <string name="custom_tap_x">点击 X 位置</string>
-    <string name="custom_tap_y">点击 Y 位置</string>
-    <string name="custom_swipe_distance">滑动距离</string>
-    <string name="custom_position_hint">数值为屏幕百分比，5%%–95%%</string>
 
     <string name="ad_keywords_title">广告关闭关键词</string>
     <string name="ad_keywords_summary">匹配到这些文案时自动点击关闭。逗号/顿号分隔，可自由增删</string>
@@ -136,14 +147,18 @@
 
     <string name="task_schedule">定时运行</string>
     <string name="task_schedule_summary">仅在指定时间段内自动滚动，到点自动开始 / 停止</string>
-    <string name="task_schedule_start">开始时间</string>
-    <string name="task_schedule_end">结束时间</string>
     <string name="task_schedule_windows_title">运行时段</string>
     <string name="task_schedule_to">至</string>
     <string name="task_schedule_add_window">添加时段</string>
     <string name="task_schedule_remove_window">删除该时段</string>
     <string name="task_schedule_window_empty">未设置任何时段：开启后将全天运行</string>
     <string name="task_schedule_max_windows">最多支持 8 个时段</string>
+    <string name="task_schedule_same_time">起止时间不能相同（相同时视为全天运行，请错开）</string>
+
+    <!-- 自定义手势：点击文本步骤 -->
+    <string name="custom_gesture_keyword">文本关键词</string>
+    <string name="custom_gesture_keyword_hint">要点击的控件文字（如：立即下载）</string>
+    <string name="custom_gesture_keyword_required">「点击文本」步骤请填写关键词</string>
 
     <string name="task_process_recover">进程恢复</string>
     <string name="task_process_recover_summary">无障碍服务被系统回收后，若此前正在滚动则自动恢复，并尊重定时窗口</string>
@@ -199,20 +214,8 @@
     <string name="toast_stuck_restart_app">内容长时间无变化，正在重启应用</string>
 
     <!-- ========== 卡死自恢复（优化项） ========== -->
-    <string name="task_auto_recover">卡死自动恢复</string>
-    <string name="task_auto_recover_summary">检测屏幕内容是否真的在变化。连续无变化时依次尝试关闭弹窗、返回上一层、重启应用，避免刷到底后空转。</string>
 
     <!-- ========== 统计看板 ========== -->
-    <string name="stats_title">运行统计</string>
-    <string name="stats_today">今日</string>
-    <string name="stats_total">累计</string>
-    <string name="stats_scrolls">滑动 %1$d 次</string>
-    <string name="stats_likes">点赞 %1$d 次</string>
-    <string name="stats_ad_blocks">屏蔽广告 %1$d 次</string>
-    <string name="stats_details">浏览详情 %1$d 篇</string>
-    <string name="stats_duration">时长 %1$s</string>
-    <string name="stats_clear">清空统计</string>
-    <string name="stats_cleared">统计数据已清空</string>
 
     <!-- ========== 看广告得金币（高风险独立任务） ========== -->
     <string name="task_ad_reward">看广告得金币（高风险）</string>
@@ -240,11 +243,6 @@
     <string name="script_tip">点「开始录制」后本页会自动退到后台，切换到目标 APP 正常操作即可；屏幕上会出现录制悬浮条，点一下它结束录制并保存脚本。\n注意：录制依赖无障碍事件，部分自绘界面（游戏、Flutter/Canvas 页面）可能捕获不到。</string>
     <string name="script_empty">还没有脚本，点下方按钮开始录制</string>
     <string name="script_start_record">开始录制</string>
-    <string name="script_stop_record">结束录制</string>
-    <string name="script_save_title">保存脚本</string>
-    <string name="script_name_hint">给脚本起个名字</string>
-    <string name="script_save">保存</string>
-    <string name="script_default_name">未命名脚本</string>
     <string name="script_back">返回</string>
     <string name="script_run">运行</string>
     <string name="script_more">更多操作</string>
@@ -276,7 +274,6 @@
     <string name="editor_subtitle">共 %1$d 步 · 点击步骤编辑，↑↓ 排序，可复制步骤，✕ 删除</string>
     <string name="editor_empty">（脚本为空）</string>
     <string name="editor_step_delete">删除本步</string>
-    <string name="editor_step_edit">编辑本步</string>
     <string name="editor_add_wait">+ 在末尾插入「等待」</string>
     <string name="editor_add_click">+ 在末尾插入「点击」</string>
     <string name="editor_save">保存修改</string>
@@ -293,13 +290,15 @@
     <string name="editor_move_down">下移</string>
     <string name="editor_duplicate">复制此步</string>
     <string name="editor_edit_desc">备注（可选，如：点赞按钮）</string>
+    <string name="editor_edit_condition">条件（可选，仅当屏幕出现此文本时执行本步）</string>
     <string name="editor_edit_title">编辑第 %1$d 步</string>
     <string name="editor_edit_type">动作类型</string>
     <string name="editor_edit_delay">与上一步间隔（毫秒）</string>
     <string name="editor_edit_duration">手势持续（毫秒）</string>
-    <string name="editor_edit_xy">坐标（X, Y）</string>
-    <string name="editor_edit_xy2">终点坐标（X2, Y2）</string>
     <string name="script_detail_header">目标应用：%1$s\n步骤数：%2$d\n预计耗时：约 %3$d 秒</string>
+    <string name="script_detail_more">\n… 其余 %1$d 步略</string>
+    <string name="script_import_action">导入</string>
+    <string name="script_import_empty_hint">外部目录（Android/data/%1$s/files/scripts）下没有可导入的脚本。\n\n先从某条脚本点「导出」，或把 .json 脚本文件放到上述目录后再导入。</string>
     <string name="script_export_done">已导出到：\n%1$s</string>
     <string name="script_delete_confirm">确定删除脚本「%1$s」？此操作不可撤销。</string>
 
@@ -329,6 +328,7 @@
     <string name="notif_channel_desc">用于显示悬浮窗控制按钮</string>
     <string name="notif_content">点击控制按钮开始/停止自动滚动</string>
     <string name="notif_content_running">运行中 · 剩余 %1$s</string>
+    <string name="notif_stop_action">停止</string>
     <string name="notif_recorder_channel_name">操作记录器</string>
     <string name="notif_recorder_content">录制 / 回放进行中，点击查看脚本</string>
 

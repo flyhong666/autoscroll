@@ -33,7 +33,6 @@ class PageClassifierTest {
             hasDetailActionWords = true,
             hasBackAffordance = true,
             listItemCount = 2,
-            clickableCount = 14
         )
         assertEquals(PageClassifier.PageType.DETAIL, PageClassifier.classify(s))
         assertFalse("不该在正文页里挑条目点", PageClassifier.isSafeToPickItem(s))
@@ -48,7 +47,6 @@ class PageClassifierTest {
             hasDetailActionWords = false,
             hasBackAffordance = false,
             listItemCount = 9,
-            clickableCount = 25
         )
         assertEquals(PageClassifier.PageType.LIST, PageClassifier.classify(s))
         assertTrue(PageClassifier.isSafeToPickItem(s))
@@ -60,7 +58,6 @@ class PageClassifierTest {
             totalTextLength = 380,
             maxSingleTextLength = 26,
             listItemCount = 12,
-            clickableCount = 30
         )
         assertEquals(PageClassifier.PageType.LIST, PageClassifier.classify(s))
     }
@@ -91,11 +88,13 @@ class PageClassifierTest {
     }
 
     @Test
-    fun `两个中等信号即可判详情页`() {
+    fun `正文量大加长段落判详情页`() {
+        // 条目充足时「正文总量大」信号不再计分（H4：信息流卡片标题+摘要很容易超 500 字），
+        // 因此这里用「条目少」来体现正文形态
         val s = PageClassifier.Signals(
-            totalTextLength = 800,          // +1 正文量大
+            totalTextLength = 800,          // 正文量大（且条目少，信号有效）
             maxSingleTextLength = 200,      // +1 长段落
-            listItemCount = 8               // 条目充足，不加分
+            listItemCount = 3               // +1 条目少
         )
         assertEquals(PageClassifier.PageType.DETAIL, PageClassifier.classify(s))
     }
@@ -141,12 +140,81 @@ class PageClassifierTest {
         )
         assertEquals(PageClassifier.PageType.LIST, PageClassifier.classify(below))
 
+        // 恰好到阈值：长段落 +1；但条目充足时「正文总量大」不计分（H4），
+        // 且 maxSingleTextLength 恰好等于阈值不满足 < 阈值，因此保守判 UNKNOWN
         val atThreshold = PageClassifier.Signals(
             totalTextLength = PageClassifier.LONG_TEXT_THRESHOLD,
             maxSingleTextLength = PageClassifier.LONG_PARAGRAPH_THRESHOLD,
             listItemCount = PageClassifier.FEW_ITEMS_THRESHOLD
         )
-        assertEquals(PageClassifier.PageType.DETAIL, PageClassifier.classify(atThreshold))
+        assertEquals(PageClassifier.PageType.UNKNOWN, PageClassifier.classify(atThreshold))
+
+        // 同样阈值但条目少：正文量大 + 长段落 + 条目少 = 3 分，判详情页
+        val atThresholdFewItems = PageClassifier.Signals(
+            totalTextLength = PageClassifier.LONG_TEXT_THRESHOLD,
+            maxSingleTextLength = PageClassifier.LONG_PARAGRAPH_THRESHOLD,
+            listItemCount = PageClassifier.FEW_ITEMS_THRESHOLD - 1
+        )
+        assertEquals(PageClassifier.PageType.DETAIL, PageClassifier.classify(atThresholdFewItems))
+    }
+
+    // ---------- H4 回归：列表页不得被误判为详情页 ----------
+
+    @Test
+    fun `长列表页带评论标签不得误判为详情页`() {
+        // H4 核心回归：信息流列表 12 张卡片，标题+摘要合计超过 500 字，
+        // 卡片上普遍带「评论 328」「点赞」等弱词——修复前会凑齐 2 分误判 DETAIL，
+        // 导致详情流在列表页空转。
+        val s = PageClassifier.Signals(
+            isWebViewContainer = false,
+            totalTextLength = 560,          // ≥500，但条目充足（H4：不计分）
+            maxSingleTextLength = 46,
+            hasDetailActionWords = false,   // 弱词不再计入详情信号
+            hasBackAffordance = false,
+            hasListHint = true,             // 含「推荐/关注」等列表特征词
+            listItemCount = 12
+        )
+        assertEquals(PageClassifier.PageType.LIST, PageClassifier.classify(s))
+        assertTrue(PageClassifier.isSafeToPickItem(s))
+    }
+
+    @Test
+    fun `列表页无返回键无强词即使字数多也判列表`() {
+        val s = PageClassifier.Signals(
+            totalTextLength = 900,
+            maxSingleTextLength = 40,
+            hasDetailActionWords = false,
+            listItemCount = 15
+        )
+        assertEquals(PageClassifier.PageType.LIST, PageClassifier.classify(s))
+    }
+
+    @Test
+    fun `短段落详情页底部有推荐卡片时不得判为列表`() {
+        // L4 回归：短正文详情页 + 底部「相关推荐」卡片 ≥5 张，若无详情强词会误判 LIST
+        // 在正文里乱点；有强词（写评论/展开全文）时绝不允许判 LIST。
+        val s = PageClassifier.Signals(
+            totalTextLength = 260,
+            maxSingleTextLength = 40,       // 段落都偏短
+            hasDetailActionWords = true,    // 「写评论」等强词
+            hasBackAffordance = true,
+            listItemCount = 7               // 底部推荐卡片
+        )
+        assertTrue(PageClassifier.classify(s) != PageClassifier.PageType.LIST)
+        assertFalse(PageClassifier.isSafeToPickItem(s))
+    }
+
+    @Test
+    fun `列表特征词抵消详情倾向`() {
+        // hasListHint 与详情判定互斥：即便字数偏多，带「为你推荐」的列表也不判 DETAIL
+        val s = PageClassifier.Signals(
+            totalTextLength = 520,
+            maxSingleTextLength = 90,
+            hasDetailActionWords = false,
+            hasListHint = true,
+            listItemCount = 8
+        )
+        assertTrue(PageClassifier.classify(s) != PageClassifier.PageType.DETAIL)
     }
 
     // ---------- 词表匹配 ----------

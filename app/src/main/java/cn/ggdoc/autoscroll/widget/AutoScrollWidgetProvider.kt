@@ -99,9 +99,8 @@ class AutoScrollWidgetProvider : AppWidgetProvider() {
                 if (svc != null) {
                     if (AutoScrollAccessibilityService.isScrolling) svc.stopScrolling()
                     else svc.startScrolling()
-                    // 服务已连接：其 start/stop 会广播 STATE_CHANGED，下方分支会再次刷新；
-                    // 这里仍主动刷一次，保证即时反馈
-                    updateAll(context)
+                    // M9 修复：start/stop 内部会触发 STATE_CHANGED 广播（下方分支 updateAll）
+                    // 并强制刷新小部件，这里不再重复刷新，避免一次点击两次 updateAll。
                 } else {
                     // 服务未连接：无法切换，仅刷新提示当前不可用
                     updateAll(context)

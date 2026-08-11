@@ -20,8 +20,6 @@ class GestureStepAdapter(
         notifyDataSetChanged()
     }
 
-    fun getItem(pos: Int): CustomGestureStep = items[pos]
-
     override fun getItemCount(): Int = items.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -31,14 +29,18 @@ class GestureStepAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val step = items[position]
+        val ctx = holder.itemView.context
         holder.binding.tvStepIndex.text = (position + 1).toString()
         holder.binding.tvStepGesture.text = step.gestureName()
         val detail = if (step.isWaitOnly()) {
-            "等待 ${step.waitSec} 秒"
+            ctx.getString(R.string.gesture_detail_wait, step.waitSec)
+        } else if (step.isTapText()) {
+            val kw = step.textKeyword.ifBlank { ctx.getString(R.string.gesture_keyword_empty) }
+            ctx.getString(R.string.gesture_detail_tap_text, kw, step.waitSec)
         } else {
-            "位置 ${step.xPct}%,${step.yPct}%" + (
-                if (step.isSwipe()) " · 距离 ${step.distPct}%" else ""
-            ) + " · 等待 ${step.waitSec} 秒"
+            val pos = ctx.getString(R.string.gesture_detail_pos, step.xPct, step.yPct)
+            val dist = if (step.isSwipe()) ctx.getString(R.string.gesture_detail_dist, step.distPct) else ""
+            pos + dist + ctx.getString(R.string.gesture_detail_wait_tail, step.waitSec)
         }
         holder.binding.tvStepDetail.text = detail
         holder.binding.btnUp.isEnabled = position > 0

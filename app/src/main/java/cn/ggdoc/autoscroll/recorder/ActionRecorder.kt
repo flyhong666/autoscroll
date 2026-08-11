@@ -108,8 +108,9 @@ object ActionRecorder {
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastScrollElapsed < SCROLL_MERGE_MS) return
-                lastScrollElapsed = now
-                buildSwipe(event)
+                // M7 修复：只有构建成功（事件源 bounds 有效）才更新合并时间戳，
+                // 否则一次无效滚动事件会把 450ms 内的合法事件一起吞掉
+                buildSwipe(event)?.also { lastScrollElapsed = now }
             }
 
             else -> null

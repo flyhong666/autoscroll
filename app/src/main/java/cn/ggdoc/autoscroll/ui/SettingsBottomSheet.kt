@@ -153,7 +153,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         if (minD >= maxD) maxD = minD + 50
         val (valid, msg) = AppConfig.validate(minI, maxI, minD, maxD)
         if (!valid) {
-            Toast.makeText(ctx, "参数错误：$msg", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, getString(R.string.params_error, msg), Toast.LENGTH_SHORT).show()
             return
         }
         AppConfig.setMinInterval(ctx, minI)

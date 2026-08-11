@@ -189,6 +189,12 @@ class FloatingWindowService : Service() {
             this, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        // 通知栏「停止」按钮：停止悬浮窗服务（onDestroy 会同步停止滚动）
+        val stopPi = PendingIntent.getService(
+            this, 1,
+            Intent(this, FloatingWindowService::class.java).apply { action = ACTION_STOP_SERVICE },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         val scrolling = AutoScrollAccessibilityService.isScrolling
         val contentText = if (scrolling) {
             val remaining = AutoScrollAccessibilityService.remainingSeconds
@@ -208,6 +214,7 @@ class FloatingWindowService : Service() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setShowWhen(false)
+            .addAction(0, getString(R.string.notif_stop_action), stopPi)
             .build()
     }
 
@@ -285,7 +292,7 @@ class FloatingWindowService : Service() {
                 }
                 return true
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 handler.removeCallbacks(longPressRunnable)
                 val wasDragging = isDragging || longPressTriggered
                 isDragging = false
@@ -296,6 +303,15 @@ class FloatingWindowService : Service() {
                 } else {
                     snapToEdge()
                 }
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                // M1 修复：系统抢占触摸（通知栏下拉等）收到 CANCEL，绝不能当「点击」处理，
+                // 否则会在用户未触碰悬浮球时意外切换滚动状态。只清理状态。
+                handler.removeCallbacks(longPressRunnable)
+                isDragging = false
+                longPressTriggered = false
                 return true
             }
         }

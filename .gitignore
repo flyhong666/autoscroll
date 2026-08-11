@@ -2,6 +2,9 @@
 .gradle/
 build/
 
+# 本机构建产物（APK / baseline profile / 签名信息），不应提交
+app/release/
+
 # Local configuration file (sdk path, etc)
 local.properties
 

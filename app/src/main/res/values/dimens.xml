@@ -2,4 +2,10 @@
 <resources>
     <dimen name="floating_button_size">60dp</dimen>
     <dimen name="floating_button_margin">16dp</dimen>
+
+    <!-- 任务页：滑块行共用尺寸 -->
+    <dimen name="slider_row_width">160dp</dimen>
+    <dimen name="slider_value_width">56dp</dimen>
+    <dimen name="spacing_small">12dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
 </resources>

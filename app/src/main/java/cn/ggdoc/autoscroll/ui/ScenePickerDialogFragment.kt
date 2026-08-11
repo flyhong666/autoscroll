@@ -99,7 +99,11 @@ class ScenePickerDialogFragment : DialogFragment() {
 
     private fun saveSteps() {
         AppConfig.setCustomGestureSequence(requireContext(), steps.toList())
-        AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+        AutoScrollAccessibilityService.instance?.let {
+            it.loadConfigFromPrefs()
+            // 序列已变更：重启正在运行的自定义序列循环，让新序列立即生效
+            it.restartCustomSequenceIfRunning()
+        }
     }
 
     private fun moveStep(pos: Int, dir: Int) {
@@ -134,10 +138,18 @@ class ScenePickerDialogFragment : DialogFragment() {
         } else 0
         spinner.setSelection(initialTypeIndex)
 
+        // H2 修复：存储值可能超出 Slider 的 valueFrom/valueTo（deserialize 允许
+        // waitSec 0-600、distPct 5-95，旧版单手势配置 distPct 可到 95），直接赋值
+        // 会抛 IllegalArgumentException。统一 coerceIn 到控件合法范围。
         binding.sliderWait.value = (existing?.waitSec ?: 2).toFloat()
+            .coerceIn(binding.sliderWait.valueFrom, binding.sliderWait.valueTo)
         binding.sliderX.value = (existing?.xPct ?: 50).toFloat()
+            .coerceIn(binding.sliderX.valueFrom, binding.sliderX.valueTo)
         binding.sliderY.value = (existing?.yPct ?: 50).toFloat()
+            .coerceIn(binding.sliderY.valueFrom, binding.sliderY.valueTo)
         binding.sliderDist.value = (existing?.distPct ?: 70).toFloat()
+            .coerceIn(binding.sliderDist.valueFrom, binding.sliderDist.valueTo)
+        binding.etKeyword.setText(existing?.textKeyword.orEmpty())
         updateStepDialogText(binding)
 
         val onTypeChanged = {
@@ -147,13 +159,17 @@ class ScenePickerDialogFragment : DialogFragment() {
                 CustomGestureStep.TYPE_SWIPE_LEFT, CustomGestureStep.TYPE_SWIPE_RIGHT
             )
             val isWait = type == CustomGestureStep.TYPE_WAIT
+            // 「点击文本」步骤：显示关键词输入框，隐藏距离与坐标滑块
+            val isTapText = type == CustomGestureStep.TYPE_TAP_TEXT
             binding.tvDistLabel.visibility = if (isSwipe) View.VISIBLE else View.GONE
             binding.sliderDist.visibility = if (isSwipe) View.VISIBLE else View.GONE
-            binding.tvPosLabel.visibility = if (isWait) View.GONE else View.VISIBLE
-            binding.sliderX.visibility = if (isWait) View.GONE else View.VISIBLE
-            binding.sliderY.visibility = if (isWait) View.GONE else View.VISIBLE
-            binding.tvX.visibility = if (isWait) View.GONE else View.VISIBLE
-            binding.tvY.visibility = if (isWait) View.GONE else View.VISIBLE
+            binding.tvKeywordLabel.visibility = if (isTapText) View.VISIBLE else View.GONE
+            binding.etKeyword.visibility = if (isTapText) View.VISIBLE else View.GONE
+            binding.tvPosLabel.visibility = if (isWait || isTapText) View.GONE else View.VISIBLE
+            binding.sliderX.visibility = if (isWait || isTapText) View.GONE else View.VISIBLE
+            binding.sliderY.visibility = if (isWait || isTapText) View.GONE else View.VISIBLE
+            binding.tvX.visibility = if (isWait || isTapText) View.GONE else View.VISIBLE
+            binding.tvY.visibility = if (isWait || isTapText) View.GONE else View.VISIBLE
         }
         spinner.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>, v: View?, pos: Int, id: Long) = onTypeChanged()
@@ -175,12 +191,22 @@ class ScenePickerDialogFragment : DialogFragment() {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val type = CustomGestureStep.GESTURE_TYPES[spinner.selectedItemPosition]
+                val keyword = if (type == CustomGestureStep.TYPE_TAP_TEXT) {
+                    binding.etKeyword.text?.toString()?.trim().orEmpty()
+                } else ""
+                // 「点击文本」步骤必须填关键词，否则执行时静默跳过，用户会困惑
+                if (type == CustomGestureStep.TYPE_TAP_TEXT && keyword.isBlank()) {
+                    Toast.makeText(requireContext(), R.string.custom_gesture_keyword_required, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
                 val step = CustomGestureStep(
                     gesture = type,
                     waitSec = binding.sliderWait.value.toInt(),
                     xPct = binding.sliderX.value.toInt(),
                     yPct = binding.sliderY.value.toInt(),
-                    distPct = binding.sliderDist.value.toInt()
+                    distPct = binding.sliderDist.value.toInt(),
+                    // 仅「点击文本」步骤保存关键词，其他类型不保留（避免展示混乱）
+                    textKeyword = keyword
                 )
                 if (isEdit) steps[editPos] = step else steps.add(step)
                 saveSteps()

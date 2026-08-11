@@ -83,8 +83,8 @@ object ScreenSnapshot {
         var maxSingleTextLength = 0
         var hasDetailActionWords = false
         var hasBackAffordance = false
+        var hasListHint = false
         var listItemCount = 0
-        var clickableCount = 0
 
         // 列表项高度门槛：屏幕高度的 6%~55% 之间才算一条内容卡片
         val minItemH = if (screenHeight > 0) (screenHeight * 0.06f).toInt() else 60
@@ -116,6 +116,9 @@ object ScreenSnapshot {
                     if (!hasDetailActionWords && PageClassifier.containsDetailAction(nodeText)) {
                         hasDetailActionWords = true
                     }
+                    if (!hasListHint && PageClassifier.containsListHint(nodeText)) {
+                        hasListHint = true
+                    }
                 }
                 if (nodeDesc.isNotEmpty()) {
                     if (!hasDetailActionWords && PageClassifier.containsDetailAction(nodeDesc)) {
@@ -124,10 +127,12 @@ object ScreenSnapshot {
                     if (!hasBackAffordance && BACK_WORDS.any { nodeDesc.contains(it, true) }) {
                         hasBackAffordance = true
                     }
+                    if (!hasListHint && PageClassifier.containsListHint(nodeDesc)) {
+                        hasListHint = true
+                    }
                 }
 
                 if (node.isClickable) {
-                    clickableCount++
                     val rect = Rect().also { node.getBoundsInScreen(it) }
                     val h = rect.height()
                     // 有文字 + 高度像内容卡片 → 计为一条列表项
@@ -164,8 +169,8 @@ object ScreenSnapshot {
             maxSingleTextLength = maxSingleTextLength,
             hasDetailActionWords = hasDetailActionWords,
             hasBackAffordance = hasBackAffordance,
-            listItemCount = listItemCount,
-            clickableCount = clickableCount
+            hasListHint = hasListHint,
+            listItemCount = listItemCount
         )
         return Snapshot(texts, fingerprint, signals)
     }

@@ -65,6 +65,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    testOptions {
+        unitTests {
+            // Robolectric 单元测试需要访问 Android 资源（Application/SharedPreferences）
+            isIncludeAndroidResources = true
+        }
+    }
     buildFeatures {
         viewBinding = true
         buildConfig = false
@@ -97,5 +103,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
 }

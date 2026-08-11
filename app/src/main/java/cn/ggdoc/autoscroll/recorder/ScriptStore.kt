@@ -31,6 +31,18 @@ object ScriptStore {
     private fun dir(context: Context): File =
         File(context.filesDir, DIR_NAME).apply { if (!exists()) mkdirs() }
 
+    /**
+     * 文件名校验：仅允许无路径分隔符、无 `..` 的简单文件名。
+     * 修复：import 外部文件直接使用 extFile.name，恶意命名的文件可把内容写到
+     * scripts 目录之外（目录逃逸），load/delete/rename/export 同样必须校验。
+     */
+    private fun safeFileName(fileName: String): String? {
+        val n = fileName.trim()
+        if (n.isEmpty()) return null
+        if (n.contains('/') || n.contains('\\') || n.contains("..")) return null
+        return n
+    }
+
     fun list(context: Context): List<Entry> = try {
         dir(context).listFiles { f -> f.isFile && f.name.endsWith(EXT) }
             ?.mapNotNull { f ->
@@ -45,8 +57,19 @@ object ScriptStore {
         emptyList()
     }
 
-    fun load(context: Context, fileName: String): RecordedScript? =
-        readScript(File(dir(context), fileName))
+    /** 后台加载脚本列表（IO 不阻塞主线程），完成后回主线程回调 */
+    fun listAsync(context: Context, onResult: (List<Entry>) -> Unit) {
+        val appCtx = context.applicationContext
+        Thread {
+            val list = list(appCtx)
+            android.os.Handler(android.os.Looper.getMainLooper()).post { onResult(list) }
+        }.start()
+    }
+
+    fun load(context: Context, fileName: String): RecordedScript? {
+        val safe = safeFileName(fileName) ?: return null
+        return readScript(File(dir(context), safe))
+    }
 
     private fun readScript(file: File): RecordedScript? = try {
         if (!file.exists()) null else RecordedScript.fromJson(JSONObject(file.readText(Charsets.UTF_8)))
@@ -65,44 +88,51 @@ object ScriptStore {
         null
     }
 
-    fun delete(context: Context, fileName: String): Boolean = try {
-        File(dir(context), fileName).delete()
-    } catch (e: Exception) {
-        Log.e(TAG, "删除脚本失败", e)
-        false
+    fun delete(context: Context, fileName: String): Boolean {
+        val safe = safeFileName(fileName) ?: return false
+        return try {
+            File(dir(context), safe).delete()
+        } catch (e: Exception) {
+            Log.e(TAG, "删除脚本失败", e)
+            false
+        }
     }
 
     fun rename(context: Context, fileName: String, newName: String): Boolean {
-        val script = load(context, fileName) ?: return false
+        val safe = safeFileName(fileName) ?: return false
+        val script = load(context, safe) ?: return false
         val safeBase = newName.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_")
             .takeIf { it.isNotEmpty() } ?: return false
         val newFileName = "$safeBase$EXT"
         // 文件名本就一致：仅更新内部 name 字段
-        if (newFileName == fileName) {
-            return save(context, script.copy(name = newName), fileName) != null
+        if (newFileName == safe) {
+            return save(context, script.copy(name = newName), safe) != null
         }
         // 避免覆盖已存在的脚本
         if (File(dir(context), newFileName).exists()) return false
         // L3 修复：原实现只改内部 name 字段、用原 fileName 存盘，文件名不变，
         // 导致导出时仍是旧文件名、令人困惑。这里真正移动文件到新文件名。
-        val old = File(dir(context), fileName)
+        val old = File(dir(context), safe)
         if (save(context, script.copy(name = newName), newFileName) == null) return false
         old.delete()
         return true
     }
 
     /** 导出到外部专属目录，返回目标文件（失败 null） */
-    fun export(context: Context, fileName: String): File? = try {
-        val src = File(dir(context), fileName)
-        // 部分设备 / 受限存储下 getExternalFilesDir 可能返回 null，安全降级
-        val extRoot = context.getExternalFilesDir(null) ?: return null
-        val outDir = File(extRoot, DIR_NAME).apply { if (!exists()) mkdirs() }
-        val out = File(outDir, fileName)
-        src.copyTo(out, overwrite = true)
-        out
-    } catch (e: Exception) {
-        Log.e(TAG, "导出脚本失败", e)
-        null
+    fun export(context: Context, fileName: String): File? {
+        val safe = safeFileName(fileName) ?: return null
+        return try {
+            val src = File(dir(context), safe)
+            // 部分设备 / 受限存储下 getExternalFilesDir 可能返回 null，安全降级
+            val extRoot = context.getExternalFilesDir(null) ?: return null
+            val outDir = File(extRoot, DIR_NAME).apply { if (!exists()) mkdirs() }
+            val out = File(outDir, safe)
+            src.copyTo(out, overwrite = true)
+            out
+        } catch (e: Exception) {
+            Log.e(TAG, "导出脚本失败", e)
+            null
+        }
     }
 
     /**
@@ -114,23 +144,24 @@ object ScriptStore {
      */
     fun importFromExternal(context: Context, extFile: File): String? = try {
         if (!extFile.exists() || !extFile.name.endsWith(EXT)) return null
+        // 文件名校验：外部文件可能带恶意路径，只取简单文件名
+        val safeBase = safeFileName(extFile.name)?.removeSuffix(EXT) ?: return null
         // 校验 JSON 合法性：能解析才算有效脚本
         val parsed = readScript(extFile) ?: return null
         // 去重：计算目标名，冲突则自增编号
-        var targetName = extFile.name
-        val base = targetName.removeSuffix(EXT)
+        var targetName = "$safeBase$EXT"
         var i = 1
         val ctxDir = dir(context)
         while (File(ctxDir, targetName).exists()) {
-            targetName = "${base}_${i}${EXT}"
+            targetName = "${safeBase}_${i}${EXT}"
             i++
         }
         val target = File(ctxDir, targetName)
         extFile.copyTo(target, overwrite = false)
         // 若外部文件 name 字段为空，给个兜底
         if (parsed.name.isBlank()) {
-            val safeName = base.takeIf { it.isNotBlank() } ?: defaultScriptName()
-            save(context, parsed.copy(name = safeName), targetName)
+            val fallback = safeBase.takeIf { it.isNotBlank() } ?: defaultScriptName()
+            save(context, parsed.copy(name = fallback), targetName)
         }
         targetName
     } catch (e: Exception) {
@@ -146,9 +177,12 @@ object ScriptStore {
         val extRoot = context.getExternalFilesDir(null) ?: return emptyList()
         val extDir = File(extRoot, DIR_NAME)
         if (!extDir.exists()) emptyList()
-        else extDir.listFiles { f ->
-            f.isFile && f.name.endsWith(EXT) && !File(dir(context), f.name).exists()
-        }?.sortedByDescending { it.lastModified() }?.toList() ?: emptyList()
+        else {
+            val ctxDir = dir(context)
+            extDir.listFiles { f ->
+                f.isFile && f.name.endsWith(EXT) && !File(ctxDir, f.name).exists()
+            }?.sortedByDescending { it.lastModified() }?.toList() ?: emptyList()
+        }
     } catch (e: Exception) {
         Log.e(TAG, "列出外部脚本失败", e)
         emptyList()

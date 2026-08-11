@@ -100,13 +100,19 @@ object AdRewardTask {
                 val child = node.getChild(i) ?: continue
                 if (visited.add(child)) {
                     queue.offer(child to depth + 1)
-                } else {
-                    // 重复访问的节点回收，避免环引用导致无限扩展 + 节点池泄漏
-                    runCatching { child.recycle() }
                 }
+                // M2 修复：重复访问的节点不再在此处回收——它可能仍留在队列中待处理，
+                // 提前 recycle 会导致出队后访问已回收节点抛 IllegalStateException。
+                // 统一由「出队后未匹配即回收」与下方退出前清队回收兜底。
             }
             // 处理完当前节点后回收（保留 root 与候选）
             if (node !== root && !match) runCatching { node.recycle() }
+        }
+        // M2 修复：达到 MAX_NODES 提前退出时，队列中残留的节点从未被处理，
+        // 必须回收，否则 Android 13 以下节点池累积泄漏。
+        while (queue.isNotEmpty()) {
+            val (node, _) = queue.poll() ?: continue
+            if (node !== root) runCatching { node.recycle() }
         }
     }
 

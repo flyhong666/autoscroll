@@ -28,6 +28,7 @@ import cn.ggdoc.autoscroll.human.HumanTiming
 import cn.ggdoc.autoscroll.human.StuckDetector
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.task.AdBlocker
+import cn.ggdoc.autoscroll.task.AdNodeKit
 import cn.ggdoc.autoscroll.task.KeepAliveManager
 import cn.ggdoc.autoscroll.util.CrashMonitor
 import cn.ggdoc.autoscroll.util.AppLog
@@ -64,6 +65,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
         /** 手势派发后等多久再采集指纹：手势时长上限 + 渲染缓冲 */
         private const val STUCK_CHECK_BUFFER_MS = 900
+
+        /** 桌面小部件刷新最小间隔：tick 广播频繁，widget 刷新降频省电（M9） */
+        private const val WIDGET_REFRESH_MIN_MS = 30_000L
+
+        /** 自定义序列 waitSec=0 步骤的最小间隔：防全 0 序列忙循环轰炸手势 */
+        private const val MIN_CUSTOM_STEP_GAP_MS = 400L
 
         // 定时运行闹钟
         const val ACTION_SCHEDULE_START = "cn.ggdoc.autoscroll.SCHEDULE_START"
@@ -238,7 +245,6 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
         override val adRewardEnabled: Boolean get() = this@AutoScrollAccessibilityService.adReward
         override val adRewardMinutes: Int get() = this@AutoScrollAccessibilityService.adRewardMinutes
-        override val adBlockEnabled: Boolean get() = this@AutoScrollAccessibilityService.adBlock
         override var adRewardCount: Int
             get() = this@AutoScrollAccessibilityService.adRewardCount
             set(value) { this@AutoScrollAccessibilityService.adRewardCount = value }
@@ -272,6 +278,13 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     @Volatile
     private var foregroundPackage: String? = null
+
+    /**
+     * 当前实际生效的场景模板：场景为「自动识别」时按前台包名映射，
+     * 其他场景原样返回。所有手势/详情流/点赞逻辑都应使用本属性而非 getScene(currentScene)。
+     */
+    val resolvedScene: SceneConfig.Scene
+        get() = SceneConfig.resolveScene(currentScene, foregroundPackage)
 
     /** 当前场景的 APP 包名列表（用于轮换） */
     private val rotationList = mutableListOf<String>()
@@ -338,6 +351,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Toast 监听（功能3）：瞬时文本事件即时响应，不等下一轮轮询
+        if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
+            handleToastEvent(event)
+        }
+
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank() && pkg != foregroundPackage) {
@@ -365,6 +383,48 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {
         stopScrolling()
+    }
+
+    // ========== Toast 监听（功能3） ==========
+
+    /** 网络/加载失败关键词：命中后立即重置卡死检测并安排快速重试 */
+    private val networkFailWords = listOf(
+        "加载失败", "网络错误", "网络异常", "连接失败", "网络不给力", "请检查网络"
+    )
+
+    /** 激励视频「到账」关键词：命中后提前结束观看期恢复滚动 */
+    private val rewardDoneWords = listOf(
+        "已到账", "领取成功", "奖励已发放", "已获得", "金币已"
+    )
+
+    /**
+     * 处理 Toast/通知文本事件，做即时响应（而非等待下一轮轮询）。
+     *
+     * - 网络/加载失败：重置卡死检测 + 2 秒后快速重试一次，缩短「卡在失败页」的时间；
+     * - 激励视频到账：通知 AdRewardController 提前结束观看期（带最短观看保护）。
+     */
+    private fun handleToastEvent(event: AccessibilityEvent) {
+        if (!isScrolling) return
+        val text = event.text?.joinToString(" ")?.trim().orEmpty()
+        if (text.isEmpty()) return
+        Log.d(TAG, "Toast 监听：$text")
+
+        // 网络/加载失败：立刻复位卡死状态并安排快速重试
+        if (networkFailWords.any { text.contains(it) }) {
+            Log.w(TAG, "检测到网络异常提示，重置卡死检测并快速重试")
+            stuckDetector.reset()
+            stuckSameCount = 0
+            scope.launch {
+                delay(2000L)
+                if (isScrolling) doScrollAndTasks()
+            }
+            return
+        }
+
+        // 激励视频「到账」确认：提前结束观看期（controller 内部有最短观看保护）
+        if (isWatchingAdReward && rewardDoneWords.any { text.contains(it) }) {
+            adRewardController.onRewardReceived()
+        }
     }
 
     // ========== 配置加载 ==========
@@ -454,7 +514,8 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         statsController.startTick()
 
         scheduleNextScroll(immediate = true)
-        broadcastState()
+        // M9：开始是状态突变，立即刷新小部件
+        broadcastState(forceWidget = true)
     }
 
     fun stopScrolling() {
@@ -482,7 +543,8 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             TAG,
             "停止自动滚动（滚动=$scrollCount, 点赞=$likeCount, 广告屏蔽=$adBlockCount, 激励=$adRewardCount）"
         )
-        broadcastState()
+        // M9：停止是状态突变，立即刷新小部件
+        broadcastState(forceWidget = true)
     }
 
     private fun scheduleNextScroll(immediate: Boolean = false) {
@@ -509,9 +571,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         scrollJob = scope.launch {
             delay(delayMs)
             if (!isScrolling) return@launch
-            val scene = SceneConfig.getScene(currentScene)
-            // 新闻 / 社交：列表-详情拟人浏览（点开→浏览→返回），由详情流控制器接管本轮节奏
-            if (scene.useDetailFlow) {
+            val scene = resolvedScene
+            // 新闻 / 社交：列表-详情拟人浏览（点开→浏览→返回），由详情流控制器接管本轮节奏；
+            // 详情流开关关闭时退化为纯滑动（任务页可配置）
+            if (scene.useDetailFlow && AppConfig.isDetailFlowEnabled(this@AutoScrollAccessibilityService)) {
                 detailFlow.startOneCycle { scheduleNextScroll() }
             } else {
                 doScrollAndTasks()
@@ -544,7 +607,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         tryAdBlock()
 
         // 2. 根据场景执行对应手势（按手势模式分派，更细粒度）
-        val scene = SceneConfig.getScene(currentScene)
+        val scene = resolvedScene
         when (scene.mode) {
             SceneConfig.ScrollMode.IDLE -> {
                 // 直播挂机：偶尔微互动防止被判定为僵尸号，完全不滑动
@@ -556,8 +619,10 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 scrollCount++
             }
             SceneConfig.ScrollMode.VERTICAL -> {
-                if (currentScene == AppConfig.SCENE_CUSTOM && customGestureSequence.isNotEmpty()) {
-                    // 自定义通用：按用户编排的手势序列逐步执行（含每步后的等待）
+                // 自定义通用：按用户编排的手势序列逐步执行（含每步后的等待）
+                val isCustomSequence = currentScene == AppConfig.SCENE_CUSTOM &&
+                    customGestureSequence.isNotEmpty()
+                if (isCustomSequence) {
                     performCustomSequence()
                     scrollCount++
                 } else {
@@ -568,8 +633,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             }
         }
 
-        // 3. 自动点赞（直播 / 挂机场景除外）
-        if (autoLike && scene.mode != SceneConfig.ScrollMode.IDLE) {
+        // 3. 自动点赞（直播 / 挂机场景除外；自定义序列由用户精确编排，
+        //    叠加自动点赞会干扰序列意图，如序列刚点了「下载」又弹一个双击，故跳过）
+        val isCustomSequence = currentScene == AppConfig.SCENE_CUSTOM &&
+            customGestureSequence.isNotEmpty()
+        if (autoLike && scene.mode != SceneConfig.ScrollMode.IDLE && !isCustomSequence) {
             tryAutoLike()
         }
 
@@ -654,7 +722,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     private fun performScroll() {
-        val scene = SceneConfig.getScene(currentScene)
+        val scene = resolvedScene
         val rootNode = try { rootInActiveWindow } catch (e: Exception) { null } ?: run {
             // 取不到 root：退化为全屏手势，且无需回收节点
             try { performScreenGesture(scene) } catch (e2: Exception) {
@@ -772,10 +840,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             executeSingleGesture(step)
         }
 
-        // 等待本步指定的秒数。即使 waitSec=0 也用 1ms 兜底继续推进，
-        // 避免末步 waitSec=0 导致序列驻留、需等外层重新触发才能继续。
+        // 等待本步指定的秒数。waitSec=0 用最小手势间隔兜底：
+        // 全部 waitSec=0 的序列（如 [点击, 上滑] 意图「紧接执行」）若逐条 1ms 推进，
+        // 会退化成毫秒级忙循环轰炸 dispatchGesture，被系统限流且拖垮主线程。
         val waitMs = (step.waitSec.coerceAtLeast(0) * 1000).toLong()
-        val delay = if (waitMs > 0) waitMs else 1L
+        val delay = if (waitMs > 0) waitMs else MIN_CUSTOM_STEP_GAP_MS
         customSeqJob = scope.launch {
             delay(delay)
             // 仅当仍处于自定义场景且服务运行中才继续；否则终止循环并清理，
@@ -788,10 +857,26 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         }
     }
 
+    /**
+     * 自定义序列配置变更后调用：取消正在运行的序列循环，下一 tick 用新序列重启。
+     * 否则用户改完序列，运行中的循环仍按旧 seq 引用继续跑。
+     */
+    fun restartCustomSequenceIfRunning() {
+        if (isScrolling && currentScene == AppConfig.SCENE_CUSTOM) {
+            customSeqJob?.cancel()
+            customSeqJob = null
+        }
+    }
+
     /** 执行序列中的单步手势 */
     private fun executeSingleGesture(step: CustomGestureStep) {
         val (w, h) = getScreenSize()
         if (w <= 0 || h <= 0) return
+        // 「点击文本」走控件查找，不需要坐标计算
+        if (step.isTapText()) {
+            performTapText(step.textKeyword)
+            return
+        }
         val jitterX = (Random.nextFloat() - 0.5f) * 0.10f
         val jitterY = (Random.nextFloat() - 0.5f) * 0.10f
         val x = w * (step.xPct / 100f + jitterX).coerceIn(0.05f, 0.95f)
@@ -821,7 +906,43 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 val endX = (startX + w * dist).coerceIn(startX + 0.05f * w, 0.95f * w)
                 dispatchSwipe(startX, y, endX, y, randomDuration(), "custom_swipe_right")
             }
-            else -> performScreenGesture(SceneConfig.getScene(currentScene))
+            else -> performScreenGesture(resolvedScene)
+        }
+    }
+
+    /**
+     * 点击屏幕上文案包含 [keyword] 的控件（自定义手势「点击文本」步骤）。
+     *
+     * 找不到匹配控件时跳过本步（记日志），不影响序列推进；
+     * 节点生命周期严格管理：root 由本方法回收，findClickableByText 返回的
+     * 目标节点可能是 root 自身，需避免双重回收。
+     */
+    private fun performTapText(keyword: String) {
+        if (keyword.isBlank()) return
+        val root = try { rootInActiveWindow } catch (e: Exception) { null } ?: return
+        val target = try {
+            AdNodeKit.findClickableByText(root, keyword)
+        } catch (e: Exception) {
+            Log.e(TAG, "点击文本：扫描失败", e)
+            null
+        } finally {
+            runCatching { root.recycle() }
+        }
+        if (target == null) {
+            Log.d(TAG, "点击文本：未找到「$keyword」，跳过本步")
+            return
+        }
+        try {
+            val rect = Rect()
+            target.getBoundsInScreen(rect)
+            if (rect.width() > 0 && rect.height() > 0) {
+                tapScreen(rect.centerX().toFloat(), rect.centerY().toFloat(), 70L)
+                Log.d(TAG, "点击文本：命中「$keyword」@(${rect.centerX()}, ${rect.centerY()})")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "点击文本：执行失败", e)
+        } finally {
+            if (target !== root) runCatching { target.recycle() }
         }
     }
 
@@ -883,7 +1004,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 // tap / 双击 / 自定义手势被取消不应退化成全屏上滑，否则会与详情流的
                 // 协程延时链抢拍，破坏拟人节奏。
                 if (source == "node") {
-                    fallbackJob = scope.launch { performScreenGesture(SceneConfig.getScene(currentScene)) }
+                    fallbackJob = scope.launch { performScreenGesture(resolvedScene) }
                 }
             }
         }
@@ -901,12 +1022,15 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     // ========== 自动点赞（双击屏幕中央） ==========
     private fun tryAutoLike() {
-        val scene = SceneConfig.getScene(currentScene)
+        val scene = resolvedScene
         if (!scene.supportAutoLike) return
 
         // 概率判定
         if (Random.nextInt(100) >= likeProbability) return
 
+        // 取消上一次未触发的点赞延时：滑动间隔短于 500ms 时（概率命中相邻两轮），
+        // 若不取消会连排两个 500ms 点赞造成连击，likeCount 统计也会虚高
+        autoLikeJob?.cancel()
         autoLikeJob = scope.launch {
             delay(500)
             performAutoLikeNow()
@@ -929,7 +1053,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     /** 在指定节点区域内上滑；节点为空或不可用时全屏上滑 */
-    fun swipeUpOnNodeOrScreen(node: AccessibilityNodeInfo?, scene: SceneConfig.Scene = SceneConfig.getScene(currentScene)) {
+    fun swipeUpOnNodeOrScreen(node: AccessibilityNodeInfo?, scene: SceneConfig.Scene = resolvedScene) {
         try {
             if (node != null) {
                 val rect = Rect()
@@ -1052,11 +1176,21 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     }
 
     // ========== 广播 ==========
-    private fun broadcastState() {
+    private fun broadcastState(forceWidget: Boolean = false) {
         sendBroadcast(Intent(BROADCAST_STATE_CHANGED).setPackage(packageName))
+        // M9 修复：broadcastState 每 1~5 秒被 tick 调用，每次都全量刷新桌面小部件
+        // （Binder 调用 × 已放置数量）会明显耗电。这里降频到至少 30 秒一次；
+        // 开始/停止等关键状态变化时由调用方传 forceWidget=true 立即刷新。
+        if (!forceWidget) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastWidgetUpdateAt < WIDGET_REFRESH_MIN_MS) return
+            lastWidgetUpdateAt = now
+        }
         // 同步刷新桌面小部件（清单 #11）：状态变化即时推送到所有已放置的小部件
         runCatching { cn.ggdoc.autoscroll.widget.AutoScrollWidgetProvider.updateAll(this) }
     }
+
+    private var lastWidgetUpdateAt = 0L
 
     private fun sendTaskEvent(type: String, msg: String) {
         val intent = Intent(BROADCAST_TASK_EVENT).setPackage(packageName).apply {

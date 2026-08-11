@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.human.ScheduleUtils
 
 /**
@@ -49,15 +50,20 @@ class ScheduleController(
         if (!serviceProvider.scheduleEnabled) return
         if (isWithinWindow(ScheduleUtils.nowMinute()) && !serviceProvider.isScrolling) {
             serviceProvider.startScrolling()
-            Toast.makeText(context, "定时开始：自动滚动已启动", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.toast_schedule_auto_start, Toast.LENGTH_SHORT).show()
         }
+        // H1 修复：闹钟是一次性触发，触发后必须重排下一天，否则「每日时段」只生效当天
+        scheduleAlarms()
     }
 
     fun autoStopBySchedule() {
         if (serviceProvider.isScrolling) {
             serviceProvider.stopScrolling()
-            Toast.makeText(context, "定时结束：已自动停止", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.toast_schedule_auto_stop, Toast.LENGTH_SHORT).show()
         }
+        // H1 修复：同上，END 触发后重排次日（scheduleAlarms 内部会先 cancelAlarms，
+        // nextAlarmMillis 对已过时刻自动顺延到次日，不会重复触发同一天的闹钟）
+        scheduleAlarms()
     }
 
     /** 当前时间是否处于任意一个生效窗口内（支持跨午夜） */

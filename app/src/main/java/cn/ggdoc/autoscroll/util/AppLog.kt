@@ -38,7 +38,8 @@ object AppLog {
     }
 
     private const val MAX_ENTRIES = 1000
-    private const val THREAD_NAME = "Coroutine"
+    /** 协程异常处理器使用的日志 tag */
+    private const val COROUTINE_TAG = "Coroutine"
     private val buffer = ArrayDeque<Entry>()
     private val lock = Any()
 
@@ -47,7 +48,10 @@ object AppLog {
 
     /** 设置日志落盘目录（外部存储 app 私有目录，无需权限）。建议在 Application/主入口调用。 */
     fun init(context: Context) {
-        logDir = File(context.applicationContext.getExternalFilesDir(null), "logs").also {
+        // M3 修复：getExternalFilesDir 可能返回 null，回退到 filesDir，避免 File(null) NPE
+        val base = context.applicationContext.getExternalFilesDir(null)
+            ?: context.applicationContext.filesDir
+        logDir = File(base, "logs").also {
             if (!it.exists()) it.mkdirs()
         }
     }
@@ -97,6 +101,6 @@ object AppLog {
 
     /** 给协程异常处理器复用，避免在 5 个 Controller 里重复写同样的 lambda，并让异常进日志页。 */
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, e ->
-        this.e(THREAD_NAME, "协程未捕获异常", e)
+        this.e(COROUTINE_TAG, "协程未捕获异常", e)
     }
 }

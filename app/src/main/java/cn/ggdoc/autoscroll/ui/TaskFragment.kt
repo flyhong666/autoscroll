@@ -31,7 +31,7 @@ import com.google.android.material.textfield.TextInputEditText
  *       + 看广告得金币（高风险，需风险确认）
  *       + 统计看板（实时展示滚动 / 点赞 / 广告屏蔽 / 激励次数与时长）
  */
-class TaskFragment : Fragment() {
+class TaskFragment : Fragment(), AppPickerDialogFragment.AppPickerResultListener {
 
     private lateinit var switchAutoLike: SwitchMaterial
     private lateinit var switchAdBlock: SwitchMaterial
@@ -43,6 +43,7 @@ class TaskFragment : Fragment() {
     private lateinit var switchWifiOnly: SwitchMaterial
     private lateinit var switchAdReward: SwitchMaterial
     private lateinit var checkAdRewardAck: MaterialCheckBox
+    private lateinit var switchDetailFlow: SwitchMaterial
 
     private lateinit var sliderLikeProbability: Slider
     private lateinit var sliderTimedStopMinutes: Slider
@@ -85,6 +86,7 @@ class TaskFragment : Fragment() {
     private lateinit var batteryThresholdContainer: View
     private lateinit var adRewardIntervalContainer: View
     private lateinit var adRewardKeywordsContainer: View
+    private lateinit var detailFlowParamsContainer: View
 
     private lateinit var etAdRewardKeywords: TextInputEditText
 
@@ -151,6 +153,7 @@ class TaskFragment : Fragment() {
         switchRecover = v.findViewById(R.id.switchRecover)
         switchAdReward = v.findViewById(R.id.switchAdReward)
         checkAdRewardAck = v.findViewById(R.id.checkAdRewardAck)
+        switchDetailFlow = v.findViewById(R.id.switchDetailFlow)
 
         sliderLikeProbability = v.findViewById(R.id.sliderLikeProbability)
         sliderTimedStopMinutes = v.findViewById(R.id.sliderTimedStopMinutes)
@@ -190,6 +193,7 @@ class TaskFragment : Fragment() {
         batteryThresholdContainer = v.findViewById(R.id.batteryThresholdContainer)
         adRewardIntervalContainer = v.findViewById(R.id.adRewardIntervalContainer)
         adRewardKeywordsContainer = v.findViewById(R.id.adRewardKeywordsContainer)
+        detailFlowParamsContainer = v.findViewById(R.id.detailFlowParamsContainer)
 
         etAdRewardKeywords = v.findViewById(R.id.etAdRewardKeywords)
 
@@ -252,6 +256,9 @@ class TaskFragment : Fragment() {
         switchBatteryGuard.setOnCheckedChangeListener { _, isChecked ->
             batteryThresholdContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
+        switchDetailFlow.setOnCheckedChangeListener { _, isChecked ->
+            detailFlowParamsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
     }
 
     private fun setupAppFilter() {
@@ -293,26 +300,33 @@ class TaskFragment : Fragment() {
     }
 
     private fun openFilterAppPicker() {
-        val dialog = AppPickerDialogFragment()
-        dialog.initialSelection = AppConfig.getAppFilterList(requireContext())
-        dialog.onConfirm = { set ->
-            AppConfig.setAppFilterList(requireContext(), set)
-            val mode = AppConfig.getAppFilterMode(requireContext())
-            updateFilterSummary(mode, set)
-            // 实时刷新服务内的过滤列表，无需重启滚动
-            AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
-        }
-        dialog.show(childFragmentManager, "filter_app_picker")
+        val fm = childFragmentManager
+        // M4 修复：onSaveInstanceState 之后 show() 会抛 IllegalStateException
+        if (fm.isStateSaved || fm.isDestroyed) return
+        val dialog = AppPickerDialogFragment.newInstance(AppConfig.getAppFilterList(requireContext()), REQ_FILTER_APPS)
+        dialog.setTargetFragment(this, REQ_FILTER_APPS)
+        dialog.show(fm, "filter_app_picker")
     }
 
     private fun setupAdReward() {
         checkAdRewardAck.setOnCheckedChangeListener { _, checked ->
-            // 未确认风险时，开关与参数区禁用，并提示风险
+            // 未确认风险时，开关禁用，并提示风险
             switchAdReward.isEnabled = checked
-            adRewardIntervalContainer.visibility = if (checked) View.VISIBLE else View.GONE
-            adRewardKeywordsContainer.visibility = if (checked) View.VISIBLE else View.GONE
             tvAdRewardAckWarn.visibility = if (checked) View.GONE else View.VISIBLE
+            // M8 修复：参数区可见性由「风险确认 ∧ 开关」共同决定，避免勾选确认但
+            // 开关关闭时仍显示无效参数区
+            updateAdRewardContainers()
         }
+        switchAdReward.setOnCheckedChangeListener { _, _ ->
+            updateAdRewardContainers()
+        }
+    }
+
+    /** 广告奖励参数区的可见性：必须同时满足「已确认风险」且「开关开启」 */
+    private fun updateAdRewardContainers() {
+        val show = checkAdRewardAck.isChecked && switchAdReward.isChecked
+        adRewardIntervalContainer.visibility = if (show) View.VISIBLE else View.GONE
+        adRewardKeywordsContainer.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private lateinit var windowAdapter: ScheduleWindowAdapter
@@ -355,7 +369,15 @@ class TaskFragment : Fragment() {
         TimePickerDialog(requireContext(), { _, hh, mm ->
             val min = hh * 60 + mm
             val old = scheduleWindows[index]
-            scheduleWindows[index] = if (isStart) min to old.second else old.first to min
+            val newStart = if (isStart) min else old.first
+            val newEnd = if (isStart) old.second else min
+            // H1 附带修复：起止相同时 ScheduleUtils 视为「全天生效」，但闹钟会安排
+            // 同一分钟的 START+END 导致启动即停止，行为矛盾。这里直接拦截。
+            if (newStart == newEnd) {
+                Toast.makeText(requireContext(), R.string.task_schedule_same_time, Toast.LENGTH_SHORT).show()
+                return@TimePickerDialog
+            }
+            scheduleWindows[index] = newStart to newEnd
             refreshWindowUI()
         }, h, m, true).show()
     }
@@ -431,9 +453,9 @@ class TaskFragment : Fragment() {
         switchAdReward.isChecked = AppConfig.getAdRewardEnabledRaw(ctx)
         switchAdReward.isEnabled = acked
         checkAdRewardAck.isChecked = acked
-        adRewardIntervalContainer.visibility = if (acked) View.VISIBLE else View.GONE
-        adRewardKeywordsContainer.visibility = if (acked) View.VISIBLE else View.GONE
         tvAdRewardAckWarn.visibility = if (acked) View.GONE else View.VISIBLE
+        // M8 修复：统一走 updateAdRewardContainers 计算可见性（acked ∧ switch）
+        updateAdRewardContainers()
 
         sliderAdRewardInterval.value = AppConfig.getAdRewardInterval(ctx).toFloat()
             .coerceIn(sliderAdRewardInterval.valueFrom, sliderAdRewardInterval.valueTo)
@@ -441,6 +463,8 @@ class TaskFragment : Fragment() {
         etAdRewardKeywords.setText(AppConfig.getAdRewardKeywords(ctx).joinToString(","))
 
         // 详情流（新闻 / 社交）参数
+        switchDetailFlow.isChecked = AppConfig.isDetailFlowEnabled(ctx)
+        detailFlowParamsContainer.visibility = if (switchDetailFlow.isChecked) View.VISIBLE else View.GONE
         sliderDetailDwellMin.value = AppConfig.getDetailDwellMin(ctx).toFloat()
             .coerceIn(sliderDetailDwellMin.valueFrom, sliderDetailDwellMin.valueTo)
         tvDetailDwellMin.text = "${sliderDetailDwellMin.value.toInt()}s"
@@ -465,15 +489,35 @@ class TaskFragment : Fragment() {
     }
 
     private fun openAppPicker() {
-        val dialog = AppPickerDialogFragment()
-        dialog.initialSelection = AppConfig.getRotationApps(requireContext())
-        dialog.onConfirm = { set ->
-            AppConfig.setRotationApps(requireContext(), set)
-            updateRotationAppsSummary()
-            // 实时刷新服务内的轮换池，无需重启滚动
-            AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+        val fm = childFragmentManager
+        // M4 修复：onSaveInstanceState 之后 show() 会抛 IllegalStateException
+        if (fm.isStateSaved || fm.isDestroyed) return
+        val dialog = AppPickerDialogFragment.newInstance(AppConfig.getRotationApps(requireContext()), REQ_ROTATION_APPS)
+        dialog.setTargetFragment(this, REQ_ROTATION_APPS)
+        dialog.show(fm, "rotation_app_picker")
+    }
+
+    /**
+     * AppPicker 确认回调（targetFragment 机制，旋转重建后依然可达，
+     * 不像普通字段会在重建时丢失）。M6 修复。
+     */
+    override fun onAppsConfirmed(requestCode: Int, selected: Set<String>) {
+        val ctx = context ?: return
+        when (requestCode) {
+            REQ_ROTATION_APPS -> {
+                AppConfig.setRotationApps(ctx, selected)
+                updateRotationAppsSummary()
+                // 实时刷新服务内的轮换池，无需重启滚动
+                AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+            }
+            REQ_FILTER_APPS -> {
+                AppConfig.setAppFilterList(ctx, selected)
+                val mode = AppConfig.getAppFilterMode(ctx)
+                updateFilterSummary(mode, selected)
+                // 实时刷新服务内的过滤列表，无需重启滚动
+                AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+            }
         }
-        dialog.show(childFragmentManager, "rotation_app_picker")
     }
 
     private fun saveSettings() {
@@ -513,6 +557,7 @@ class TaskFragment : Fragment() {
         )
 
         // 详情流（新闻 / 社交）参数：随滚动一并生效，决定拟人浏览的停留/读完/翻页上限
+        AppConfig.setDetailFlowEnabled(ctx, switchDetailFlow.isChecked)
         AppConfig.setDetailDwellMin(ctx, sliderDetailDwellMin.value.toInt())
         AppConfig.setDetailDwellMax(ctx, sliderDetailDwellMax.value.toInt())
         AppConfig.setDetailReadAllProbability(ctx, sliderDetailReadAll.value.toInt())
@@ -525,6 +570,11 @@ class TaskFragment : Fragment() {
         else R.string.toast_schedule_cancelled
         Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
         Toast.makeText(ctx, R.string.toast_task_saved, Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        private const val REQ_ROTATION_APPS = 1
+        private const val REQ_FILTER_APPS = 2
     }
 
     // ========== 多时段定时窗口列表适配器 ==========

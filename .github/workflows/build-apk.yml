@@ -12,12 +12,18 @@ on:
   workflow_dispatch: # 支持手动触发（用于调试）
 
 env:
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true"
+  GRADLE_OPTS: "-Dorg.gradle.caching=true"
+
+# 同一分支/标签的旧构建自动取消，避免排队堆积
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write # 上传 APK 到 Release 需要
     # 通过 job env 把 secret 是否配置暴露给 if 判断
@@ -28,11 +34,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      # JDK 17：AGP 9.3 要求 JDK >= 17，Gradle 9.6.1 在 17 上兼容性最稳；
+      # 本地 JDK 25 可继续用（Gradle 9.6 已支持），CI 用 17 规避工具链兼容风险
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: '17'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -105,13 +113,16 @@ jobs:
           fi
           # 防止文件名包含路径分隔符
           VERSION="${VERSION//\//-}"
+          # 无正式签名时自动回退 debug 签名：文件名加 -debug 标注，
+          # 避免用户把 debug 包误当正式包安装（debug 包无法覆盖升级正式签名包）
+          if [[ "$HAS_KEYSTORE" == "true" ]]; then SUFFIX=""; else SUFFIX="-debug"; fi
           # 用 shell 变量拷贝（不经过工作流表达式插值，规避 secret 脱敏干扰）
           cp app/build/outputs/apk/release/app-release.apk \
-             "output/autoscroll-${VERSION}.apk"
+             "output/autoscroll-${VERSION}${SUFFIX}.apk"
           ls -la output/
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Resolved version: $VERSION (tag=$TAG)"
+          echo "Resolved version: $VERSION (tag=$TAG, signed=$HAS_KEYSTORE)"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

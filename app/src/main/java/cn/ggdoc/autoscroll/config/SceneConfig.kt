@@ -124,12 +124,70 @@ object SceneConfig {
             swipeStartYRatio = 0.80f,
             swipeEndYRatio = 0.20f,            recommendMinDuration = 200,
             recommendMaxDuration = 500
+        ),
+        Scene(
+            id = SceneIds.AUTO,
+            nameRes = R.string.scene_auto,
+            iconRes = R.drawable.ic_scene_custom,
+            descRes = R.string.scene_auto_desc,
+            recommendMinInterval = 3,
+            recommendMaxInterval = 20,
+            supportAutoLike = false,
+            mode = ScrollMode.VERTICAL,
+            swipeStartYRatio = 0.80f,
+            swipeEndYRatio = 0.20f,            recommendMinDuration = 200,
+            recommendMaxDuration = 500
         )
     )
 
+    /** 内置包名 → 场景 ID 映射（「自动识别」场景使用） */
+    private val PKG_SCENE_MAP = mapOf(
+        // 短视频
+        "com.ss.android.ugc.aweme" to SceneIds.SHORT_VIDEO,        // 抖音
+        "com.ss.android.ugc.aweme.lite" to SceneIds.SHORT_VIDEO,   // 抖音极速版
+        "com.smile.gifmaker" to SceneIds.SHORT_VIDEO,              // 快手
+        "com.kuaishou.nebula" to SceneIds.SHORT_VIDEO,             // 快手极速版
+        "com.zhiliaoapp.musically" to SceneIds.SHORT_VIDEO,        // TikTok
+        // 新闻资讯
+        "com.ss.android.article.news" to SceneIds.NEWS,            // 今日头条
+        "com.ss.android.article.lite" to SceneIds.NEWS,            // 今日头条极速版
+        "com.tencent.news" to SceneIds.NEWS,                       // 腾讯新闻
+        "com.netease.newsreader.activity" to SceneIds.NEWS,        // 网易新闻
+        "com.ss.android.article.video" to SceneIds.NEWS,           // 西瓜视频
+        // 小说阅读
+        "com.dragon.read" to SceneIds.NOVEL,                       // 番茄小说
+        "com.qidian.QDReader" to SceneIds.NOVEL,                   // 起点读书
+        "com.tencent.weread" to SceneIds.NOVEL,                    // 微信读书
+        "com.chaozh.iReaderFree" to SceneIds.NOVEL,                // 掌阅
+        // 社交动态
+        "com.sina.weibo" to SceneIds.SOCIAL,                       // 微博
+        "com.xingin.xhs" to SceneIds.SOCIAL,                       // 小红书
+        "com.zhihu.android" to SceneIds.SOCIAL,                    // 知乎
+        "com.tencent.mm" to SceneIds.SOCIAL,                       // 微信（朋友圈/视频号）
+        // 直播挂机
+        "com.ss.android.ugc.live" to SceneIds.LIVE,                // 抖音直播
+        "com.duowan.mobile" to SceneIds.LIVE,                      // 虎牙直播
+        "air.tv.douyu.android" to SceneIds.LIVE                    // 斗鱼直播
+    )
+
+    /**
+     * 解析当前实际生效的场景模板。
+     *
+     * - [SceneIds.AUTO]：按 [foregroundPkg] 查内置映射，未命中回退 [SceneIds.CUSTOM]（通用滑动）；
+     * - 其他场景：原样返回。
+     */
+    fun resolveScene(sceneId: String, foregroundPkg: String?): Scene =
+        if (sceneId == SceneIds.AUTO) {
+            val mapped = foregroundPkg?.let { PKG_SCENE_MAP[it] } ?: SceneIds.CUSTOM
+            getScene(mapped)
+        } else {
+            getScene(sceneId)
+        }
+
     private val SCENE_MAP = SCENES.associateBy { it.id }
 
-    fun getScene(id: String): Scene = SCENE_MAP[id] ?: SCENES.last()
+    fun getScene(id: String): Scene =
+        SCENE_MAP[id] ?: SCENES.first { it.id == SceneIds.CUSTOM }
 
     fun allSceneIds(): List<String> = SCENES.map { it.id }
 
