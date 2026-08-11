@@ -217,5 +217,15 @@
             app:backgroundTint="@color/btn_start_bg"
             app:cornerRadius="18dp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenLog"
+            style="@style/AutoScrollButton.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/log_open"
+            app:strokeColor="@color/teal_700"
+            android:textColor="@color/teal_700" />
+
     </LinearLayout>
 </ScrollView>

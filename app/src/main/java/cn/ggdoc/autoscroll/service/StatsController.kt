@@ -1,8 +1,10 @@
 package cn.ggdoc.autoscroll.service
 
 import android.content.Context
+import android.util.Log
 import cn.ggdoc.autoscroll.config.StatsStore
 import cn.ggdoc.autoscroll.task.KeepAliveManager
+import cn.ggdoc.autoscroll.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,7 +43,7 @@ class StatsController(
         private const val STATS_PERSIST_TICKS = 30
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + AppLog.coroutineExceptionHandler)
     private var tickJob: Job? = null
     private var tickCount = 0
 
@@ -88,6 +90,11 @@ class StatsController(
         tickJob?.cancel()
         tickJob = null
         persistDelta()
+    }
+
+    /** 服务销毁时调用：取消整个协程作用域。stop() 仅取消 tick 协程并落盘，dispose() 彻底关闭 scope。 */
+    fun dispose() {
+        scope.cancel()
     }
 
     /** 把当前内存计数器的增量写入 [StatsStore]。stopScrolling 先调这个再翻转 isScrolling。 */

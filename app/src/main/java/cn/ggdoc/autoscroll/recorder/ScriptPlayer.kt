@@ -133,6 +133,14 @@ object ScriptPlayer {
         handler.postDelayed(runnable, delay)
     }
 
+    private fun advanceStep() {
+        // 若回放已停止（用户手动终止 / 服务断开），不再推进步骤，避免 stepIndex 越界
+        if (!isPlaying) return
+        stepIndex++
+        notifyChanged()
+        scheduleStep()
+    }
+
     private fun execute(action: RecordedAction) {
         if (!isPlaying) return
         val service = serviceRef?.get()
@@ -142,12 +150,11 @@ object ScriptPlayer {
             return
         }
         val duration = (action.duration / speed).toLong().coerceIn(30L, 30_000L)
-        val advance = Runnable {
-            // 若回放已停止（用户手动终止 / 服务断开），不再推进步骤，避免 stepIndex 越界
-            if (!isPlaying) return@Runnable
-            stepIndex++
-            notifyChanged()
-            scheduleStep()
+        val advance = Runnable { advanceStep() }
+        // 双击：连发两次短按，两次之间留出人类间隔
+        if (action.type == RecordedAction.TYPE_DOUBLE_TAP) {
+            dispatchDoubleTap(service, action, duration, advance)
+            return
         }
         val gesture = buildGesture(action, duration)
         if (gesture == null) {
@@ -177,10 +184,58 @@ object ScriptPlayer {
         if (!dispatched) handler.postDelayed(advance, duration)
     }
 
+    /** 双击回放：用同一个点按手势连发两次，首次完成后等待 ~70ms 再发第二次 */
+    private fun dispatchDoubleTap(
+        service: AccessibilityService,
+        action: RecordedAction,
+        duration: Long,
+        advance: Runnable
+    ) {
+        val gesture = buildGesture(action, duration) ?: run {
+            handler.post(advance)
+            return
+        }
+        var firstDone = false
+        val cb = object : AccessibilityService.GestureResultCallback() {
+            override fun onCompleted(g: GestureDescription?) {
+                if (!isPlaying) return
+                if (!firstDone) {
+                    firstDone = true
+                    handler.postDelayed({
+                        if (isPlaying) service.dispatchGesture(gesture, cb, handler)
+                        else advance.run()
+                    }, 70L)
+                } else {
+                    advance.run()
+                }
+            }
+
+            override fun onCancelled(g: GestureDescription?) {
+                if (!isPlaying) return
+                if (!firstDone) {
+                    firstDone = true
+                    handler.postDelayed({
+                        if (isPlaying) service.dispatchGesture(gesture, cb, handler)
+                        else advance.run()
+                    }, 70L)
+                } else {
+                    advance.run()
+                }
+            }
+        }
+        val ok = try {
+            service.dispatchGesture(gesture, cb, handler)
+        } catch (e: Exception) {
+            Log.e(TAG, "双击 dispatchGesture 异常", e)
+            false
+        }
+        if (!ok) handler.postDelayed(advance, duration)
+    }
+
     private fun buildGesture(a: RecordedAction, duration: Long): GestureDescription? {
         val path = Path()
         when (a.type) {
-            RecordedAction.TYPE_CLICK, RecordedAction.TYPE_LONG_CLICK -> {
+            RecordedAction.TYPE_CLICK, RecordedAction.TYPE_LONG_CLICK, RecordedAction.TYPE_DOUBLE_TAP -> {
                 path.moveTo(clampX(a.x), clampY(a.y))
             }
 

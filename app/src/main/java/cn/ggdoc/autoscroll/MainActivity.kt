@@ -11,6 +11,7 @@ import androidx.viewpager2.widget.ViewPager2
 import cn.ggdoc.autoscroll.ui.ControlFragment
 import cn.ggdoc.autoscroll.ui.TaskFragment
 import cn.ggdoc.autoscroll.ui.RecorderFragment
+import cn.ggdoc.autoscroll.util.CrashMonitor
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashMonitor.install(applicationContext)
         setContentView(R.layout.activity_main)
 
         requestNotificationPermission()

@@ -29,6 +29,8 @@ import cn.ggdoc.autoscroll.human.StuckDetector
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.task.AdBlocker
 import cn.ggdoc.autoscroll.task.KeepAliveManager
+import cn.ggdoc.autoscroll.util.CrashMonitor
+import cn.ggdoc.autoscroll.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -110,15 +112,20 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 定时运行 / 保护
         var scheduleEnabled: Boolean = AppConfig.DEFAULT_SCHEDULE_ENABLED
             private set
-        var scheduleStartMin: Int = AppConfig.DEFAULT_SCHEDULE_START_MIN
-            private set
-        var scheduleEndMin: Int = AppConfig.DEFAULT_SCHEDULE_END_MIN
+        var scheduleWindows: List<Pair<Int, Int>> =
+            listOf(AppConfig.DEFAULT_SCHEDULE_START_MIN to AppConfig.DEFAULT_SCHEDULE_END_MIN)
             private set
         var batteryGuardEnabled: Boolean = AppConfig.DEFAULT_BATTERY_GUARD
             private set
         var batteryThreshold: Int = AppConfig.DEFAULT_BATTERY_THRESHOLD
             private set
         var wifiOnly: Boolean = AppConfig.DEFAULT_WIFI_ONLY
+            private set
+
+        // 应用黑白名单
+        var appFilterMode: String = AppConfig.DEFAULT_APP_FILTER_MODE
+            private set
+        var appFilterList: Set<String> = emptySet()
             private set
 
         // 看广告得金币（高风险）
@@ -184,17 +191,20 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     /** Service 级协程作用域：所有延时调度（滚动/卡死检测/定时停止/自定义序列/广告扫描/点赞）
      *  均通过此 scope.launch + delay 驱动。stopScrolling 取消各 Job，onDestroy 取消整个 scope。 */
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + AppLog.coroutineExceptionHandler)
 
     private var scrollJob: Job? = null
     private var timedStopJob: Job? = null
+    private var autoLikeJob: Job? = null
+    private var adBlockScanJob: Job? = null
+    private var fallbackJob: Job? = null
 
     // ========== Service 拆分：4 个独立 Controller ==========
     // 通过 object 表达式实现各自的 ServiceFace 接口，避免 Service 类头膨胀。
     // 使用 lazy 保证上下文准备完毕后再初始化。
 
     private val statsFace = object : StatsController.ServiceFace {
-        override val isScrolling: Boolean get() = this@AutoScrollAccessibilityService.let { AutoScrollAccessibilityService.isScrolling }
+        override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
         override val runningSeconds: Long get() = this@AutoScrollAccessibilityService.runningSeconds
         override val timedStop: Boolean get() = this@AutoScrollAccessibilityService.timedStop
         override val timedStopMinutes: Int get() = this@AutoScrollAccessibilityService.timedStopMinutes
@@ -247,14 +257,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         override fun sendTaskEvent(type: String, msg: String) =
             this@AutoScrollAccessibilityService.sendTaskEvent(type, msg)
         override fun broadcastState() = this@AutoScrollAccessibilityService.broadcastState()
-        override fun scheduleNextAdReward() = adRewardController.schedule()
     }
     private val adRewardController: AdRewardController by lazy { AdRewardController(this, adRewardFace) }
 
     private val scheduleFace = object : ScheduleController.ServiceFace {
         override val scheduleEnabled: Boolean get() = this@AutoScrollAccessibilityService.scheduleEnabled
-        override val scheduleStartMin: Int get() = this@AutoScrollAccessibilityService.scheduleStartMin
-        override val scheduleEndMin: Int get() = this@AutoScrollAccessibilityService.scheduleEndMin
+        override val scheduleWindows: List<Pair<Int, Int>> get() = this@AutoScrollAccessibilityService.scheduleWindows
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
         override fun sendBroadcast(intent: Intent) = this@AutoScrollAccessibilityService.sendBroadcast(intent)
         override fun startScrolling() = this@AutoScrollAccessibilityService.startScrolling()
@@ -280,9 +288,41 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         _instance = WeakReference(this)
+        CrashMonitor.install(applicationContext)
         Log.i(TAG, "无障碍服务已连接")
         loadConfigFromPrefs()
         scheduleController.scheduleAlarms()
+        maybeRecoverFromKill()
+    }
+
+    /**
+     * 进程恢复（#5）：无障碍服务被系统回收后重新连上时，
+     * 若此前正在滚动，则延迟一小段时间后自动恢复滚动。
+     * 尊重定时窗口：若开启了定时运行且当前不在任一窗口内，则不强行恢复，
+     * 仍交由定时 START 闹钟在窗口开始后启动。
+     */
+    private fun maybeRecoverFromKill() {
+        if (!AppConfig.isRecoverEnabled(this)) return
+        if (!AppConfig.isRecoverRunning(this)) return
+        if (isScrolling) return
+        val within = !scheduleEnabled || scheduleController.isWithinWindow()
+        if (!within) {
+            Log.i(TAG, "进程恢复：当前不在定时窗口内，交由定时闹钟处理，暂不恢复")
+            return
+        }
+        Log.i(TAG, "进程恢复：检测到此前正在滚动，准备自动恢复")
+        scope.launch {
+            delay(1500L)
+            if (!AppConfig.isRecoverRunning(this@AutoScrollAccessibilityService)) return@launch
+            if (isScrolling) return@launch
+            AppLog.i(TAG, "进程恢复：已自动恢复滚动")
+            Toast.makeText(
+                this@AutoScrollAccessibilityService,
+                R.string.toast_process_recover,
+                Toast.LENGTH_SHORT
+            ).show()
+            startScrolling()
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -316,7 +356,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             // 限频：避免每次内容变化都扫描
             if (SystemClock.elapsedRealtime() - lastAdScanTime > 2000) {
                 lastAdScanTime = SystemClock.elapsedRealtime()
-                scope.launch { tryAdBlock() }
+                adBlockScanJob = scope.launch { tryAdBlock() }
             }
         }
     }
@@ -343,11 +383,12 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         rotationMinutes = AppConfig.getRotationMinutes(this)
         keepScreenOn = AppConfig.isKeepScreenOn(this)
         scheduleEnabled = AppConfig.isScheduleEnabled(this)
-        scheduleStartMin = AppConfig.getScheduleStartMin(this)
-        scheduleEndMin = AppConfig.getScheduleEndMin(this)
+        scheduleWindows = AppConfig.getScheduleWindows(this)
         batteryGuardEnabled = AppConfig.isBatteryGuard(this)
         batteryThreshold = AppConfig.getBatteryThreshold(this)
         wifiOnly = AppConfig.isWifiOnly(this)
+        appFilterMode = AppConfig.getAppFilterMode(this)
+        appFilterList = AppConfig.getAppFilterList(this)
         adReward = AppConfig.isAdReward(this)
         adRewardMinutes = AppConfig.getAdRewardInterval(this)
         detailDwellMin = AppConfig.getDetailDwellMin(this)
@@ -403,6 +444,9 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         detailFlow.resetCursor()
         Log.i(TAG, "开始自动滚动，场景=$currentScene")
 
+        // 进程恢复：记录「正在运行」，被系统回收后可由 onServiceConnected 自动恢复
+        AppConfig.setRecoverRunning(this, true)
+
         if (keepScreenOn) KeepAliveManager.acquire(this)
         if (timedStop) startTimedStopCountdown()
         rotationController.start()
@@ -421,11 +465,16 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         adRewardController.stop()
         isScrolling = false
         isWatchingAdReward = false
+        // 进程恢复：停止后清除「正在运行」标记，避免被回收后误恢复
+        AppConfig.setRecoverRunning(this, false)
         detailFlow.cancel()
         scrollJob?.cancel(); scrollJob = null
         stuckCheckJob?.cancel(); stuckCheckJob = null
         timedStopJob?.cancel(); timedStopJob = null
         customSeqJob?.cancel(); customSeqJob = null
+        autoLikeJob?.cancel(); autoLikeJob = null
+        adBlockScanJob?.cancel(); adBlockScanJob = null
+        fallbackJob?.cancel(); fallbackJob = null
 
         KeepAliveManager.release()
         remainingSeconds = 0
@@ -478,6 +527,11 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 激励视频观看期：暂停一切滑动 / 点赞，避免打断广告计时
         if (isWatchingAdReward) {
             Log.v(TAG, "激励视频观看中，跳过本次滚动")
+            return
+        }
+
+        // 应用黑白名单：当前前台 APP 不在允许范围内则跳过本次滚动
+        if (isBlockedByAppFilter()) {
             return
         }
 
@@ -829,7 +883,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
                 // tap / 双击 / 自定义手势被取消不应退化成全屏上滑，否则会与详情流的
                 // 协程延时链抢拍，破坏拟人节奏。
                 if (source == "node") {
-                    scope.launch { performScreenGesture(SceneConfig.getScene(currentScene)) }
+                    fallbackJob = scope.launch { performScreenGesture(SceneConfig.getScene(currentScene)) }
                 }
             }
         }
@@ -853,7 +907,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         // 概率判定
         if (Random.nextInt(100) >= likeProbability) return
 
-        scope.launch {
+        autoLikeJob = scope.launch {
             delay(500)
             performAutoLikeNow()
         }
@@ -1000,6 +1054,8 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     // ========== 广播 ==========
     private fun broadcastState() {
         sendBroadcast(Intent(BROADCAST_STATE_CHANGED).setPackage(packageName))
+        // 同步刷新桌面小部件（清单 #11）：状态变化即时推送到所有已放置的小部件
+        runCatching { cn.ggdoc.autoscroll.widget.AutoScrollWidgetProvider.updateAll(this) }
     }
 
     private fun sendTaskEvent(type: String, msg: String) {
@@ -1032,9 +1088,29 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     // 下一个目标分钟触发时刻已由 ScheduleController 计算。
 
+    /**
+     * 应用黑白名单：当前前台 APP 是否应被跳过（不滚动）。
+     *
+     * - off：不过滤，任何 APP 都滚
+     * - whitelist：仅当 [foregroundPackage] 在 [appFilterList] 中才滚，其余跳过
+     * - blacklist：仅当 [foregroundPackage] 在 [appFilterList] 中才跳过，其余滚
+     *
+     * 自身包名（工具本体）也按规则判定；列表为空时白名单模式视为"无允许项"而跳过，
+     * 黑名单模式视为"无禁止项"而放行。
+     */
+    private fun isBlockedByAppFilter(): Boolean {
+        if (appFilterMode == AppConfig.FILTER_OFF) return false
+        val pkg = foregroundPackage ?: return false
+        val inList = appFilterList.contains(pkg)
+        return when (appFilterMode) {
+            AppConfig.FILTER_WHITELIST -> !inList
+            AppConfig.FILTER_BLACKLIST -> inList
+            else -> false
+        }
+    }
+
     /** 综合保护策略：任一不满足则暂停本次滚动 */
     private fun isBlockedByPolicy(): Boolean {
-        if (scheduleEnabled && !scheduleController.isWithinWindow()) return true
         if (batteryGuardEnabled && !isBatteryOk()) return true
         if (wifiOnly && !isWifiConnected()) return true
         return false
@@ -1062,9 +1138,24 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         stopScrolling()
+        disposeControllers()
         scope.cancel()
         _instance?.clear()
         if (_instance?.get() == null) _instance = null
         super.onDestroy()
+    }
+
+    /**
+     * 统一销毁 4 个 Controller 的协程作用域。
+     *
+     * 仅在服务真正销毁时调用，**不**在 stopScrolling 调用——
+     * 因为 stopScrolling 后可能再次 startScrolling 复用同一批 Controller，
+     * 若在此取消 scope，下次 start 将无法再 launch 任何协程。
+     */
+    private fun disposeControllers() {
+        statsController.dispose()
+        rotationController.dispose()
+        adRewardController.dispose()
+        detailFlow.dispose()
     }
 }

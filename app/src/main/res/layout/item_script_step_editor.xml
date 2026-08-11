@@ -37,7 +37,7 @@
             android:textColor="?android:attr/textColorPrimary"
             android:textSize="14sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@id/btnStepDelete"
+            app:layout_constraintEnd_toStartOf="@id/btnStepUp"
             app:layout_constraintStart_toEndOf="@id/tvStepIndex"
             app:layout_constraintTop_toTopOf="@id/tvStepIndex"
             tools:text="点击 (540, 1200) 「点赞按钮」" />
@@ -50,10 +50,32 @@
             android:layout_marginTop="2dp"
             android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp"
-            app:layout_constraintEnd_toStartOf="@id/btnStepDelete"
+            app:layout_constraintEnd_toStartOf="@id/btnStepUp"
             app:layout_constraintStart_toEndOf="@id/tvStepIndex"
             app:layout_constraintTop_toBottomOf="@id/tvStepAction"
             tools:text="等待 500ms · 持续 60ms" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStepUp"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="↑"
+            android:textSize="15sp"
+            android:contentDescription="@string/editor_move_up"
+            app:layout_constraintEnd_toStartOf="@id/btnStepDown"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStepDown"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="↓"
+            android:textSize="15sp"
+            android:contentDescription="@string/editor_move_down"
+            app:layout_constraintEnd_toStartOf="@id/btnStepDelete"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <ImageButton
             android:id="@+id/btnStepDelete"

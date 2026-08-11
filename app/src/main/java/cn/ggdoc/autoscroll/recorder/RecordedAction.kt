@@ -46,6 +46,7 @@ data class RecordedAction(
             TYPE_LONG_CLICK -> "长按 ($x, $y)"
             TYPE_SWIPE -> "滑动 ($x, $y) → ($x2, $y2)"
             TYPE_WAIT -> "等待 ${duration}ms"
+            TYPE_DOUBLE_TAP -> "双击 ($x, $y)"
             else -> type
         }
         val tail = if (desc.isNotEmpty()) "「$desc」" else ""
@@ -57,6 +58,7 @@ data class RecordedAction(
         const val TYPE_LONG_CLICK = "longClick"
         const val TYPE_SWIPE = "swipe"
         const val TYPE_WAIT = "wait"
+        const val TYPE_DOUBLE_TAP = "doubleTap"
 
         fun fromJson(o: JSONObject): RecordedAction = RecordedAction(
             type = o.optString("type", TYPE_CLICK),

@@ -138,9 +138,36 @@
     <string name="task_schedule_summary">仅在指定时间段内自动滚动，到点自动开始 / 停止</string>
     <string name="task_schedule_start">开始时间</string>
     <string name="task_schedule_end">结束时间</string>
+    <string name="task_schedule_windows_title">运行时段</string>
+    <string name="task_schedule_to">至</string>
+    <string name="task_schedule_add_window">添加时段</string>
+    <string name="task_schedule_remove_window">删除该时段</string>
+    <string name="task_schedule_window_empty">未设置任何时段：开启后将全天运行</string>
+    <string name="task_schedule_max_windows">最多支持 8 个时段</string>
+
+    <string name="task_process_recover">进程恢复</string>
+    <string name="task_process_recover_summary">无障碍服务被系统回收后，若此前正在滚动则自动恢复，并尊重定时窗口</string>
+    <string name="toast_process_recover">检测到服务被回收，已自动恢复滚动</string>
+
+    <!-- 应用黑白名单 -->
+    <string name="filter_title">应用黑白名单</string>
+    <string name="filter_subtitle">仅对指定应用滚动（白名单），或屏蔽指定应用（黑名单）</string>
+    <string name="filter_mode">过滤模式</string>
+    <string name="filter_mode_off">关闭（全部应用）</string>
+    <string name="filter_mode_whitelist">白名单（仅列表内）</string>
+    <string name="filter_mode_blacklist">黑名单（排除列表内）</string>
+    <string name="filter_choose_apps">选择应用</string>
+    <string name="filter_off_hint">未启用过滤，对所有应用生效</string>
+    <string name="filter_summary">已选 %1$d 个应用（%2$s）</string>
 
     <string name="task_battery_guard">低电量暂停</string>
     <string name="task_battery_guard_summary">电量低于阈值且未充电时暂停滚动，充电恢复后继续</string>
+
+    <!-- 桌面小部件 -->
+    <string name="widget_status_running">运行中 · %1$s</string>
+    <string name="widget_status_stopped">已停止</string>
+    <string name="widget_start">开始滚动</string>
+    <string name="widget_stop">停止滚动</string>
     <string name="task_battery_threshold">暂停电量阈值（%）</string>
 
     <string name="task_wifi_only">仅 Wi-Fi 运行</string>
@@ -246,7 +273,7 @@
     <string name="script_menu_delete">删除</string>
     <!-- 脚本编辑器 -->
     <string name="editor_title">编辑脚本：%1$s</string>
-    <string name="editor_subtitle">共 %1$d 步 · 长按拖拽排序，点击可编辑，右侧 X 删除</string>
+    <string name="editor_subtitle">共 %1$d 步 · 点击步骤编辑，↑↓ 排序，可复制步骤，✕ 删除</string>
     <string name="editor_empty">（脚本为空）</string>
     <string name="editor_step_delete">删除本步</string>
     <string name="editor_step_edit">编辑本步</string>
@@ -261,6 +288,11 @@
     <string name="editor_action_long_click">长按</string>
     <string name="editor_action_swipe">滑动</string>
     <string name="editor_action_wait">等待</string>
+    <string name="editor_action_double_tap">双击</string>
+    <string name="editor_move_up">上移</string>
+    <string name="editor_move_down">下移</string>
+    <string name="editor_duplicate">复制此步</string>
+    <string name="editor_edit_desc">备注（可选，如：点赞按钮）</string>
     <string name="editor_edit_title">编辑第 %1$d 步</string>
     <string name="editor_edit_type">动作类型</string>
     <string name="editor_edit_delay">与上一步间隔（毫秒）</string>
@@ -315,4 +347,19 @@
     <string name="custom_gesture_move_up">上移</string>
     <string name="custom_gesture_move_down">下移</string>
     <string name="custom_gesture_delete">删除</string>
+
+    <!-- ========== 运行日志 / 崩溃监控 / 统计导出 ========== -->
+    <string name="log_title">运行日志</string>
+    <string name="log_open">运行日志</string>
+    <string name="log_back">返回</string>
+    <string name="log_refresh">刷新</string>
+    <string name="log_clear">清除</string>
+    <string name="log_export">导出日志</string>
+    <string name="log_export_stats">导出统计CSV</string>
+    <string name="log_node_pool_stats">节点池统计</string>
+    <string name="log_cleared">日志已清空</string>
+    <string name="log_exported">日志已导出到：%1$s</string>
+    <string name="log_export_failed">日志导出失败</string>
+    <string name="stats_exported">统计已导出到：%1$s</string>
+    <string name="stats_export_failed">统计导出失败</string>
 </resources>

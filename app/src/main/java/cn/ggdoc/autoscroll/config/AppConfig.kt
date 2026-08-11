@@ -46,9 +46,16 @@ object AppConfig {
     private const val KEY_SCHEDULE_ENABLED = "schedule_enabled"
     private const val KEY_SCHEDULE_START_MIN = "schedule_start_min"
     private const val KEY_SCHEDULE_END_MIN = "schedule_end_min"
+    private const val KEY_SCHEDULE_WINDOWS = "schedule_windows"
+    private const val KEY_RECOVER_ENABLED = "recover_enabled"
+    private const val KEY_RECOVER_RUNNING = "recover_running"
     private const val KEY_BATTERY_GUARD = "battery_guard"
     private const val KEY_BATTERY_THRESHOLD = "battery_threshold"
     private const val KEY_WIFI_ONLY = "wifi_only"
+
+    // ===== 应用黑白名单 =====
+    private const val KEY_APP_FILTER_MODE = "app_filter_mode"
+    private const val KEY_APP_FILTER_LIST = "app_filter_list"
 
     // ===== 详情流（新闻 / 社交场景：点开→浏览→返回） =====
     private const val KEY_DETAIL_DWELL_MIN = "detail_dwell_min_seconds"
@@ -83,9 +90,17 @@ object AppConfig {
     const val DEFAULT_SCHEDULE_ENABLED = false
     const val DEFAULT_SCHEDULE_START_MIN = 480        // 08:00
     const val DEFAULT_SCHEDULE_END_MIN = 1200         // 20:00
+    const val DEFAULT_RECOVER_ENABLED = true
+    const val DEFAULT_RECOVER_RUNNING = false
     const val DEFAULT_BATTERY_GUARD = false
     const val DEFAULT_BATTERY_THRESHOLD = 15          // %
     const val DEFAULT_WIFI_ONLY = false
+
+    // 应用黑白名单默认值
+    const val FILTER_OFF = "off"
+    const val FILTER_WHITELIST = "whitelist"
+    const val FILTER_BLACKLIST = "blacklist"
+    const val DEFAULT_APP_FILTER_MODE = FILTER_OFF
     const val DEFAULT_AD_REWARD = false
     const val DEFAULT_AD_REWARD_INTERVAL = 5          // 分钟
     const val MIN_AD_REWARD_INTERVAL = 2
@@ -247,6 +262,49 @@ object AppConfig {
     fun setScheduleEndMin(context: Context, value: Int) =
         prefs(context).edit().putInt(KEY_SCHEDULE_END_MIN, value).apply()
 
+    /**
+     * 多个运行时段（每天生效），每个元素为 (开始分钟, 结束分钟)。
+     * 存储格式："480-1200;1320-1380"（分号分隔，每段"起-止"）。
+     *
+     * 兼容旧版单窗口：新键缺失时，回退到旧的 schedule_start_min / schedule_end_min
+     * 拼成单窗口，保证升级用户配置不丢。
+     */
+    fun getScheduleWindows(context: Context): List<Pair<Int, Int>> {
+        val raw = prefs(context).getString(KEY_SCHEDULE_WINDOWS, null)
+        if (!raw.isNullOrBlank()) {
+            val list = raw.split(";").mapNotNull { seg ->
+                val parts = seg.split("-")
+                if (parts.size == 2) {
+                    val s = parts[0].toIntOrNull()?.coerceIn(0, 1439)
+                    val e = parts[1].toIntOrNull()?.coerceIn(0, 1439)
+                    if (s != null && e != null) s to e else null
+                } else null
+            }
+            if (list.isNotEmpty()) return list
+        }
+        val s = prefs(context).getInt(KEY_SCHEDULE_START_MIN, DEFAULT_SCHEDULE_START_MIN).coerceIn(0, 1439)
+        val e = prefs(context).getInt(KEY_SCHEDULE_END_MIN, DEFAULT_SCHEDULE_END_MIN).coerceIn(0, 1439)
+        return listOf(s to e)
+    }
+
+    fun setScheduleWindows(context: Context, windows: List<Pair<Int, Int>>) {
+        val str = windows.joinToString(";") { "${it.first}-${it.second}" }
+        prefs(context).edit().putString(KEY_SCHEDULE_WINDOWS, str).apply()
+    }
+
+    // ---------- 进程恢复 ----------
+    /** 无障碍服务被系统回收后，是否自动恢复此前正在进行的滚动（尊重定时窗口） */
+    fun isRecoverEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_RECOVER_ENABLED, DEFAULT_RECOVER_ENABLED)
+    fun setRecoverEnabled(context: Context, value: Boolean) =
+        prefs(context).edit().putBoolean(KEY_RECOVER_ENABLED, value).apply()
+
+    /** 进程被回收前是否正在滚动：startScrolling 置 true，stopScrolling 置 false */
+    fun isRecoverRunning(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_RECOVER_RUNNING, DEFAULT_RECOVER_RUNNING)
+    fun setRecoverRunning(context: Context, value: Boolean) =
+        prefs(context).edit().putBoolean(KEY_RECOVER_RUNNING, value).apply()
+
     // ---------- 电量保护 ----------
     fun isBatteryGuard(context: Context): Boolean =
         prefs(context).getBoolean(KEY_BATTERY_GUARD, DEFAULT_BATTERY_GUARD)
@@ -263,6 +321,27 @@ object AppConfig {
         prefs(context).getBoolean(KEY_WIFI_ONLY, DEFAULT_WIFI_ONLY)
     fun setWifiOnly(context: Context, value: Boolean) =
         prefs(context).edit().putBoolean(KEY_WIFI_ONLY, value).apply()
+
+    // ---------- 应用黑白名单 ----------
+    /** 包名过滤模式：off / whitelist / blacklist */
+    fun getAppFilterMode(context: Context): String =
+        prefs(context).getString(KEY_APP_FILTER_MODE, DEFAULT_APP_FILTER_MODE)
+            ?: DEFAULT_APP_FILTER_MODE
+
+    fun setAppFilterMode(context: Context, mode: String) =
+        prefs(context).edit().putString(KEY_APP_FILTER_MODE, mode).apply()
+
+    /** 过滤列表（包名集合），与 mode 配合使用 */
+    fun getAppFilterList(context: Context): Set<String> {
+        val raw = prefs(context).getString(KEY_APP_FILTER_LIST, null).orEmpty()
+        if (raw.isBlank()) return emptySet()
+        return raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }
+
+    fun setAppFilterList(context: Context, apps: Set<String>) =
+        prefs(context).edit()
+            .putString(KEY_APP_FILTER_LIST, apps.joinToString(","))
+            .apply()
 
     // ---------- 详情流（新闻 / 社交） ----------
     fun getDetailDwellMin(context: Context): Int =

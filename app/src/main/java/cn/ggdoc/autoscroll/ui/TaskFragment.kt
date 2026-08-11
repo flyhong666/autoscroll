@@ -13,6 +13,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.config.AppConfig
@@ -62,10 +64,17 @@ class TaskFragment : Fragment() {
     private lateinit var tvTimedStopMinutes: TextView
     private lateinit var tvRotationMinutes: TextView
     private lateinit var tvBatteryThreshold: TextView
-    private lateinit var tvScheduleStart: TextView
-    private lateinit var tvScheduleEnd: TextView
+    private lateinit var rvScheduleWindows: RecyclerView
+    private lateinit var tvScheduleEmpty: TextView
+    private lateinit var btnAddWindow: MaterialButton
+    private lateinit var switchRecover: SwitchMaterial
     private lateinit var tvAdRewardInterval: TextView
     private lateinit var tvAdRewardAckWarn: TextView
+
+    // 应用黑白名单
+    private lateinit var spinnerFilterMode: Spinner
+    private lateinit var tvFilterSummary: TextView
+    private lateinit var btnFilterApps: MaterialButton
 
     private lateinit var likeProbabilityContainer: View
     private lateinit var timedStopContainer: View
@@ -88,14 +97,8 @@ class TaskFragment : Fragment() {
     private lateinit var tvStatAdReward: TextView
     private lateinit var tvStatTime: TextView
 
-    // 定时运行起止时间（分钟，0-1439）
-    private var scheduleStartMin: Int = AppConfig.DEFAULT_SCHEDULE_START_MIN
-    private var scheduleEndMin: Int = AppConfig.DEFAULT_SCHEDULE_END_MIN
-
-    companion object {
-        private const val TARGET_START = 0
-        private const val TARGET_END = 1
-    }
+    // 多时段定时窗口（分钟，0-1439），每个元素为 (开始, 结束)
+    private var scheduleWindows: MutableList<Pair<Int, Int>> = mutableListOf()
 
     /** 监听无障碍服务状态广播，实时刷新统计看板 */
     private val stateReceiver = object : BroadcastReceiver() {
@@ -117,7 +120,8 @@ class TaskFragment : Fragment() {
         bindViews(view)
         setupSliders()
         setupSwitches()
-        setupTimePickers()
+        setupScheduleWindows()
+        setupAppFilter()
         setupAdReward()
         loadSettingsToUI()
         btnSaveTasks.setOnClickListener { saveSettings() }
@@ -144,6 +148,7 @@ class TaskFragment : Fragment() {
         switchSchedule = v.findViewById(R.id.switchSchedule)
         switchBatteryGuard = v.findViewById(R.id.switchBatteryGuard)
         switchWifiOnly = v.findViewById(R.id.switchWifiOnly)
+        switchRecover = v.findViewById(R.id.switchRecover)
         switchAdReward = v.findViewById(R.id.switchAdReward)
         checkAdRewardAck = v.findViewById(R.id.checkAdRewardAck)
 
@@ -166,10 +171,15 @@ class TaskFragment : Fragment() {
         tvTimedStopMinutes = v.findViewById(R.id.tvTimedStopMinutes)
         tvRotationMinutes = v.findViewById(R.id.tvRotationMinutes)
         tvBatteryThreshold = v.findViewById(R.id.tvBatteryThreshold)
-        tvScheduleStart = v.findViewById(R.id.tvScheduleStart)
-        tvScheduleEnd = v.findViewById(R.id.tvScheduleEnd)
+        rvScheduleWindows = v.findViewById(R.id.rvScheduleWindows)
+        tvScheduleEmpty = v.findViewById(R.id.tvScheduleEmpty)
+        btnAddWindow = v.findViewById(R.id.btnAddWindow)
         tvAdRewardInterval = v.findViewById(R.id.tvAdRewardInterval)
         tvAdRewardAckWarn = v.findViewById(R.id.tvAdRewardAckWarn)
+
+        spinnerFilterMode = v.findViewById(R.id.spinnerFilterMode)
+        tvFilterSummary = v.findViewById(R.id.tvFilterSummary)
+        btnFilterApps = v.findViewById(R.id.btnFilterApps)
 
         likeProbabilityContainer = v.findViewById(R.id.likeProbabilityContainer)
         timedStopContainer = v.findViewById(R.id.timedStopContainer)
@@ -244,6 +254,57 @@ class TaskFragment : Fragment() {
         }
     }
 
+    private fun setupAppFilter() {
+        val modes = listOf(
+            AppConfig.FILTER_OFF to R.string.filter_mode_off,
+            AppConfig.FILTER_WHITELIST to R.string.filter_mode_whitelist,
+            AppConfig.FILTER_BLACKLIST to R.string.filter_mode_blacklist
+        )
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            modes.map { getString(it.second) }
+        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        spinnerFilterMode.adapter = adapter
+        spinnerFilterMode.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>, view: View?, pos: Int, id: Long) {
+                val mode = modes[pos].first
+                val list = AppConfig.getAppFilterList(requireContext())
+                updateFilterSummary(mode, list)
+                btnFilterApps.isEnabled = mode != AppConfig.FILTER_OFF
+                // 选择变化时实时落盘，无需等「保存」按钮
+                if (mode != AppConfig.getAppFilterMode(requireContext())) {
+                    AppConfig.setAppFilterMode(requireContext(), mode)
+                    AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+                }
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
+        }
+        btnFilterApps.setOnClickListener { openFilterAppPicker() }
+    }
+
+    private fun updateFilterSummary(mode: String, list: Set<String>) {
+        val count = list.size
+        tvFilterSummary.text = when (mode) {
+            AppConfig.FILTER_OFF -> getString(R.string.filter_off_hint)
+            AppConfig.FILTER_WHITELIST -> getString(R.string.filter_summary, count, getString(R.string.filter_mode_whitelist))
+            else -> getString(R.string.filter_summary, count, getString(R.string.filter_mode_blacklist))
+        }
+    }
+
+    private fun openFilterAppPicker() {
+        val dialog = AppPickerDialogFragment()
+        dialog.initialSelection = AppConfig.getAppFilterList(requireContext())
+        dialog.onConfirm = { set ->
+            AppConfig.setAppFilterList(requireContext(), set)
+            val mode = AppConfig.getAppFilterMode(requireContext())
+            updateFilterSummary(mode, set)
+            // 实时刷新服务内的过滤列表，无需重启滚动
+            AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
+        }
+        dialog.show(childFragmentManager, "filter_app_picker")
+    }
+
     private fun setupAdReward() {
         checkAdRewardAck.setOnCheckedChangeListener { _, checked ->
             // 未确认风险时，开关与参数区禁用，并提示风险
@@ -254,29 +315,50 @@ class TaskFragment : Fragment() {
         }
     }
 
-    private fun setupTimePickers() {
-        tvScheduleStart.setOnClickListener { showTimePicker(TARGET_START) }
-        tvScheduleEnd.setOnClickListener { showTimePicker(TARGET_END) }
+    private lateinit var windowAdapter: ScheduleWindowAdapter
+
+    private fun setupScheduleWindows() {
+        rvScheduleWindows.layoutManager = LinearLayoutManager(requireContext())
+        windowAdapter = ScheduleWindowAdapter(
+            scheduleWindows,
+            onStartClick = { idx -> pickWindowTime(idx, true) },
+            onEndClick = { idx -> pickWindowTime(idx, false) },
+            onDelete = { idx ->
+                if (idx in scheduleWindows.indices) {
+                    scheduleWindows.removeAt(idx)
+                    refreshWindowUI()
+                }
+            }
+        )
+        rvScheduleWindows.adapter = windowAdapter
+        rvScheduleWindows.isNestedScrollingEnabled = false
+        btnAddWindow.setOnClickListener {
+            if (scheduleWindows.size >= 8) {
+                Toast.makeText(requireContext(), R.string.task_schedule_max_windows, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            scheduleWindows.add(AppConfig.DEFAULT_SCHEDULE_START_MIN to AppConfig.DEFAULT_SCHEDULE_END_MIN)
+            refreshWindowUI()
+        }
     }
 
-    private fun showTimePicker(target: Int) {
-        val cur = if (target == TARGET_START) scheduleStartMin else scheduleEndMin
+    private fun refreshWindowUI() {
+        windowAdapter.notifyDataSetChanged()
+        tvScheduleEmpty.visibility = if (scheduleWindows.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun pickWindowTime(index: Int, isStart: Boolean) {
+        if (index !in scheduleWindows.indices) return
+        val cur = if (isStart) scheduleWindows[index].first else scheduleWindows[index].second
         val h = cur / 60
         val m = cur % 60
         TimePickerDialog(requireContext(), { _, hh, mm ->
             val min = hh * 60 + mm
-            if (target == TARGET_START) scheduleStartMin = min else scheduleEndMin = min
-            updateTimeLabels()
+            val old = scheduleWindows[index]
+            scheduleWindows[index] = if (isStart) min to old.second else old.first to min
+            refreshWindowUI()
         }, h, m, true).show()
     }
-
-    private fun updateTimeLabels() {
-        tvScheduleStart.text = formatMinute(scheduleStartMin)
-        tvScheduleEnd.text = formatMinute(scheduleEndMin)
-    }
-
-    private fun formatMinute(min: Int): String =
-        String.format("%02d:%02d", min / 60, min % 60)
 
     private fun refreshStats() {
         tvStatScroll.text = AutoScrollAccessibilityService.scrollCount.toString()
@@ -302,8 +384,21 @@ class TaskFragment : Fragment() {
         switchAppRotation.isChecked = AppConfig.isAppRotation(ctx)
         switchKeepScreenOn.isChecked = AppConfig.isKeepScreenOn(ctx)
         switchSchedule.isChecked = AppConfig.isScheduleEnabled(ctx)
+        switchRecover.isChecked = AppConfig.isRecoverEnabled(ctx)
         switchBatteryGuard.isChecked = AppConfig.isBatteryGuard(ctx)
         switchWifiOnly.isChecked = AppConfig.isWifiOnly(ctx)
+
+        // 应用黑白名单
+        val filterMode = AppConfig.getAppFilterMode(ctx)
+        val filterList = AppConfig.getAppFilterList(ctx)
+        val modeIndex = when (filterMode) {
+            AppConfig.FILTER_WHITELIST -> 1
+            AppConfig.FILTER_BLACKLIST -> 2
+            else -> 0
+        }
+        spinnerFilterMode.setSelection(modeIndex)
+        updateFilterSummary(filterMode, filterList)
+        btnFilterApps.isEnabled = filterMode != AppConfig.FILTER_OFF
 
         sliderLikeProbability.value = AppConfig.getLikeProbability(ctx).toFloat()
             .coerceIn(sliderLikeProbability.valueFrom, sliderLikeProbability.valueTo)
@@ -314,9 +409,9 @@ class TaskFragment : Fragment() {
         sliderBatteryThreshold.value = AppConfig.getBatteryThreshold(ctx).toFloat()
             .coerceIn(sliderBatteryThreshold.valueFrom, sliderBatteryThreshold.valueTo)
 
-        scheduleStartMin = AppConfig.getScheduleStartMin(ctx)
-        scheduleEndMin = AppConfig.getScheduleEndMin(ctx)
-        updateTimeLabels()
+        scheduleWindows.clear()
+        scheduleWindows.addAll(AppConfig.getScheduleWindows(ctx))
+        refreshWindowUI()
 
         tvLikeProbability.text = "${sliderLikeProbability.value.toInt()}%"
         tvTimedStopMinutes.text = "${sliderTimedStopMinutes.value.toInt()}min"
@@ -393,11 +488,20 @@ class TaskFragment : Fragment() {
         AppConfig.setKeepScreenOn(ctx, switchKeepScreenOn.isChecked)
 
         AppConfig.setScheduleEnabled(ctx, switchSchedule.isChecked)
-        AppConfig.setScheduleStartMin(ctx, scheduleStartMin)
-        AppConfig.setScheduleEndMin(ctx, scheduleEndMin)
+        AppConfig.setScheduleWindows(ctx, scheduleWindows.map { it.first to it.second })
+        AppConfig.setRecoverEnabled(ctx, switchRecover.isChecked)
         AppConfig.setBatteryGuard(ctx, switchBatteryGuard.isChecked)
         AppConfig.setBatteryThreshold(ctx, sliderBatteryThreshold.value.toInt())
         AppConfig.setWifiOnly(ctx, switchWifiOnly.isChecked)
+
+        // 应用黑白名单（模式选择已在切换时实时落盘，这里再确保一次）
+        val filterMode = when (spinnerFilterMode.selectedItemPosition) {
+            1 -> AppConfig.FILTER_WHITELIST
+            2 -> AppConfig.FILTER_BLACKLIST
+            else -> AppConfig.FILTER_OFF
+        }
+        AppConfig.setAppFilterMode(ctx, filterMode)
+        AppConfig.setAppFilterList(ctx, AppConfig.getAppFilterList(ctx))
 
         // 看广告得金币（高风险）：开关 + 风险确认 双条件
         AppConfig.setAdReward(ctx, switchAdReward.isChecked)
@@ -421,5 +525,39 @@ class TaskFragment : Fragment() {
         else R.string.toast_schedule_cancelled
         Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
         Toast.makeText(ctx, R.string.toast_task_saved, Toast.LENGTH_SHORT).show()
+    }
+
+    // ========== 多时段定时窗口列表适配器 ==========
+    private class ScheduleWindowAdapter(
+        private val items: MutableList<Pair<Int, Int>>,
+        private val onStartClick: (Int) -> Unit,
+        private val onEndClick: (Int) -> Unit,
+        private val onDelete: (Int) -> Unit
+    ) : RecyclerView.Adapter<ScheduleWindowAdapter.VH>() {
+
+        class VH(v: View) : RecyclerView.ViewHolder(v) {
+            val tvStart: TextView = v.findViewById(R.id.tvWinStart)
+            val tvEnd: TextView = v.findViewById(R.id.tvWinEnd)
+            val btnDelete: View = v.findViewById(R.id.btnWinDelete)
+        }
+
+        private fun fmt(min: Int) = String.format("%02d:%02d", min / 60, min % 60)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
+            VH(
+                LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_schedule_window, parent, false)
+            )
+
+        override fun getItemCount(): Int = items.size
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            val (s, e) = items[position]
+            holder.tvStart.text = fmt(s)
+            holder.tvEnd.text = fmt(e)
+            holder.tvStart.setOnClickListener { onStartClick(holder.bindingAdapterPosition) }
+            holder.tvEnd.setOnClickListener { onEndClick(holder.bindingAdapterPosition) }
+            holder.btnDelete.setOnClickListener { onDelete(holder.bindingAdapterPosition) }
+        }
     }
 }

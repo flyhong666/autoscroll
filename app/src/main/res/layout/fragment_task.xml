@@ -701,6 +701,84 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 应用黑白名单 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_title"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="14dp"
+                    android:text="@string/filter_subtitle"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/filter_mode"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                    <Spinner
+                        android:id="@+id/spinnerFilterMode"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:id="@+id/tvFilterSummary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_hint" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnFilterApps"
+                        style="@style/AutoScrollButton.Outline"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/filter_choose_apps"
+                        app:strokeColor="@color/purple_500"
+                        android:textColor="@color/purple_700" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 屏幕常亮 -->
         <com.google.android.material.card.MaterialCardView
             style="@style/AutoScrollCard"
@@ -768,71 +846,77 @@
                     android:id="@+id/scheduleTimeContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:layout_marginTop="12dp">
 
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
+                        android:text="@string/task_schedule_windows_title"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_primary" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/task_schedule_start"
-                            android:textAppearance="@style/TextAppearance.Body"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint" />
-
-                        <TextView
-                            android:id="@+id/tvScheduleStart"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:minWidth="72dp"
-                            android:gravity="center"
-                            android:paddingTop="4dp"
-                            android:paddingBottom="4dp"
-                            android:textStyle="bold"
-                            android:textSize="18sp"
-                            android:textColor="@color/purple_700"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tvScheduleEmpty"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
+                        android:layout_marginTop="4dp"
+                        android:text="@string/task_schedule_window_empty"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_hint" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/task_schedule_end"
-                            android:textAppearance="@style/TextAppearance.Body"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint" />
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvScheduleWindows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:nestedScrollingEnabled="false" />
 
-                        <TextView
-                            android:id="@+id/tvScheduleEnd"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:minWidth="72dp"
-                            android:gravity="center"
-                            android:paddingTop="4dp"
-                            android:paddingBottom="4dp"
-                            android:textStyle="bold"
-                            android:textSize="18sp"
-                            android:textColor="@color/purple_700"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true" />
-                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAddWindow"
+                        style="@style/AutoScrollButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/task_schedule_add_window"
+                        app:backgroundTint="@color/purple_500"
+                        app:cornerRadius="12dp" />
                 </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 进程恢复 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchRecover"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_process_recover"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/task_process_recover_summary"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

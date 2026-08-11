@@ -7,6 +7,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.human.HumanTiming
 import cn.ggdoc.autoscroll.human.PageClassifier
+import cn.ggdoc.autoscroll.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,7 +35,7 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         private const val TAG = "DetailFlow"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + AppLog.coroutineExceptionHandler)
     private var cycleJob: Job? = null
 
     @Volatile
@@ -80,6 +81,11 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
         onDone = null
         cycleJob?.cancel()
         cycleJob = null
+    }
+
+    /** 服务销毁时调用：取消整个协程作用域。cancel() 仅取消当前周期，dispose() 彻底关闭 scope。 */
+    fun dispose() {
+        scope.cancel()
     }
 
     /** 重置顺序点击游标（每次新一轮滚动开始时调用） */

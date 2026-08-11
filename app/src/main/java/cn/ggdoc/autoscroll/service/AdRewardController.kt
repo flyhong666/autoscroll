@@ -6,6 +6,7 @@ import android.util.Log
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.task.AdBlocker
 import cn.ggdoc.autoscroll.task.AdRewardTask
+import cn.ggdoc.autoscroll.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,10 +44,9 @@ class AdRewardController(
         fun tryAdBlockNow(): Int
         fun sendTaskEvent(type: String, msg: String)
         fun broadcastState()
-        fun scheduleNextAdReward()
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + AppLog.coroutineExceptionHandler)
     private var scheduleJob: Job? = null
     private var watchJob: Job? = null
 
@@ -79,6 +79,11 @@ class AdRewardController(
         watchJob?.cancel()
         watchJob = null
         setWatching(false)
+    }
+
+    /** 服务销毁时调用：取消整个协程作用域。 */
+    fun dispose() {
+        scope.cancel()
     }
 
     /** 配置发生变更时的重置（运行中重新排下一次） */

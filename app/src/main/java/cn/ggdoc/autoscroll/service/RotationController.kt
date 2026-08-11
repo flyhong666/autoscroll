@@ -5,6 +5,7 @@ import android.content.Intent
 import android.util.Log
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.human.RotationPlanner
+import cn.ggdoc.autoscroll.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,7 +48,7 @@ class RotationController(
         private const val ROTATION_VERIFY_DELAY_MS = 3500L
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + AppLog.coroutineExceptionHandler)
     private var rotationJob: Job? = null
     private var verifyJob: Job? = null
     private var rotationPlanner: RotationPlanner? = null
@@ -77,6 +78,11 @@ class RotationController(
         rotationJob = null
         verifyJob?.cancel()
         verifyJob = null
+    }
+
+    /** 服务销毁时调用：取消整个协程作用域。 */
+    fun dispose() {
+        scope.cancel()
     }
 
     /** 服务端轮换列表 / 开关被用户修改后调用：重置调度链并按新参数重启（若运行中） */

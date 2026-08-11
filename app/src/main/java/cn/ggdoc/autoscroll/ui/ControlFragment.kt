@@ -22,6 +22,7 @@ import cn.ggdoc.autoscroll.config.AppConfig
 import cn.ggdoc.autoscroll.config.SceneConfig
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
 import cn.ggdoc.autoscroll.service.FloatingWindowService
+import cn.ggdoc.autoscroll.ui.LogActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 
@@ -44,6 +45,7 @@ class ControlFragment : Fragment() {
     private lateinit var btnOverlay: MaterialButton
     private lateinit var btnStartService: MaterialButton
     private lateinit var cardSettingsEntry: MaterialCardView
+    private lateinit var btnOpenLog: MaterialButton
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -93,6 +95,7 @@ class ControlFragment : Fragment() {
         btnOverlay = v.findViewById(R.id.btnOverlay)
         btnStartService = v.findViewById(R.id.btnStartService)
         cardSettingsEntry = v.findViewById(R.id.cardSettingsEntry)
+        btnOpenLog = v.findViewById(R.id.btnOpenLog)
     }
 
     private fun setupClickListeners() {
@@ -103,6 +106,9 @@ class ControlFragment : Fragment() {
             else startFloatingService()
         }
         cardSettingsEntry.setOnClickListener { openSettingsSheet() }
+        btnOpenLog.setOnClickListener {
+            startActivity(Intent(requireContext(), LogActivity::class.java))
+        }
     }
 
     private fun openSettingsSheet() {

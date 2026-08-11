@@ -34,4 +34,9 @@
     <!-- 悬浮窗 -->
     <color name="floating_bg">#CC2F6BFF</color>
     <color name="floating_stroke">#FFFFFF</color>
+
+    <!-- 桌面小部件背景（圆角卡片，主题色） -->
+    <drawable name="widget_bg">#3A2E8C</drawable>
+    <!-- 小部件按钮背景（圆角，可点态高亮） -->
+    <drawable name="widget_button_bg">#5E4BD6</drawable>
 </resources>

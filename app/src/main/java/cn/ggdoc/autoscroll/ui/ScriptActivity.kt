@@ -18,6 +18,7 @@ import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.recorder.ScriptPlayer
 import cn.ggdoc.autoscroll.recorder.ScriptStore
+import cn.ggdoc.autoscroll.ui.ScriptEditorDialogFragment
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
 import cn.ggdoc.autoscroll.service.RecorderOverlayService
 import com.google.android.material.button.MaterialButton
@@ -164,12 +165,14 @@ class ScriptActivity : AppCompatActivity() {
     private fun onMoreClicked(entry: ScriptStore.Entry, anchor: View) {
         val menu = PopupMenu(this, anchor)
         menu.menu.add(0, MENU_DETAIL, 0, R.string.script_menu_detail)
-        menu.menu.add(0, MENU_RENAME, 1, R.string.script_menu_rename)
-        menu.menu.add(0, MENU_EXPORT, 2, R.string.script_menu_export)
-        menu.menu.add(0, MENU_DELETE, 3, R.string.script_menu_delete)
+        menu.menu.add(0, MENU_EDIT, 1, R.string.script_menu_edit)
+        menu.menu.add(0, MENU_RENAME, 2, R.string.script_menu_rename)
+        menu.menu.add(0, MENU_EXPORT, 3, R.string.script_menu_export)
+        menu.menu.add(0, MENU_DELETE, 4, R.string.script_menu_delete)
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 MENU_DETAIL -> showDetail(entry)
+                MENU_EDIT -> openEditor(entry)
                 MENU_RENAME -> showRename(entry)
                 MENU_EXPORT -> exportScript(entry)
                 MENU_DELETE -> confirmDelete(entry)
@@ -177,6 +180,12 @@ class ScriptActivity : AppCompatActivity() {
             true
         }
         menu.show()
+    }
+
+    private fun openEditor(entry: ScriptStore.Entry) {
+        if (isFinishing || isDestroyed) return
+        ScriptEditorDialogFragment.newInstance(entry.fileName) { refreshList() }
+            .show(supportFragmentManager, "ScriptEditorDialog")
     }
 
     private fun showDetail(entry: ScriptStore.Entry) {
@@ -284,9 +293,10 @@ class ScriptActivity : AppCompatActivity() {
 
     companion object {
         private const val MENU_DETAIL = 1
-        private const val MENU_RENAME = 2
-        private const val MENU_EXPORT = 3
-        private const val MENU_DELETE = 4
+        private const val MENU_EDIT = 2
+        private const val MENU_RENAME = 3
+        private const val MENU_EXPORT = 4
+        private const val MENU_DELETE = 5
         private const val MAX_DETAIL_LINES = 80
     }
 }

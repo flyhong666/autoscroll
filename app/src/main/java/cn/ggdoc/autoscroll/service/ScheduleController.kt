@@ -10,14 +10,14 @@ import android.widget.Toast
 import cn.ggdoc.autoscroll.human.ScheduleUtils
 
 /**
- * 定时运行（每日窗口）控制器。
+ * 定时运行（多时段窗口）控制器。
  *
  * 从 [AutoScrollAccessibilityService] 抽离：
- *  - 精确/非精确闹钟安排与取消
+ *  - 精确/非精确闹钟安排与取消（每个窗口一对 开始/结束 闹钟）
  *  - 开始 / 结束时刻触发自动启停
- *  - 窗口内判定 isWithinWindow
+ *  - 窗口内判定 isWithinWindow（支持跨午夜、多窗口）
  *
- *  目前支持单窗口；多时段可在 [scheduleWindowPairs] 扩展。
+ *  多时段数据源为 [ServiceFace.scheduleWindows]（来自 AppConfig 的 schedule_windows）。
  */
 class ScheduleController(
     private val context: Context,
@@ -27,8 +27,7 @@ class ScheduleController(
     interface ServiceFace {
         val TAG: String get() = AutoScrollAccessibilityService.TAG
         val scheduleEnabled: Boolean
-        val scheduleStartMin: Int
-        val scheduleEndMin: Int
+        val scheduleWindows: List<Pair<Int, Int>>
         val isScrolling: Boolean
         fun sendBroadcast(intent: Intent)
         fun startScrolling()
@@ -36,10 +35,10 @@ class ScheduleController(
         fun formatMinute(min: Int): String = ScheduleUtils.formatMinute(min)
     }
 
-    /** 多时段窗口列表：当前单窗口，但数据结构按 Pair 列表预留多时段接口 */
+    /** 生效的多时段窗口列表（scheduleEnabled 关闭时为空） */
     val scheduleWindowPairs: List<Pair<Int, Int>>
         get() = if (serviceProvider.scheduleEnabled) {
-            listOf(serviceProvider.scheduleStartMin to serviceProvider.scheduleEndMin)
+            serviceProvider.scheduleWindows
         } else emptyList()
 
     fun onScheduleConfigChanged() {
@@ -64,7 +63,10 @@ class ScheduleController(
     /** 当前时间是否处于任意一个生效窗口内（支持跨午夜） */
     fun isWithinWindow(nowMin: Int = ScheduleUtils.nowMinute()): Boolean {
         if (!serviceProvider.scheduleEnabled) return true
-        return scheduleWindowPairs.any { (s, e) -> ScheduleUtils.isWithinWindow(nowMin, s, e) }
+        val windows = scheduleWindowPairs
+        // 开启了定时但未设置任何时段时，视为「全天生效」
+        if (windows.isEmpty()) return true
+        return windows.any { (s, e) -> ScheduleUtils.isWithinWindow(nowMin, s, e) }
     }
 
     /** 安排下一次开始/结束闹钟（每日精确触发）；未授权精确闹钟时降级为普通闹钟 */

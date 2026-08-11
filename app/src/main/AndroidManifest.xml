@@ -90,5 +90,25 @@
             </intent-filter>
         </receiver>
 
+        <!-- 运行日志页（崩溃监控 / 日志查看 / 统计导出） -->
+        <activity
+            android:name="cn.ggdoc.autoscroll.ui.LogActivity"
+            android:exported="false"
+            android:label="@string/log_title" />
+
+        <!-- 桌面小部件（清单 #11） -->
+        <receiver
+            android:name="cn.ggdoc.autoscroll.widget.AutoScrollWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="cn.ggdoc.autoscroll.WIDGET_TOGGLE" />
+                <action android:name="cn.ggdoc.autoscroll.STATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_autoscroll_info" />
+        </receiver>
+
     </application>
 </manifest>

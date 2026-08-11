@@ -2,6 +2,7 @@ package cn.ggdoc.autoscroll.service
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import cn.ggdoc.autoscroll.util.NodePoolStats
 import java.util.HashSet
 import java.util.LinkedList
 
@@ -49,6 +50,7 @@ object NodeFinder {
      * 在遍历过程中同时记录「列表容器」与「任意可滚动容器」两个候选，优先返回前者。
      */
     fun findScrollable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        NodePoolStats.recordCall()
         val visited = HashSet<AccessibilityNodeInfo>()
         visited.add(root)
         val queue = LinkedList<AccessibilityNodeInfo>()
@@ -57,9 +59,11 @@ object NodeFinder {
         // 未命中则回退到任意可滚动容器（ScrollView / WebView / ViewPager 等）或 isScrollable 节点。
         var keep: AccessibilityNodeInfo? = null
         var visitedCount = 0
+        var traversed = 0
         while (queue.isNotEmpty() && visitedCount < 1500) {
             val current = queue.poll() ?: continue
             visitedCount++
+            traversed++
             val className = current.className?.toString().orEmpty()
             val isList = className.endsWith("RecyclerView") || className.endsWith("ListView")
             val isScrollableClass = SCROLLABLE_CLASSES.any { className.contains(it, ignoreCase = true) }
@@ -75,15 +79,27 @@ object NodeFinder {
                     queue.offer(child)
                 } else {
                     child.recycle()
+                    NodePoolStats.recordRecycled(1)
                 }
             }
             // 处理完当前节点后回收（保留 root 与 keep；keep 可能为 null 直到命中）
-            if (current !== root && current !== keep) current.recycle()
+            if (current !== root && current !== keep) {
+                current.recycle()
+                NodePoolStats.recordRecycled(1)
+            }
         }
         // 因达到遍历上限而残留在队列中、尚未处理的节点也要回收（保留 root 与 keep）
+        var residualRecycled = 0
         while (queue.isNotEmpty()) {
-            queue.poll()?.let { if (it !== root && it !== keep) runCatching { it.recycle() } }
+            val node = queue.poll() ?: continue
+            if (node !== root && node !== keep) {
+                runCatching { node.recycle() }
+                residualRecycled++
+            }
         }
+        NodePoolStats.recordRecycled(residualRecycled)
+        NodePoolStats.recordTraversed(traversed)
+        if (keep != null) NodePoolStats.recordRetained(1)
         return keep
     }
 
@@ -104,6 +120,7 @@ object NodeFinder {
         containerRect: Rect,
         minItemHeight: Int
     ): List<ListItem> {
+        NodePoolStats.recordCall()
         val out = mutableListOf<ListItem>()
         val maxH = (containerRect.height() * 0.75f).toInt()
         val minW = (containerRect.width() * 0.5f).toInt()
@@ -111,9 +128,11 @@ object NodeFinder {
         val visited = HashSet<AccessibilityNodeInfo>()
         visited.add(container)
         queue.offer(container to 0)
+        var traversed = 0
         while (queue.isNotEmpty() && out.size < 40) {
             val (node, depth) = queue.poll() ?: continue
             if (depth > 10) continue
+            traversed++
             val rect = Rect().also { node.getBoundsInScreen(it) }
             val fullyVisible = rect.width() > 0 && rect.height() > 0 &&
                     rect.top >= containerRect.top - 2 && rect.bottom <= containerRect.bottom + 2 &&
@@ -134,6 +153,7 @@ object NodeFinder {
                     queue.offer(child to depth + 1)
                 } else {
                     child.recycle()
+                    NodePoolStats.recordRecycled(1)
                 }
             }
         }
@@ -148,9 +168,16 @@ object NodeFinder {
         }
         val keep = dedup.map { it.node }.toSet()
         // 回收所有遍历过的节点，保留 container 与 retained 列表项
+        var recycledMid = 0
         visited.forEach { n ->
-            if (n !== container && n !in keep) n.recycle()
+            if (n !== container && n !in keep) {
+                n.recycle()
+                recycledMid++
+            }
         }
+        NodePoolStats.recordRecycled(recycledMid)
+        NodePoolStats.recordTraversed(traversed)
+        NodePoolStats.recordRetained(keep.size)
         return dedup.sortedWith(compareBy({ it.rect.top }, { it.rect.left }))
     }
 

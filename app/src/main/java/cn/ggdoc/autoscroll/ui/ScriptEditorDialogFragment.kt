@@ -85,7 +85,7 @@ class ScriptEditorDialogFragment : DialogFragment() {
         tvTitle.text = getString(R.string.editor_title, script.name)
         refreshMeta()
 
-        adapter = StepAdapter(steps, ::onStepClick, ::onStepDelete)
+        adapter = StepAdapter(steps, ::onStepClick, ::onStepDelete, ::onStepUp, ::onStepDown)
         rvSteps.layoutManager = LinearLayoutManager(requireContext())
         rvSteps.adapter = adapter
 
@@ -148,10 +148,25 @@ class ScriptEditorDialogFragment : DialogFragment() {
             .show()
     }
 
+    private fun onStepUp(pos: Int) {
+        if (pos <= 0 || pos >= steps.size) return
+        val tmp = steps[pos]
+        steps[pos] = steps[pos - 1]
+        steps[pos - 1] = tmp
+        refreshAll()
+    }
+
+    private fun onStepDown(pos: Int) {
+        if (pos < 0 || pos >= steps.size - 1) return
+        val tmp = steps[pos]
+        steps[pos] = steps[pos + 1]
+        steps[pos + 1] = tmp
+        refreshAll()
+    }
+
     /**
-     * 简易单步字段编辑对话框：
-     * 用垂直堆叠的多个 EditText 暴露核心字段；坐标/时长/间隔统一用数字输入，
-     * 类型通过单选项切换（click / longClick / swipe / wait）。
+     * 单步字段编辑对话框：类型（点击/长按/滑动/双击/等待）通过单选项切换，
+     * 坐标/时长/间隔/备注用 EditText 暴露；底部「复制此步」在选中步之后插入副本。
      */
     private fun showStepEditor(pos: Int, s: RecordedAction) {
         val ctx = requireContext()
@@ -159,9 +174,11 @@ class ScriptEditorDialogFragment : DialogFragment() {
             RecordedAction.TYPE_CLICK to ctx.getString(R.string.editor_action_click),
             RecordedAction.TYPE_LONG_CLICK to ctx.getString(R.string.editor_action_long_click),
             RecordedAction.TYPE_SWIPE to ctx.getString(R.string.editor_action_swipe),
+            RecordedAction.TYPE_DOUBLE_TAP to ctx.getString(R.string.editor_action_double_tap),
             RecordedAction.TYPE_WAIT to ctx.getString(R.string.editor_action_wait)
         )
-        var selectedType = s.type
+        val waitIdx = types.indexOfFirst { it.first == RecordedAction.TYPE_WAIT }
+        val swipeIdx = types.indexOfFirst { it.first == RecordedAction.TYPE_SWIPE }
 
         val etX = EditText(ctx).apply {
             hint = "X（像素）"
@@ -193,6 +210,11 @@ class ScriptEditorDialogFragment : DialogFragment() {
             setText(s.duration.toString())
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
+        val etDesc = EditText(ctx).apply {
+            hint = ctx.getString(R.string.editor_edit_desc)
+            setText(s.desc)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+        }
 
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -213,37 +235,43 @@ class ScriptEditorDialogFragment : DialogFragment() {
         val typeSelectedIdx = types.indexOfFirst { it.first == s.type }.coerceAtLeast(0)
         var chosenTypeIdx = typeSelectedIdx
 
+        val buildFromInputs: () -> RecordedAction = {
+            val t = types[chosenTypeIdx].first
+            val x = etX.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+            val y = etY.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+            val x2 = etX2.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+            val y2 = etY2.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+            val delay = etDelay.text?.toString()?.toLongOrNull()?.coerceAtLeast(0) ?: 0L
+            val duration = etDuration.text?.toString()?.toLongOrNull()?.coerceAtLeast(0)
+                ?: if (t == RecordedAction.TYPE_LONG_CLICK) 600L else 60L
+            val desc = etDesc.text?.toString()?.trim() ?: s.desc
+            s.copy(type = t, x = x, y = y, x2 = x2, y2 = y2, delay = delay, duration = duration, desc = desc)
+        }
+
         val dlg = MaterialAlertDialogBuilder(ctx)
             .setTitle(ctx.getString(R.string.editor_edit_title, pos + 1))
             .setSingleChoiceItems(typeLabels, typeSelectedIdx) { _, which -> chosenTypeIdx = which }
             .setView(container)
             .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.editor_duplicate) { _, _ ->
+                // 在选中步骤之后插入副本，等效「插入」动作
+                steps.add(pos + 1, buildFromInputs())
+                refreshAll()
+            }
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val t = types[chosenTypeIdx].first
-                val x = etX.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                val y = etY.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                val x2 = etX2.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                val y2 = etY2.text?.toString()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                val delay = etDelay.text?.toString()?.toLongOrNull()?.coerceAtLeast(0) ?: 0L
-                val duration = etDuration.text?.toString()?.toLongOrNull()?.coerceAtLeast(0)
-                    ?: if (t == RecordedAction.TYPE_LONG_CLICK) 600L else 60L
-                steps[pos] = s.copy(
-                    type = t,
-                    x = x, y = y, x2 = x2, y2 = y2,
-                    delay = delay, duration = duration
-                )
+                steps[pos] = buildFromInputs()
                 refreshAll()
             }
             .create()
 
-        // 类型选完再把数值输入加进去，避免单选项和 EditText 挤在一起
         dlg.setOnShowListener {
             container.addView(etDelay, lp)
             container.addView(etDuration, lp)
-            if (chosenTypeIdx != types.indexOfFirst { it.first == RecordedAction.TYPE_WAIT }) {
+            container.addView(etDesc, lp)
+            if (chosenTypeIdx != waitIdx) {
                 container.addView(etX, lp)
                 container.addView(etY, lp)
-                if (chosenTypeIdx == types.indexOfFirst { it.first == RecordedAction.TYPE_SWIPE }) {
+                if (chosenTypeIdx == swipeIdx) {
                     container.addView(etX2, lp)
                     container.addView(etY2, lp)
                 }
@@ -275,13 +303,17 @@ class ScriptEditorDialogFragment : DialogFragment() {
     private class StepAdapter(
         private val items: MutableList<RecordedAction>,
         private val onClick: (Int) -> Unit,
-        private val onDelete: (Int) -> Unit
+        private val onDelete: (Int) -> Unit,
+        private val onUp: (Int) -> Unit,
+        private val onDown: (Int) -> Unit
     ) : RecyclerView.Adapter<StepAdapter.VH>() {
 
         class VH(v: View) : RecyclerView.ViewHolder(v) {
             val tvIndex: TextView = v.findViewById(R.id.tvStepIndex)
             val tvAction: TextView = v.findViewById(R.id.tvStepAction)
             val tvMeta: TextView = v.findViewById(R.id.tvStepMeta)
+            val btnUp: View = v.findViewById(R.id.btnStepUp)
+            val btnDown: View = v.findViewById(R.id.btnStepDown)
             val btnDelete: View = v.findViewById(R.id.btnStepDelete)
         }
 
@@ -304,6 +336,8 @@ class ScriptEditorDialogFragment : DialogFragment() {
                         " (${a.x}, ${a.y})"
                 RecordedAction.TYPE_SWIPE -> ctx.getString(R.string.editor_action_swipe) +
                         " (${a.x}, ${a.y}) → (${a.x2}, ${a.y2})"
+                RecordedAction.TYPE_DOUBLE_TAP -> ctx.getString(R.string.editor_action_double_tap) +
+                        " (${a.x}, ${a.y})"
                 RecordedAction.TYPE_WAIT -> ctx.getString(R.string.editor_action_wait)
                 else -> a.type
             }
@@ -315,7 +349,12 @@ class ScriptEditorDialogFragment : DialogFragment() {
                 append(ctx.getString(R.string.editor_edit_duration).take(2))
                 append(" ${a.duration}ms")
             }
+            // 边界位置禁用上移/下移，避免越界
+            holder.btnUp.isEnabled = position > 0
+            holder.btnDown.isEnabled = position < items.size - 1
             holder.itemView.setOnClickListener { onClick(holder.bindingAdapterPosition) }
+            holder.btnUp.setOnClickListener { onUp(holder.bindingAdapterPosition) }
+            holder.btnDown.setOnClickListener { onDown(holder.bindingAdapterPosition) }
             holder.btnDelete.setOnClickListener { onDelete(holder.bindingAdapterPosition) }
         }
     }
