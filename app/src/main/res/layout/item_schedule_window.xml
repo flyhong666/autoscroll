@@ -8,7 +8,7 @@
     android:layout_marginVertical="4dp"
     app:cardCornerRadius="10dp"
     app:cardElevation="1dp"
-    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeColor="@color/border"
     app:strokeWidth="0.5dp">
 
     <LinearLayout
@@ -62,15 +62,14 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <com.google.android.material.button.MaterialButton
+        <ImageButton
             android:id="@+id/btnWinDelete"
-            style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="36dp"
             android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_schedule_remove_window"
-            app:icon="@drawable/ic_delete"
-            app:iconSize="18dp"
-            app:iconTint="?android:attr/textColorSecondary" />
+            android:src="@drawable/ic_delete"
+            app:tint="@color/text_hint" />
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -8,7 +8,7 @@
     android:layout_marginVertical="4dp"
     app:cardCornerRadius="10dp"
     app:cardElevation="1dp"
-    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeColor="@color/border"
     app:strokeWidth="0.5dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -57,35 +57,40 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStepUp"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="↑"
             android:textSize="15sp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             android:contentDescription="@string/editor_move_up"
             app:layout_constraintEnd_toStartOf="@id/btnStepDown"
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStepDown"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="↓"
             android:textSize="15sp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             android:contentDescription="@string/editor_move_down"
             app:layout_constraintEnd_toStartOf="@id/btnStepDelete"
             app:layout_constraintTop_toTopOf="parent" />
 
         <ImageButton
             android:id="@+id/btnStepDelete"
-            style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="36dp"
             android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/editor_step_delete"
-            app:icon="@drawable/ic_delete"
-            app:iconSize="18dp"
-            app:iconTint="?android:attr/textColorSecondary"
+            android:src="@drawable/ic_delete"
+            app:tint="@color/text_hint"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 

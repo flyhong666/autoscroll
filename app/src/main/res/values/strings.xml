@@ -13,7 +13,7 @@
 
     <!-- Tab 标题 -->
     <string name="tab_control">控制</string>
-    <string name="tab_task">任务</string>
+    <string name="tab_task">统计</string>
     <string name="tab_recorder">记录器</string>
 
     <!-- 状态文本 -->
@@ -105,7 +105,7 @@
     <string name="scene_entry_summary">当前：%1$s</string>
 
     <!-- 任务功能 -->
-    <string name="task_title">扩展任务</string>
+    <string name="task_title">统计</string>
     <string name="task_subtitle">开启后随滚动一并执行</string>
 
     <string name="task_auto_like">自动点赞（双击屏幕）</string>
@@ -236,6 +236,7 @@
     <string name="stats_ad_block">关闭广告</string>
     <string name="stats_ad_reward">看广告激励</string>
     <string name="stats_running_time">运行时长</string>
+    <string name="task_settings_moved_hint">全部运行参数已整合到「控制」页的「基础参数」设置面板中，可前往该页面调整。</string>
 
     <!-- ========== 操作记录器 ========== -->
     <string name="script_title">操作记录器</string>

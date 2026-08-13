@@ -31,6 +31,11 @@ class AppPickerDialogFragment : DialogFragment() {
         private const val ARG_INITIAL_SELECTION = "initial_selection"
         private const val ARG_REQUEST_CODE = "request_code"
 
+        /** Fragment Result API 的 key（替代已废弃且会崩溃的 setTargetFragment） */
+        const val RESULT_KEY = "app_picker_result"
+        const val RESULT_EXTRA_REQUEST_CODE = "result_request_code"
+        const val RESULT_EXTRA_SELECTED = "result_selected"
+
         fun newInstance(initialSelection: Set<String>, requestCode: Int = 0): AppPickerDialogFragment {
             return AppPickerDialogFragment().apply {
                 arguments = Bundle().apply {
@@ -120,17 +125,19 @@ class AppPickerDialogFragment : DialogFragment() {
 
     private fun confirmAndDismiss() {
         val result = selected.toSet()
-        val target = targetFragment
-        when {
-            onConfirm != null -> onConfirm?.invoke(result)
-            target is AppPickerResultListener ->
-                target.onAppsConfirmed(arguments?.getInt(ARG_REQUEST_CODE) ?: 0, result)
-            parentFragment is AppPickerResultListener ->
-                (parentFragment as AppPickerResultListener)
-                    .onAppsConfirmed(arguments?.getInt(ARG_REQUEST_CODE) ?: 0, result)
-            activity is AppPickerResultListener ->
-                (activity as AppPickerResultListener)
-                    .onAppsConfirmed(arguments?.getInt(ARG_REQUEST_CODE) ?: 0, result)
+        val reqCode = arguments?.getInt(ARG_REQUEST_CODE) ?: 0
+        // 优先旧式 onConfirm 回调（向后兼容）；否则走 Fragment Result API。
+        // 注意：不要再使用 setTargetFragment —— 本弹窗挂在宿主的 childFragmentManager 上，
+        // 而宿主自身属于外层 FragmentManager，新版 FragmentManager 会校验
+        // targetFragment 必须同属一个 FM，校验失败直接抛 IllegalStateException 退出 APP。
+        if (onConfirm != null) {
+            onConfirm?.invoke(result)
+        } else {
+            val bundle = Bundle().apply {
+                putInt(RESULT_EXTRA_REQUEST_CODE, reqCode)
+                putStringArrayList(RESULT_EXTRA_SELECTED, ArrayList(result))
+            }
+            parentFragmentManager.setFragmentResult(RESULT_KEY, bundle)
         }
         dismiss()
     }

@@ -22,17 +22,29 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAppPickerSelectAll"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/AutoScrollButton.Outline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_picker_select_all" />
+            android:text="@string/app_picker_select_all"
+            android:textSize="13sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            app:cornerRadius="12dp"
+            app:strokeColor="@color/purple_500"
+            android:textColor="@color/purple_700" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAppPickerClear"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/AutoScrollButton.Outline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_picker_clear" />
+            android:text="@string/app_picker_clear"
+            android:textSize="13sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            app:cornerRadius="12dp"
+            app:strokeColor="@color/teal_700"
+            android:textColor="@color/teal_700" />
     </LinearLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -74,6 +86,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAppPickerDone"
+            style="@style/AutoScrollButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/app_picker_done" />

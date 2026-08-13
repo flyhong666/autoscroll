@@ -77,10 +77,13 @@ class ScenePickerDialogFragment : DialogFragment() {
     private fun bindAdapter() {
         val scenes = SceneConfig.getAllScenes()
         rvScenes.adapter = SceneAdapter(scenes, currentSelectedId) { scene ->
+            val ctx = context ?: return@SceneAdapter
             currentSelectedId = scene.id
-            AppConfig.setCurrentScene(requireContext(), scene.id)
+            AppConfig.setCurrentScene(ctx, scene.id)
             AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
-            Toast.makeText(requireContext(), R.string.toast_scene_changed, Toast.LENGTH_SHORT).show()
+            context?.let {
+                Toast.makeText(it, R.string.toast_scene_changed, Toast.LENGTH_SHORT).show()
+            }
             bindAdapter()
             refreshGesturePanel()
             onSceneChanged?.invoke()
@@ -91,14 +94,16 @@ class ScenePickerDialogFragment : DialogFragment() {
         val isCustom = currentSelectedId == AppConfig.SCENE_CUSTOM
         customGesturePanel.visibility = if (isCustom) View.VISIBLE else View.GONE
         if (!isCustom) return
+        val ctx = context ?: return
         steps.clear()
-        steps.addAll(AppConfig.getCustomGestureSequence(requireContext()))
+        steps.addAll(AppConfig.getCustomGestureSequence(ctx))
         stepAdapter.submit(steps)
         tvGestureEmpty.visibility = if (steps.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun saveSteps() {
-        AppConfig.setCustomGestureSequence(requireContext(), steps.toList())
+        val ctx = context ?: return
+        AppConfig.setCustomGestureSequence(ctx, steps.toList())
         AutoScrollAccessibilityService.instance?.let {
             it.loadConfigFromPrefs()
             // 序列已变更：重启正在运行的自定义序列循环，让新序列立即生效
@@ -123,13 +128,14 @@ class ScenePickerDialogFragment : DialogFragment() {
 
     /** 编辑 / 新增一步手势。editPos = -1 表示新增 */
     private fun showStepEditor(editPos: Int) {
+        val ctx = context ?: return
         val binding = DialogGestureStepBinding.inflate(layoutInflater)
         val isEdit = editPos >= 0
         val existing = if (isEdit) steps[editPos] else null
 
         val spinner = binding.spinnerGesture
         spinner.adapter = ArrayAdapter(
-            requireContext(),
+            ctx,
             android.R.layout.simple_spinner_item,
             CustomGestureStep.GESTURE_LABELS
         ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
@@ -185,18 +191,21 @@ class ScenePickerDialogFragment : DialogFragment() {
         binding.sliderY.addOnChangeListener(listeners[2])
         binding.sliderDist.addOnChangeListener(listeners[3])
 
-        AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(ctx)
             .setTitle(if (isEdit) R.string.custom_gesture_edit else R.string.custom_gesture_add)
             .setView(binding.root)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(android.R.string.ok) { _, _ ->
+                if (!isAdded) return@setPositiveButton
                 val type = CustomGestureStep.GESTURE_TYPES[spinner.selectedItemPosition]
                 val keyword = if (type == CustomGestureStep.TYPE_TAP_TEXT) {
                     binding.etKeyword.text?.toString()?.trim().orEmpty()
                 } else ""
                 // 「点击文本」步骤必须填关键词，否则执行时静默跳过，用户会困惑
                 if (type == CustomGestureStep.TYPE_TAP_TEXT && keyword.isBlank()) {
-                    Toast.makeText(requireContext(), R.string.custom_gesture_keyword_required, Toast.LENGTH_SHORT).show()
+                    context?.let {
+                        Toast.makeText(it, R.string.custom_gesture_keyword_required, Toast.LENGTH_SHORT).show()
+                    }
                     return@setPositiveButton
                 }
                 val step = CustomGestureStep(

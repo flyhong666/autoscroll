@@ -79,34 +79,41 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddWait"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/AutoScrollButton.Outline"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
                     android:layout_weight="1"
                     android:text="@string/editor_add_wait"
-                    android:textSize="12sp"
-                    app:cornerRadius="10dp" />
+                    android:textSize="13sp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/purple_500"
+                    android:textColor="@color/purple_700" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddClick"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/AutoScrollButton.Outline"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:layout_weight="1"
                     android:text="@string/editor_add_click"
-                    android:textSize="12sp"
-                    app:cornerRadius="10dp" />
+                    android:textSize="13sp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/purple_500"
+                    android:textColor="@color/purple_700" />
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSave"
+                style="@style/AutoScrollButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="@string/editor_save"
-                app:cornerRadius="12dp"
+                app:backgroundTint="@color/teal_700"
+                app:cornerRadius="16dp"
+                android:textColor="@color/btn_start_text"
                 app:icon="@drawable/ic_check"
                 app:iconGravity="textStart" />
         </LinearLayout>

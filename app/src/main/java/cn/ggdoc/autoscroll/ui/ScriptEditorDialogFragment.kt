@@ -314,18 +314,23 @@ class ScriptEditorDialogFragment : DialogFragment() {
     // ---------- 保存 ----------
 
     private fun onSaveClicked() {
+        val ctx = context ?: return
         val updated = script.copy(actions = steps.toList())
-        val ok = ScriptStore.save(requireContext(), updated, fileName) != null
+        val ok = ScriptStore.save(ctx, updated, fileName) != null
         if (ok) {
-            Toast.makeText(
-                requireContext(),
-                getString(R.string.editor_saved, steps.size),
-                Toast.LENGTH_SHORT
-            ).show()
+            context?.let {
+                Toast.makeText(
+                    it,
+                    it.getString(R.string.editor_saved, steps.size),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
             notifySaved()
             dismiss()
         } else {
-            Toast.makeText(requireContext(), R.string.editor_save_failed, Toast.LENGTH_SHORT).show()
+            context?.let {
+                Toast.makeText(it, R.string.editor_save_failed, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
