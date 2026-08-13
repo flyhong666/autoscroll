@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -56,7 +57,7 @@ class RecorderFragment : Fragment(), ScriptEditorDialogFragment.OnScriptEditedLi
         refreshList()
     }
 
-    private fun refreshList() {
+    override fun refreshList() {
         if (!::adapter.isInitialized) return
         // ScriptStore 主线程 IO 摘除：全量读+解析脚本 JSON 放后台线程
         val ctx = requireContext().applicationContext

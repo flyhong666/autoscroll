@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
+import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
@@ -10,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -27,9 +29,11 @@ import kotlinx.coroutines.launch
  * stop() 取消全部协程。
  */
 class AdRewardController(
-    private val context: Context,
+    private val service: AccessibilityService,
     private val serviceProvider: ServiceFace
 ) {
+
+    private val context: Context get() = service
 
     interface ServiceFace {
         val TAG: String get() = AutoScrollAccessibilityService.TAG
@@ -115,7 +119,7 @@ class AdRewardController(
             schedule()
             return
         }
-        val label = AdRewardTask.clickRewardEntry(context)
+        val label = AdRewardTask.clickRewardEntry(service)
         if (label == null) {
             Log.d(serviceProvider.TAG, "未找到激励入口，等待下个周期")
             schedule()

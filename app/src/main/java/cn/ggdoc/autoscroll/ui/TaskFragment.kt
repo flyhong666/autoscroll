@@ -16,6 +16,8 @@ import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.config.AppConfig
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService

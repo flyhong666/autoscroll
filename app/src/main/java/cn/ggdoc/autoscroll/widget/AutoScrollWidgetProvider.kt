@@ -43,7 +43,8 @@ class AutoScrollWidgetProvider : AppWidgetProvider() {
             val rv = RemoteViews(context.packageName, R.layout.widget_autoscroll)
             val svc = AutoScrollAccessibilityService.instance
             val isRunning = svc?.let { AutoScrollAccessibilityService.isScrolling } ?: false
-            val scene = svc?.currentScene ?: AppConfig.getCurrentScene(context)
+            val scene = if (svc != null) AutoScrollAccessibilityService.currentScene
+                else AppConfig.getCurrentScene(context)
             val sceneLabel = sceneLabel(context, scene)
             val todayScrolls = svc?.getTodayStats()?.scrolls
                 ?: cn.ggdoc.autoscroll.config.StatsStore.today(context).scrolls

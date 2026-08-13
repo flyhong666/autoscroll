@@ -212,21 +212,21 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     private val statsFace = object : StatsController.ServiceFace {
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
-        override val runningSeconds: Long get() = this@AutoScrollAccessibilityService.runningSeconds
-        override val timedStop: Boolean get() = this@AutoScrollAccessibilityService.timedStop
-        override val timedStopMinutes: Int get() = this@AutoScrollAccessibilityService.timedStopMinutes
+        override val runningSeconds: Long get() = AutoScrollAccessibilityService.runningSeconds
+        override val timedStop: Boolean get() = AutoScrollAccessibilityService.timedStop
+        override val timedStopMinutes: Int get() = AutoScrollAccessibilityService.timedStopMinutes
         override var remainingSeconds: Long
-            get() = this@AutoScrollAccessibilityService.remainingSeconds
-            set(value) { this@AutoScrollAccessibilityService.remainingSeconds = value }
-        override val startTimestamp: Long get() = this@AutoScrollAccessibilityService.startTimestamp
+            get() = AutoScrollAccessibilityService.remainingSeconds
+            set(value) { AutoScrollAccessibilityService.remainingSeconds = value }
+        override val startTimestamp: Long get() = AutoScrollAccessibilityService.startTimestamp
         override fun broadcastState() = this@AutoScrollAccessibilityService.broadcastState()
     }
     private val statsController: StatsController by lazy { StatsController(this, statsFace) }
 
     private val rotationFace = object : RotationController.ServiceFace {
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
-        override val appRotationEnabled: Boolean get() = this@AutoScrollAccessibilityService.appRotation
-        override val rotationMinutes: Int get() = this@AutoScrollAccessibilityService.rotationMinutes
+        override val appRotationEnabled: Boolean get() = AutoScrollAccessibilityService.appRotation
+        override val rotationMinutes: Int get() = AutoScrollAccessibilityService.rotationMinutes
         override val rotationList: List<String> get() = this@AutoScrollAccessibilityService.rotationList
         override val foregroundPackage: String? get() = this@AutoScrollAccessibilityService.foregroundPackage
         override val packageName: String get() = this@AutoScrollAccessibilityService.packageName
@@ -235,7 +235,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         override fun resetStuckDetector() {
             this@AutoScrollAccessibilityService.let {
                 stuckDetector.reset()
-                stuckSameCount = 0
+                AutoScrollAccessibilityService.stuckSameCount = 0
             }
         }
     }
@@ -243,19 +243,19 @@ class AutoScrollAccessibilityService : AccessibilityService() {
 
     private val adRewardFace = object : AdRewardController.ServiceFace {
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
-        override val adRewardEnabled: Boolean get() = this@AutoScrollAccessibilityService.adReward
-        override val adRewardMinutes: Int get() = this@AutoScrollAccessibilityService.adRewardMinutes
+        override val adRewardEnabled: Boolean get() = AutoScrollAccessibilityService.adReward
+        override val adRewardMinutes: Int get() = AutoScrollAccessibilityService.adRewardMinutes
         override var adRewardCount: Int
-            get() = this@AutoScrollAccessibilityService.adRewardCount
-            set(value) { this@AutoScrollAccessibilityService.adRewardCount = value }
+            get() = AutoScrollAccessibilityService.adRewardCount
+            set(value) { AutoScrollAccessibilityService.adRewardCount = value }
         override var isWatchingAdReward: Boolean
-            get() = this@AutoScrollAccessibilityService.isWatchingAdReward
-            set(value) { this@AutoScrollAccessibilityService.isWatchingAdReward = value }
+            get() = AutoScrollAccessibilityService.isWatchingAdReward
+            set(value) { AutoScrollAccessibilityService.isWatchingAdReward = value }
         override fun isBlockedByPolicy(): Boolean = this@AutoScrollAccessibilityService.isBlockedByPolicy()
         override fun tryAdBlockNow(): Int {
             val closed = AdBlocker.scanAndClose(this@AutoScrollAccessibilityService)
             if (closed > 0) {
-                this@AutoScrollAccessibilityService.adBlockCount += closed
+                AutoScrollAccessibilityService.adBlockCount += closed
                 this@AutoScrollAccessibilityService.sendTaskEvent(EVENT_AD_BLOCK, getString(R.string.toast_ad_blocked))
             }
             return closed
@@ -267,8 +267,8 @@ class AutoScrollAccessibilityService : AccessibilityService() {
     private val adRewardController: AdRewardController by lazy { AdRewardController(this, adRewardFace) }
 
     private val scheduleFace = object : ScheduleController.ServiceFace {
-        override val scheduleEnabled: Boolean get() = this@AutoScrollAccessibilityService.scheduleEnabled
-        override val scheduleWindows: List<Pair<Int, Int>> get() = this@AutoScrollAccessibilityService.scheduleWindows
+        override val scheduleEnabled: Boolean get() = AutoScrollAccessibilityService.scheduleEnabled
+        override val scheduleWindows: List<Pair<Int, Int>> get() = AutoScrollAccessibilityService.scheduleWindows
         override val isScrolling: Boolean get() = AutoScrollAccessibilityService.isScrolling
         override fun sendBroadcast(intent: Intent) = this@AutoScrollAccessibilityService.sendBroadcast(intent)
         override fun startScrolling() = this@AutoScrollAccessibilityService.startScrolling()

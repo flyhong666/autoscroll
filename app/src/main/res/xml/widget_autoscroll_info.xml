@@ -9,5 +9,4 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_autoscroll"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen"
-    android:autoAdvanceViewId="-1" />
+    android:widgetCategory="home_screen" />

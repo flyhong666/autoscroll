@@ -1,6 +1,7 @@
 package cn.ggdoc.autoscroll.config
 
 import cn.ggdoc.autoscroll.R
+import cn.ggdoc.autoscroll.human.SceneIds
 
 /**
  * 场景模板定义：6 大场景，每个场景拥有独立的手势策略。

@@ -3,6 +3,7 @@ package cn.ggdoc.autoscroll.ui
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.config.CustomGestureStep
 import cn.ggdoc.autoscroll.databinding.ItemGestureStepBinding
 

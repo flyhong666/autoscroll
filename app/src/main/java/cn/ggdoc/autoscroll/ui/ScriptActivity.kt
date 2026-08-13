@@ -53,7 +53,7 @@ class ScriptActivity : AppCompatActivity(), ScriptEditorDialogFragment.OnScriptE
         refreshList()
     }
 
-    private fun refreshList() {
+    override fun refreshList() {
         // ScriptStore 主线程 IO 摘除：全量读+解析脚本 JSON 放后台线程
         ScriptStore.listAsync(this) { list ->
             if (!isFinishing && !isDestroyed) {
@@ -69,9 +69,14 @@ class ScriptActivity : AppCompatActivity(), ScriptEditorDialogFragment.OnScriptE
 
     override fun toast(msg: CharSequence) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
-    override fun moveTaskToBack() = moveTaskToBack(true)
+    override fun moveTaskToBack() {
+        @Suppress("DEPRECATION")
+        moveTaskToBack(true)
+    }
 
-    override fun startActivity(intent: Intent) = this.startActivity(intent)
+    override fun startActivity(intent: Intent) {
+        super.startActivity(intent)
+    }
 
     override fun openEditor(fileName: String) {
         if (isFinishing || isDestroyed) return

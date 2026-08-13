@@ -150,13 +150,13 @@ object ScriptPlayer {
             return
         }
         // 条件分支：屏幕未出现指定文本则跳过本步，直接进入下一步
+        val advance = Runnable { advanceStep() }
         if (action.condition.isNotBlank() && !conditionSatisfied(service, action.condition)) {
             Log.d(TAG, "条件未满足（未见「${action.condition}」），跳过第 ${stepIndex + 1} 步")
             handler.post(advance)
             return
         }
         val duration = (action.duration / speed).toLong().coerceIn(30L, 30_000L)
-        val advance = Runnable { advanceStep() }
         // 双击：连发两次短按，两次之间留出人类间隔
         if (action.type == RecordedAction.TYPE_DOUBLE_TAP) {
             dispatchDoubleTap(service, action, duration, advance)
@@ -202,6 +202,8 @@ object ScriptPlayer {
             return
         }
         var firstDone = false
+        // 前向声明：cb 与 fireSecond 互相引用，用 var 打破循环依赖
+        var cb: AccessibilityService.GestureResultCallback? = null
         val fireSecond = Runnable {
             // H3 修复：第二次 dispatchGesture 之前服务可能已断开 / 系统拒绝手势——
             // 抛异常会直接崩溃主线程 Handler，返回 false 则回调永不触发导致播放卡死。
@@ -211,14 +213,14 @@ object ScriptPlayer {
                 return@Runnable
             }
             val ok = try {
-                service.dispatchGesture(gesture, cb, handler)
+                service.dispatchGesture(gesture, cb!!, handler)
             } catch (e: Exception) {
                 Log.e(TAG, "双击第二次 dispatchGesture 异常", e)
                 false
             }
             if (!ok) handler.post(advance)
         }
-        val cb = object : AccessibilityService.GestureResultCallback() {
+        cb = object : AccessibilityService.GestureResultCallback() {
             override fun onCompleted(g: GestureDescription?) {
                 if (!isPlaying) return
                 if (!firstDone) {

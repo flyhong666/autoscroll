@@ -27,16 +27,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
  */
 class ScriptEditorDialogFragment : DialogFragment() {
 
+    /**
+     * 宿主刷新回调接口：宿主实现后配合 [setTargetFragment] 使用，
+     * 旋转重建后 targetFragment 由 FragmentManager 恢复，回调不丢失。
+     */
+    interface OnScriptEditedListener {
+        fun onScriptEdited()
+    }
+
     companion object {
         private const val ARG_FILE_NAME = "file_name"
-
-        /**
-         * 宿主刷新回调接口：宿主实现后配合 [setTargetFragment] 使用，
-         * 旋转重建后 targetFragment 由 FragmentManager 恢复，回调不丢失。
-         */
-        interface OnScriptEditedListener {
-            fun onScriptEdited()
-        }
 
         fun newInstance(fileName: String, onSaved: (() -> Unit)? = null): ScriptEditorDialogFragment {
             return ScriptEditorDialogFragment().apply {

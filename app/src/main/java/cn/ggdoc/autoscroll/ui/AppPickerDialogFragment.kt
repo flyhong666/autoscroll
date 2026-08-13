@@ -76,7 +76,7 @@ class AppPickerDialogFragment : DialogFragment() {
         tvCount = view.findViewById(R.id.tvAppCount)
         btnDone = view.findViewById<MaterialButton>(R.id.btnAppPickerDone)
 
-        adapter = AppListAdapter(emptyList(), selected) { pkg, isChecked ->
+        adapter = AppListAdapter(mutableListOf(), selected) { pkg, isChecked ->
             if (isChecked) selected.add(pkg) else selected.remove(pkg)
             updateCount()
         }

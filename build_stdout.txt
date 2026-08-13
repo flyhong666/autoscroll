@@ -1,0 +1,104 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.6.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkReleaseDuplicateClasses UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsRelease UP-TO-DATE
+> Task :app:generateReleaseResources UP-TO-DATE
+> Task :app:mergeReleaseResources UP-TO-DATE
+> Task :app:packageReleaseResources UP-TO-DATE
+> Task :app:processReleaseNavigationResources UP-TO-DATE
+> Task :app:parseReleaseLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesRelease UP-TO-DATE
+> Task :app:generateReleaseRFile UP-TO-DATE
+> Task :app:javaPreCompileRelease UP-TO-DATE
+> Task :app:mergeReleaseArtProfile UP-TO-DATE
+> Task :app:checkReleaseAarMetadata UP-TO-DATE
+> Task :app:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :app:compileReleaseNavigationResources UP-TO-DATE
+> Task :app:createReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksRelease UP-TO-DATE
+> Task :app:processReleaseMainManifest UP-TO-DATE
+> Task :app:processReleaseManifest UP-TO-DATE
+> Task :app:processReleaseManifestForPackage UP-TO-DATE
+> Task :app:processReleaseResources UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:mergeReleaseStartupProfile UP-TO-DATE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets UP-TO-DATE
+> Task :app:compressReleaseAssets UP-TO-DATE
+> Task :app:extractReleaseVersionControlInfo UP-TO-DATE
+> Task :app:collectReleaseDependencies UP-TO-DATE
+> Task :app:sdkReleaseDependencyData UP-TO-DATE
+> Task :app:validateSigningRelease UP-TO-DATE
+> Task :app:writeReleaseAppMetadata UP-TO-DATE
+> Task :app:writeReleaseSigningConfigVersions UP-TO-DATE
+> Task :app:compileReleaseKotlin
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/recorder/ActionRecorder.kt:177:32 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/recorder/ScriptPlayer.kt:267:60 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/recorder/ScriptPlayer.kt:268:28 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/AutoScrollAccessibilityService.kt:676:33 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/AutoScrollAccessibilityService.kt:752:43 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/AutoScrollAccessibilityService.kt:753:69 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/AutoScrollAccessibilityService.kt:929:32 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/AutoScrollAccessibilityService.kt:945:55 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:166:68 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:170:23 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:179:37 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:180:56 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:183:13 Condition is always 'true'.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:197:56 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:202:82 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:208:74 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:278:39 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/DetailFlowController.kt:279:58 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/FloatingWindowService.kt:90:47 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/FloatingWindowService.kt:234:44 'static field TYPE_PHONE: Int' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/NodeFinder.kt:81:27 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/NodeFinder.kt:87:25 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/NodeFinder.kt:96:36 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/NodeFinder.kt:155:27 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/NodeFinder.kt:174:19 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/RecorderOverlayService.kt:201:44 'static field TYPE_PHONE: Int' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/ScreenSnapshot.kt:152:35 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/service/ScreenSnapshot.kt:161:82 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdBlocker.kt:52:73 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdBlocker.kt:95:54 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:38:35 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:55:31 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:97:79 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:99:81 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:129:79 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:137:64 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdNodeKit.kt:138:38 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdRewardTask.kt:69:55 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdRewardTask.kt:93:55 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdRewardTask.kt:109:61 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/task/AdRewardTask.kt:115:51 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/ui/AppPickerDialogFragment.kt:123:22 'val targetFragment: Fragment?' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/ui/ControlFragment.kt:148:17 'fun startActivityForResult(p0: Intent!, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/ui/RecorderFragment.kt:93:24 'fun setTargetFragment(p0: Fragment?, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/ui/ScriptEditorDialogFragment.kt:338:10 'val targetFragment: Fragment?' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/ui/TaskFragment.kt:309:16 'fun setTargetFragment(p0: Fragment?, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/dev/nginx/html/autoscroll/app/src/main/java/cn/ggdoc/autoscroll/ui/TaskFragment.kt:498:16 'fun setTargetFragment(p0: Fragment?, p1: Int): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:processReleaseJavaRes
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:mergeReleaseJavaResource
+> Task :app:minifyReleaseWithR8
+> Task :app:compileReleaseArtProfile
+> Task :app:convertShrunkResourcesToBinaryRelease
+> Task :app:optimizeReleaseResources
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+
+BUILD SUCCESSFUL in 2m 19s
+43 actionable tasks: 12 executed, 31 up-to-date

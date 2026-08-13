@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -100,23 +101,22 @@ class StatsController(
     /** 把当前内存计数器的增量写入 [StatsStore]。stopScrolling 先调这个再翻转 isScrolling。 */
     fun persistDelta() {
         val nowSeconds = serviceProvider.runningSeconds
-        val svc = (context as? AutoScrollAccessibilityService) ?: return
         val delta = StatsStore.Stats(
-            scrolls = svc.scrollCount - lastPersistedScrolls,
-            likes = svc.likeCount - lastPersistedLikes,
-            adBlocks = svc.adBlockCount - lastPersistedAdBlocks,
-            adRewards = svc.adRewardCount - lastPersistedAdRewards,
-            details = svc.detailCount - lastPersistedDetails,
+            scrolls = AutoScrollAccessibilityService.scrollCount - lastPersistedScrolls,
+            likes = AutoScrollAccessibilityService.likeCount - lastPersistedLikes,
+            adBlocks = AutoScrollAccessibilityService.adBlockCount - lastPersistedAdBlocks,
+            adRewards = AutoScrollAccessibilityService.adRewardCount - lastPersistedAdRewards,
+            details = AutoScrollAccessibilityService.detailCount - lastPersistedDetails,
             seconds = (nowSeconds - lastPersistSecondsMark).coerceAtLeast(0)
         )
         if (delta.isEmpty) return
         try {
             StatsStore.accumulate(context, delta)
-            lastPersistedScrolls = svc.scrollCount
-            lastPersistedLikes = svc.likeCount
-            lastPersistedAdBlocks = svc.adBlockCount
-            lastPersistedAdRewards = svc.adRewardCount
-            lastPersistedDetails = svc.detailCount
+            lastPersistedScrolls = AutoScrollAccessibilityService.scrollCount
+            lastPersistedLikes = AutoScrollAccessibilityService.likeCount
+            lastPersistedAdBlocks = AutoScrollAccessibilityService.adBlockCount
+            lastPersistedAdRewards = AutoScrollAccessibilityService.adRewardCount
+            lastPersistedDetails = AutoScrollAccessibilityService.detailCount
             lastPersistSecondsMark = nowSeconds
         } catch (_: Exception) {
             // 上层 Service 已经打日志，这里避免重复

@@ -142,31 +142,33 @@ object ScriptStore {
      *
      * @return 导入成功返回新文件名，失败返回 null
      */
-    fun importFromExternal(context: Context, extFile: File): String? = try {
-        if (!extFile.exists() || !extFile.name.endsWith(EXT)) return null
-        // 文件名校验：外部文件可能带恶意路径，只取简单文件名
-        val safeBase = safeFileName(extFile.name)?.removeSuffix(EXT) ?: return null
-        // 校验 JSON 合法性：能解析才算有效脚本
-        val parsed = readScript(extFile) ?: return null
-        // 去重：计算目标名，冲突则自增编号
-        var targetName = "$safeBase$EXT"
-        var i = 1
-        val ctxDir = dir(context)
-        while (File(ctxDir, targetName).exists()) {
-            targetName = "${safeBase}_${i}${EXT}"
-            i++
+    fun importFromExternal(context: Context, extFile: File): String? {
+        return try {
+            if (!extFile.exists() || !extFile.name.endsWith(EXT)) return null
+            // 文件名校验：外部文件可能带恶意路径，只取简单文件名
+            val safeBase = safeFileName(extFile.name)?.removeSuffix(EXT) ?: return null
+            // 校验 JSON 合法性：能解析才算有效脚本
+            val parsed = readScript(extFile) ?: return null
+            // 去重：计算目标名，冲突则自增编号
+            var targetName = "$safeBase$EXT"
+            var i = 1
+            val ctxDir = dir(context)
+            while (File(ctxDir, targetName).exists()) {
+                targetName = "${safeBase}_${i}${EXT}"
+                i++
+            }
+            val target = File(ctxDir, targetName)
+            extFile.copyTo(target, overwrite = false)
+            // 若外部文件 name 字段为空，给个兜底
+            if (parsed.name.isBlank()) {
+                val fallback = safeBase.takeIf { it.isNotBlank() } ?: defaultScriptName()
+                save(context, parsed.copy(name = fallback), targetName)
+            }
+            targetName
+        } catch (e: Exception) {
+            Log.e(TAG, "导入脚本失败：${extFile.name}", e)
+            null
         }
-        val target = File(ctxDir, targetName)
-        extFile.copyTo(target, overwrite = false)
-        // 若外部文件 name 字段为空，给个兜底
-        if (parsed.name.isBlank()) {
-            val fallback = safeBase.takeIf { it.isNotBlank() } ?: defaultScriptName()
-            save(context, parsed.copy(name = fallback), targetName)
-        }
-        targetName
-    } catch (e: Exception) {
-        Log.e(TAG, "导入脚本失败：${extFile.name}", e)
-        null
     }
 
     /**
