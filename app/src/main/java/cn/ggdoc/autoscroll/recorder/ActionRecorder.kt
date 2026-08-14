@@ -6,7 +6,9 @@ import android.content.Intent
 import android.graphics.Rect
 import android.os.Build
 import android.os.SystemClock
+import android.util.DisplayMetrics
 import android.util.Log
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import kotlin.math.abs
 
@@ -81,11 +83,14 @@ object ActionRecorder {
             Log.w(TAG, "录制结束但没有捕获到任何操作")
             return null
         }
+        val (sw, sh) = screenSize(context)
         val script = RecordedScript(
             name = name?.takeIf { it.isNotBlank() } ?: ScriptStore.defaultScriptName(),
             createdAt = System.currentTimeMillis(),
             pkg = targetPackage,
-            actions = snapshot
+            actions = snapshot,
+            screenW = sw,
+            screenH = sh
         )
         val fileName = ScriptStore.save(context, script) ?: return null
         Log.i(TAG, "录制结束，已保存 ${snapshot.size} 步 → $fileName")
@@ -178,6 +183,18 @@ object ActionRecorder {
             runCatching { node.recycleCompat() }
         }
         return if (rect.width() > 0 && rect.height() > 0) rect else null
+    }
+
+    /** 当前真实屏幕尺寸（像素），失败返回 (0,0) */
+    private fun screenSize(context: Context): Pair<Int, Int> = try {
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val dm = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(dm)
+        dm.widthPixels to dm.heightPixels
+    } catch (e: Exception) {
+        Log.w(TAG, "获取屏幕尺寸失败，脚本将不带分辨率", e)
+        0 to 0
     }
 
     private fun describe(event: AccessibilityEvent): String {

@@ -51,6 +51,9 @@ object ScriptPlayer {
     private var pending: Runnable? = null
     private var screenW = 0
     private var screenH = 0
+    /** 脚本录制时的屏幕尺寸（用于跨分辨率回放缩放坐标；0 = 旧脚本不缩放） */
+    private var scriptScreenW = 0
+    private var scriptScreenH = 0
 
     /**
      * 开始回放。
@@ -73,6 +76,8 @@ object ScriptPlayer {
         appContext = service.applicationContext
         actions = script.actions
         scriptName = script.name
+        scriptScreenW = script.screenW
+        scriptScreenH = script.screenH
         stepTotal = actions.size
         stepIndex = 0
         loopTotal = loops.coerceAtLeast(1)
@@ -150,20 +155,22 @@ object ScriptPlayer {
             finish()
             return
         }
+        // 跨分辨率归一化：录制分辨率与当前屏幕不同时按比例缩放坐标
+        val act = scaleAction(action)
         // 条件分支：屏幕未出现指定文本则跳过本步，直接进入下一步
         val advance = Runnable { advanceStep() }
-        if (action.condition.isNotBlank() && !conditionSatisfied(service, action.condition)) {
-            Log.d(TAG, "条件未满足（未见「${action.condition}」），跳过第 ${stepIndex + 1} 步")
+        if (act.condition.isNotBlank() && !conditionSatisfied(service, act.condition)) {
+            Log.d(TAG, "条件未满足（未见「${act.condition}」），跳过第 ${stepIndex + 1} 步")
             handler.post(advance)
             return
         }
-        val duration = (action.duration / speed).toLong().coerceIn(30L, 30_000L)
+        val duration = (act.duration / speed).toLong().coerceIn(30L, 30_000L)
         // 双击：连发两次短按，两次之间留出人类间隔
-        if (action.type == RecordedAction.TYPE_DOUBLE_TAP) {
-            dispatchDoubleTap(service, action, duration, advance)
+        if (act.type == RecordedAction.TYPE_DOUBLE_TAP) {
+            dispatchDoubleTap(service, act, duration, advance)
             return
         }
-        val gesture = buildGesture(action, duration)
+        val gesture = buildGesture(act, duration)
         if (gesture == null) {
             handler.post(advance)
             return
@@ -292,6 +299,22 @@ object ScriptPlayer {
             Log.e(TAG, "构建手势失败", e)
             null
         }
+    }
+
+    /**
+     * 把录制时记录的坐标按比例缩放到当前屏幕。
+     * 录制分辨率未知（旧脚本）或与当前一致时原样返回。
+     */
+    private fun scaleAction(a: RecordedAction): RecordedAction {
+        if (scriptScreenW <= 0 || scriptScreenH <= 0) return a
+        if (screenW <= 0 || screenH <= 0) return a
+        if (scriptScreenW == screenW && scriptScreenH == screenH) return a
+        return a.copy(
+            x = (a.x * screenW / scriptScreenW).coerceIn(0, screenW - 1),
+            y = (a.y * screenH / scriptScreenH).coerceIn(0, screenH - 1),
+            x2 = (a.x2 * screenW / scriptScreenW).coerceIn(0, screenW - 1),
+            y2 = (a.y2 * screenH / scriptScreenH).coerceIn(0, screenH - 1)
+        )
     }
 
     private fun clampX(v: Int): Float =

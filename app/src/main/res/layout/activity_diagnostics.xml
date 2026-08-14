@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_page">
+
+    <!-- 标题栏 -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/bg_page"
+        app:title="@string/diagnostics_title"
+        app:titleTextAppearance="@style/TextAppearance.AppTitle"
+        android:elevation="0dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="28dp">
+
+            <!-- 设备信息 -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/AutoScrollCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/diagnostics_device"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="10dp" />
+
+                    <TextView
+                        android:id="@+id/tvOsVersion"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+
+                    <TextView
+                        android:id="@+id/tvScreen"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 权限与服务状态 -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/AutoScrollCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/diagnostics_status"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- 无障碍服务 -->
+                    <TextView
+                        android:id="@+id/tvAccessibility"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAccessibility"
+                        style="@style/AutoScrollButton.Outline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="10dp"
+                        android:text="@string/btn_accessibility_off"
+                        android:textSize="13sp"
+                        app:strokeColor="@color/purple_500"
+                        android:textColor="@color/purple_700" />
+
+                    <!-- 悬浮窗权限 -->
+                    <TextView
+                        android:id="@+id/tvOverlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOverlay"
+                        style="@style/AutoScrollButton.Outline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="10dp"
+                        android:text="@string/btn_overlay_off"
+                        android:textSize="13sp"
+                        app:strokeColor="@color/teal_700"
+                        android:textColor="@color/teal_700" />
+
+                    <!-- 通知权限 -->
+                    <TextView
+                        android:id="@+id/tvNotification"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNotification"
+                        style="@style/AutoScrollButton.Outline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="10dp"
+                        android:text="@string/diagnostics_notification_open"
+                        android:textSize="13sp"
+                        app:strokeColor="@color/teal_700"
+                        android:textColor="@color/teal_700" />
+
+                    <!-- 悬浮窗服务 -->
+                    <TextView
+                        android:id="@+id/tvFloatingService"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+
+                    <!-- 自动滚动状态 -->
+                    <TextView
+                        android:id="@+id/tvScrolling"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Status"
+                        android:textSize="14sp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 健康结论 -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/AutoScrollCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                app:cardBackgroundColor="@color/tip_bg"
+                app:strokeColor="@color/tip_stroke">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/diagnostics_health"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="15sp"
+                        android:textColor="@color/tip_text" />
+
+                    <TextView
+                        android:id="@+id/tvHealthVerdict"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textSize="13sp"
+                        android:textColor="@color/tip_text" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 打开运行日志 / 数据 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenLog"
+                style="@style/AutoScrollButton.Outline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="@string/log_open"
+                app:strokeColor="@color/teal_700"
+                android:textColor="@color/teal_700" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBack"
+                style="@style/AutoScrollButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/diagnostics_back"
+                app:backgroundTint="@color/purple_500" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

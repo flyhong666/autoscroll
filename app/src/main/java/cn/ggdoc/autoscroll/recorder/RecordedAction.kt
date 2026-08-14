@@ -81,13 +81,22 @@ data class RecordedAction(
     }
 }
 
-/** 一份完整脚本（对应磁盘上的一个 .json 文件） */
+/**
+ * 一份完整脚本（对应磁盘上的一个 .json 文件）。
+ *
+ * @param screenW / [screenH] 录制时的屏幕分辨率（像素），用于跨分辨率回放时按比例归一化
+ * 坐标；为 0 表示旧脚本未记录，回放时不做缩放。
+ */
 data class RecordedScript(
     val name: String,
     val createdAt: Long,
     /** 录制时的目标应用包名 */
     val pkg: String,
-    val actions: List<RecordedAction>
+    val actions: List<RecordedAction>,
+    /** 录制时的屏幕宽度（像素），0 = 未知 */
+    val screenW: Int = 0,
+    /** 录制时的屏幕高度（像素），0 = 未知 */
+    val screenH: Int = 0
 ) {
 
     /** 单次回放的预计耗时（ms） */
@@ -99,13 +108,16 @@ data class RecordedScript(
         put("name", name)
         put("createdAt", createdAt)
         put("pkg", pkg)
+        put("screenW", screenW)
+        put("screenH", screenH)
         put("actions", JSONArray().also { arr -> actions.forEach { arr.put(it.toJson()) } })
     }
 
     fun toPrettyString(): String = toJson().toString(2)
 
     companion object {
-        const val VERSION = 1
+        /** 2 = 记录录制分辨率（screenW/screenH），供跨分辨率回放缩放坐标 */
+        const val VERSION = 2
 
         fun fromJson(o: JSONObject): RecordedScript {
             val arr = o.optJSONArray("actions") ?: JSONArray()
@@ -117,7 +129,10 @@ data class RecordedScript(
                 name = o.optString("name", "未命名脚本"),
                 createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                 pkg = o.optString("pkg", ""),
-                actions = list
+                actions = list,
+                // 旧脚本（version 1）无该字段，缺省 0 = 不缩放
+                screenW = o.optInt("screenW", 0),
+                screenH = o.optInt("screenH", 0)
             )
         }
     }

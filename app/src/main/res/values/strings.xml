@@ -378,4 +378,34 @@
     <string name="log_export_failed">日志导出失败</string>
     <string name="stats_exported">统计已导出到：%1$s</string>
     <string name="stats_export_failed">统计导出失败</string>
+
+    <!-- ========== 健康诊断 ========== -->
+    <string name="diagnostics_title">健康诊断</string>
+    <string name="diagnostics_device">设备信息</string>
+    <string name="diagnostics_status">权限与服务</string>
+    <string name="diagnostics_health">健康状态</string>
+    <string name="diagnostics_health_ok">一切正常，可以开始使用。</string>
+    <string name="diagnostics_health_issue">以下未满足：%1$s</string>
+    <string name="diagnostics_notification_open">开启通知权限</string>
+    <string name="diagnostics_back">返回</string>
+    <string name="diagnostics_os_version">Android %1$s</string>
+    <string name="diagnostics_screen">屏幕 %1$d×%2$d</string>
+    <string name="diagnostics_open">健康诊断</string>
+    <string name="status_notification_enabled">通知权限：已授予</string>
+    <string name="status_notification_disabled">通知权限：未授予</string>
+    <string name="diagnostics_missing_accessibility">无障碍服务</string>
+    <string name="diagnostics_missing_overlay">悬浮窗权限</string>
+    <string name="diagnostics_missing_notification">通知权限</string>
+    <string name="toast_notification_open_failed">无法打开通知设置</string>
+
+    <!-- ========== 应用中心 ========== -->
+    <string name="app_center_title">应用中心</string>
+    <string name="app_center_subtitle">统一管理各应用的「轮换」与「过滤名单」角色，并设置全局过滤模式</string>
+    <string name="app_center_rotation">轮换</string>
+    <string name="app_center_filter">过滤名单</string>
+    <string name="app_center_mode">全局过滤模式</string>
+    <string name="app_center_empty">未加载到可配置的应用</string>
+    <string name="app_center_done">保存</string>
+    <string name="app_center_open">应用中心</string>
+    <string name="toast_app_center_saved">应用角色已保存</string>
 </resources>

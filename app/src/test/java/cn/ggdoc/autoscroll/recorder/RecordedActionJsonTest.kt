@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -57,6 +58,34 @@ class RecordedActionJsonTest {
         assertTrue(withCond.readable(0).contains("若见「广告」"))
         val plain = RecordedAction(type = RecordedAction.TYPE_CLICK, x = 1, y = 2)
         assertFalse(plain.readable(0).contains("若见"))
+    }
+
+    @Test
+    fun `脚本往返保持录制分辨率字段`() {
+        val script = RecordedScript(
+            name = "带分辨率脚本",
+            createdAt = 123456789L,
+            pkg = "com.example.app",
+            actions = listOf(RecordedAction(type = RecordedAction.TYPE_CLICK, x = 100, y = 200)),
+            screenW = 1080,
+            screenH = 2400
+        )
+        val restored = RecordedScript.fromJson(JSONObject(script.toPrettyString()))
+        assertEquals(1080, restored.screenW)
+        assertEquals(2400, restored.screenH)
+    }
+
+    @Test
+    fun `旧脚本缺分辨率字段兼容为 0`() {
+        val old = JSONObject()
+            .put("version", 1)
+            .put("name", "旧脚本")
+            .put("createdAt", 1L)
+            .put("pkg", "com.example.app")
+            .put("actions", JSONArray())
+        val restored = RecordedScript.fromJson(old)
+        assertEquals(0, restored.screenW)
+        assertEquals(0, restored.screenH)
     }
 
     @Test

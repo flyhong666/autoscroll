@@ -89,6 +89,18 @@
             android:exported="false"
             android:label="@string/log_title" />
 
+        <!-- 健康诊断页 -->
+        <activity
+            android:name="cn.ggdoc.autoscroll.ui.DiagnosticsActivity"
+            android:exported="false"
+            android:label="@string/diagnostics_title" />
+
+        <!-- 应用中心 -->
+        <activity
+            android:name="cn.ggdoc.autoscroll.ui.AppCenterActivity"
+            android:exported="false"
+            android:label="@string/app_center_title" />
+
         <!-- 桌面小部件（清单 #11） -->
         <receiver
             android:name="cn.ggdoc.autoscroll.widget.AutoScrollWidgetProvider"

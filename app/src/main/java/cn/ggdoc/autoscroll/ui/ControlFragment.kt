@@ -47,6 +47,8 @@ class ControlFragment : Fragment() {
     private lateinit var btnStartService: MaterialButton
     private lateinit var cardSettingsEntry: MaterialCardView
     private lateinit var btnOpenLog: MaterialButton
+    private lateinit var btnDiagnostics: MaterialButton
+    private lateinit var btnAppCenter: MaterialButton
 
     private val overlayPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -102,6 +104,8 @@ class ControlFragment : Fragment() {
         btnStartService = v.findViewById(R.id.btnStartService)
         cardSettingsEntry = v.findViewById(R.id.cardSettingsEntry)
         btnOpenLog = v.findViewById(R.id.btnOpenLog)
+        btnDiagnostics = v.findViewById(R.id.btnDiagnostics)
+        btnAppCenter = v.findViewById(R.id.btnAppCenter)
     }
 
     private fun setupClickListeners() {
@@ -114,6 +118,12 @@ class ControlFragment : Fragment() {
         cardSettingsEntry.setOnClickListener { openSettingsSheet() }
         btnOpenLog.setOnClickListener {
             startActivity(Intent(requireContext(), LogActivity::class.java))
+        }
+        btnDiagnostics.setOnClickListener {
+            startActivity(Intent(requireContext(), DiagnosticsActivity::class.java))
+        }
+        btnAppCenter.setOnClickListener {
+            startActivity(Intent(requireContext(), AppCenterActivity::class.java))
         }
     }
 
