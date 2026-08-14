@@ -55,6 +55,120 @@
                 android:textColor="@color/purple_700" />
         </LinearLayout>
 
+        <!-- 参数方案预设 -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/AutoScrollCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/preset_title"
+                    android:textAppearance="@style/TextAppearance.Title"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="@string/preset_subtitle"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint" />
+
+                <!-- 保存当前为方案 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="@string/preset_name_hint"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                        app:boxCornerRadiusBottomEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusTopStart="12dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etPresetName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSavePreset"
+                        style="@style/AutoScrollButton.Outline"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/preset_save"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/teal_700"
+                        android:textColor="@color/teal_700" />
+                </LinearLayout>
+
+                <!-- 选择 / 应用 / 删除已有方案 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <Spinner
+                        android:id="@+id/spinnerPresets"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnApplyPreset"
+                        style="@style/AutoScrollButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/preset_apply"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        app:backgroundTint="@color/purple_500" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDeletePreset"
+                        style="@style/AutoScrollButton.Outline"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/preset_delete"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/danger"
+                        android:textColor="@color/danger" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 分区：基础参数 -->
+        <TextView
+            style="@style/SectionHeader"
+            android:text="@string/settings_title" />
+
         <!-- 场景选择入口 -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardSceneEntry"
@@ -352,6 +466,11 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ===================== 以下为原「任务页」设置，已并入本设置面板 ===================== -->
+
+        <!-- 分区：任务功能 -->
+        <TextView
+            style="@style/SectionHeader"
+            android:text="@string/section_tasks" />
 
         <!-- 自动点赞 -->
         <com.google.android.material.card.MaterialCardView

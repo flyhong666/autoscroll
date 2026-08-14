@@ -63,13 +63,6 @@
                 android:value="悬浮窗控制自动滚动" />
         </service>
 
-        <!-- 脚本录制 / 管理页 -->
-        <activity
-            android:name="cn.ggdoc.autoscroll.ui.ScriptActivity"
-            android:exported="false"
-            android:label="@string/script_title"
-            android:launchMode="singleTop" />
-
         <!-- 录制 / 回放悬浮控制条 -->
         <service
             android:name="cn.ggdoc.autoscroll.service.RecorderOverlayService"

@@ -26,10 +26,10 @@ import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import cn.ggdoc.autoscroll.MainActivity
 import cn.ggdoc.autoscroll.R
 import cn.ggdoc.autoscroll.recorder.ActionRecorder
 import cn.ggdoc.autoscroll.recorder.ScriptPlayer
-import cn.ggdoc.autoscroll.ui.ScriptActivity
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.max
@@ -329,7 +329,8 @@ class RecorderOverlayService : Service() {
             ).show()
             try {
                 startActivity(
-                    Intent(this, ScriptActivity::class.java)
+                    Intent(this, MainActivity::class.java)
+                        .putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_RECORDER)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 )
             } catch (e: Exception) {
@@ -375,7 +376,8 @@ class RecorderOverlayService : Service() {
     private fun buildNotification(): Notification {
         val pi = PendingIntent.getActivity(
             this, 0,
-            Intent(this, ScriptActivity::class.java)
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_RECORDER)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )

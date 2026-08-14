@@ -17,8 +17,7 @@ import com.google.android.material.button.MaterialButton
 
 /**
  * 操作记录器（Tab 页）：录制、管理、回放用户操作脚本。
- * 功能与 [ScriptActivity] 一致，但作为主界面底部导航的独立 Tab 展示，
- * 不再需要单独打开一个 Activity。
+ * 作为主界面底部导航的独立 Tab 展示，是脚本管理的唯一入口。
  *
  * 公共操作（录制 / 回放 / 详情 / 重命名 / 导出 / 删除 / 导入）由 [ScriptActions] 统一实现。
  */

@@ -52,6 +52,13 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     private lateinit var btnApplyRecommend: MaterialButton
     private lateinit var btnSaveSettings: MaterialButton
 
+    // ---- 参数方案预设 ----
+    private lateinit var etPresetName: TextInputEditText
+    private lateinit var spinnerPresets: Spinner
+    private lateinit var btnSavePreset: MaterialButton
+    private lateinit var btnApplyPreset: MaterialButton
+    private lateinit var btnDeletePreset: MaterialButton
+
     // ---- 行为设置（原任务页） ----
     private lateinit var switchAutoLike: SwitchMaterial
     private lateinit var switchAdBlock: SwitchMaterial
@@ -127,6 +134,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         setupAdReward()
         setupScheduleWindows()
         setupAppPickerResult()
+        setupPresets()
 
         loadSettingsToUI()
 
@@ -150,6 +158,12 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         etAdKeywords = v.findViewById(R.id.etAdKeywords)
         btnApplyRecommend = v.findViewById(R.id.btnApplyRecommend)
         btnSaveSettings = v.findViewById(R.id.btnSaveSettings)
+
+        etPresetName = v.findViewById(R.id.etPresetName)
+        spinnerPresets = v.findViewById(R.id.spinnerPresets)
+        btnSavePreset = v.findViewById(R.id.btnSavePreset)
+        btnApplyPreset = v.findViewById(R.id.btnApplyPreset)
+        btnDeletePreset = v.findViewById(R.id.btnDeletePreset)
 
         // 行为设置
         switchAutoLike = v.findViewById(R.id.switchAutoLike)
@@ -344,6 +358,71 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 AutoScrollAccessibilityService.instance?.loadConfigFromPrefs()
             }
         }
+    }
+
+    // ---- 参数方案预设 ----
+    private fun setupPresets() {
+        refreshPresetSpinner()
+        btnSavePreset.setOnClickListener {
+            val name = etPresetName.text?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.toast_preset_name_empty, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (AppConfig.saveCurrentAsPreset(requireContext(), name)) {
+                etPresetName.text?.clear()
+                refreshPresetSpinner()
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.toast_preset_saved, name),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        btnApplyPreset.setOnClickListener { applySelectedPreset() }
+        btnDeletePreset.setOnClickListener { deleteSelectedPreset() }
+    }
+
+    private fun refreshPresetSpinner() {
+        val ctx = requireContext()
+        val names = AppConfig.listPresets(ctx)
+        val items = if (names.isEmpty()) listOf(getString(R.string.preset_no_preset)) else names
+        val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_item, items)
+            .also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        spinnerPresets.adapter = adapter
+        spinnerPresets.isEnabled = names.isNotEmpty()
+        btnApplyPreset.isEnabled = names.isNotEmpty()
+        btnDeletePreset.isEnabled = names.isNotEmpty()
+    }
+
+    private fun selectedPresetName(): String? {
+        val names = AppConfig.listPresets(requireContext())
+        val pos = spinnerPresets.selectedItemPosition
+        return if (names.isEmpty() || pos < 0 || pos >= names.size) null else names[pos]
+    }
+
+    private fun applySelectedPreset() {
+        val name = selectedPresetName() ?: return
+        val p = AppConfig.getPreset(requireContext(), name) ?: return
+        AppConfig.applyPreset(requireContext(), p)
+        loadSettingsToUI()
+        AutoScrollAccessibilityService.instance?.onScheduleConfigChanged()
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.toast_preset_applied, name),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun deleteSelectedPreset() {
+        val name = selectedPresetName() ?: return
+        AppConfig.deletePreset(requireContext(), name)
+        refreshPresetSpinner()
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.toast_preset_deleted, name),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     // ---- 多时段定时窗口 ----

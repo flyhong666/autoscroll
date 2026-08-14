@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -110,5 +112,42 @@ class AppConfigTest {
         assertFalse("未确认风险时开关无效", AppConfig.isAdReward(context))
         prefs.edit().putBoolean("ad_reward_risk_acked", true).apply()
         assertTrue("双条件满足后生效", AppConfig.isAdReward(context))
+    }
+
+    @Test
+    fun `方案预设保存读取往返一致`() {
+        AppConfig.setMinInterval(context, 3)
+        AppConfig.setMaxInterval(context, 20)
+        AppConfig.setMinDuration(context, 300)
+        AppConfig.setMaxDuration(context, 500)
+        AppConfig.setAutoLike(context, true)
+        AppConfig.setLikeProbability(context, 40)
+        assertTrue(AppConfig.saveCurrentAsPreset(context, "通用方案"))
+
+        val p = AppConfig.getPreset(context, "通用方案")
+        assertNotNull(p)
+        assertEquals(3, p!!.minInterval)
+        assertEquals(20, p.maxInterval)
+        assertEquals(300, p.minDuration)
+        assertEquals(500, p.maxDuration)
+        assertTrue(p.autoLike)
+        assertEquals(40, p.likeProbability)
+        assertTrue("方案应出现在列表", AppConfig.listPresets(context).contains("通用方案"))
+    }
+
+    @Test
+    fun `应用方案会写回配置并允许删除`() {
+        AppConfig.saveCurrentAsPreset(context, "临时方案")
+        // 改乱当前配置，再应用方案
+        AppConfig.setMinInterval(context, 1)
+        AppConfig.setMaxInterval(context, 2)
+        val p = AppConfig.getPreset(context, "临时方案")!!
+        AppConfig.applyPreset(context, p.copy(minInterval = 3, maxInterval = 25))
+        assertEquals(3, AppConfig.getMinInterval(context))
+        assertEquals(25, AppConfig.getMaxInterval(context))
+
+        AppConfig.deletePreset(context, "临时方案")
+        assertFalse(AppConfig.listPresets(context).contains("临时方案"))
+        assertNull(AppConfig.getPreset(context, "临时方案"))
     }
 }

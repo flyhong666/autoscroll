@@ -519,4 +519,96 @@ object AppConfig {
         return true to ""
     }
 
+    // ---------- 参数方案预设 ----------
+    /**
+     * 一套可复用的运行方案（节奏 + 核心任务开关）。
+     * 用于「一键保存 / 切换」整套参数，避免每次手动调一堆开关。
+     */
+    data class Preset(
+        val scene: String,
+        val minInterval: Int,
+        val maxInterval: Int,
+        val minDuration: Int,
+        val maxDuration: Int,
+        val autoLike: Boolean,
+        val likeProbability: Int,
+        val adBlock: Boolean,
+        val detailFlow: Boolean
+    )
+
+    private const val PRESET_PREFIX = "preset_"
+    private const val PRESET_SEP = "|"
+
+    /** 由当前配置生成方案快照 */
+    fun currentPreset(context: Context): Preset = Preset(
+        scene = getCurrentScene(context),
+        minInterval = getMinInterval(context),
+        maxInterval = getMaxInterval(context),
+        minDuration = getMinDuration(context),
+        maxDuration = getMaxDuration(context),
+        autoLike = isAutoLike(context),
+        likeProbability = getLikeProbability(context),
+        adBlock = isAdBlock(context),
+        detailFlow = isDetailFlowEnabled(context)
+    )
+
+    /** 把方案写回配置并同步到运行中的服务。 */
+    fun applyPreset(context: Context, p: Preset) {
+        setCurrentScene(context, p.scene)
+        setMinInterval(context, p.minInterval)
+        setMaxInterval(context, p.maxInterval)
+        setMinDuration(context, p.minDuration)
+        setMaxDuration(context, p.maxDuration)
+        setAutoLike(context, p.autoLike)
+        setLikeProbability(context, p.likeProbability)
+        setAdBlock(context, p.adBlock)
+        setDetailFlowEnabled(context, p.detailFlow)
+    }
+
+    /** 保存当前配置为名为 [name] 的方案。返回是否成功（空名返回 false）。 */
+    fun saveCurrentAsPreset(context: Context, name: String): Boolean {
+        val n = name.trim()
+        if (n.isEmpty()) return false
+        val p = currentPreset(context)
+        val serialized = listOf(
+            p.scene, p.minInterval, p.maxInterval, p.minDuration, p.maxDuration,
+            p.autoLike, p.likeProbability, p.adBlock, p.detailFlow
+        ).joinToString(PRESET_SEP) { it.toString() }
+        prefs(context).edit().putString(PRESET_PREFIX + n, serialized).apply()
+        return true
+    }
+
+    /** 读取名为 [name] 的方案，解析失败返回 null。 */
+    fun getPreset(context: Context, name: String): Preset? {
+        val raw = prefs(context).getString(PRESET_PREFIX + name, null) ?: return null
+        val f = raw.split(PRESET_SEP)
+        if (f.size != 9) return null
+        return try {
+            Preset(
+                scene = f[0],
+                minInterval = f[1].toInt(),
+                maxInterval = f[2].toInt(),
+                minDuration = f[3].toInt(),
+                maxDuration = f[4].toInt(),
+                autoLike = f[5].toBoolean(),
+                likeProbability = f[6].toInt(),
+                adBlock = f[7].toBoolean(),
+                detailFlow = f[8].toBoolean()
+            )
+        } catch (_: NumberFormatException) {
+            null
+        }
+    }
+
+    /** 已保存的方案名列表（按保存顺序） */
+    fun listPresets(context: Context): List<String> =
+        prefs(context).all.keys
+            .filter { it.startsWith(PRESET_PREFIX) }
+            .map { it.removePrefix(PRESET_PREFIX) }
+            .sorted()
+
+    fun deletePreset(context: Context, name: String) {
+        prefs(context).edit().remove(PRESET_PREFIX + name).apply()
+    }
+
 }

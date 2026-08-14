@@ -20,6 +20,14 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
  */
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        /** Intent extra：打开主界面时指定要选中的 Tab */
+        const val EXTRA_TAB = "extra_tab"
+        const val TAB_CONTROL = 0
+        const val TAB_TASK = 1
+        const val TAB_RECORDER = 2
+    }
+
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var viewPager: ViewPager2
 
@@ -38,6 +46,12 @@ class MainActivity : AppCompatActivity() {
 
         bottomNav = findViewById(R.id.bottomNav)
         viewPager = findViewById(R.id.viewPager)
+
+        // 支持通过 EXTRA_TAB 直接打开指定 Tab（如录制完成后跳到记录器页）
+        val requestedTab = intent?.getIntExtra(EXTRA_TAB, TAB_CONTROL) ?: TAB_CONTROL
+        if (savedInstanceState == null) {
+            viewPager.setCurrentItem(requestedTab, false)
+        }
 
         viewPager.adapter = object : FragmentStateAdapter(this) {
             override fun getItemCount(): Int = fragments.size

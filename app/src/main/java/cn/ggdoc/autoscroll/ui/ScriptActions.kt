@@ -22,7 +22,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 
 /**
- * 脚本列表页（[RecorderFragment] 与 [ScriptActivity]）公共操作抽离。
+ * 脚本列表页（[RecorderFragment]）公共操作抽离。
  *
  * 两个宿主原先各自维护约 200 行重复逻辑（录制确认 / 回放弹窗 / 详情 /
  * 重命名 / 导出 / 删除 / 导入 / 权限校验），此处收敛为唯一实现。

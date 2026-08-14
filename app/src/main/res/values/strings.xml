@@ -59,6 +59,20 @@
     <string name="params_saved">参数已保存</string>
     <string name="params_error">参数错误：%1$s</string>
 
+    <!-- 参数方案预设 -->
+    <string name="section_tasks">任务功能</string>
+    <string name="preset_title">参数方案</string>
+    <string name="preset_subtitle">一键保存 / 切换整套运行参数</string>
+    <string name="preset_name_hint">方案名称（如：上班刷）</string>
+    <string name="preset_save">保存</string>
+    <string name="preset_apply">应用</string>
+    <string name="preset_delete">删除</string>
+    <string name="preset_no_preset">暂无已保存方案</string>
+    <string name="toast_preset_name_empty">请先输入方案名称</string>
+    <string name="toast_preset_saved">方案「%1$s」已保存</string>
+    <string name="toast_preset_applied">已应用方案「%1$s」</string>
+    <string name="toast_preset_deleted">已删除方案「%1$s」</string>
+
     <!-- 场景列表标签 -->
     <string name="scene_tags_interval">推荐间隔 %1$d-%2$ds</string>
     <string name="scene_tags_like"> · 支持点赞</string>
@@ -236,10 +250,8 @@
     <string name="stats_ad_block">关闭广告</string>
     <string name="stats_ad_reward">看广告激励</string>
     <string name="stats_running_time">运行时长</string>
-    <string name="task_settings_moved_hint">全部运行参数已整合到「控制」页的「基础参数」设置面板中，可前往该页面调整。</string>
 
     <!-- ========== 操作记录器 ========== -->
-    <string name="script_title">操作记录器</string>
     <string name="script_subtitle">录制你的点击 / 长按 / 滑动，生成可回放脚本</string>
     <string name="script_tip">点「开始录制」后本页会自动退到后台，切换到目标 APP 正常操作即可；屏幕上会出现录制悬浮条，点一下它结束录制并保存脚本。\n注意：录制依赖无障碍事件，部分自绘界面（游戏、Flutter/Canvas 页面）可能捕获不到。</string>
     <string name="script_empty">还没有脚本，点下方按钮开始录制</string>
