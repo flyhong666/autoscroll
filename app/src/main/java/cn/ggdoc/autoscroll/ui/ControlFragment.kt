@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import cn.ggdoc.autoscroll.R
@@ -46,6 +47,11 @@ class ControlFragment : Fragment() {
     private lateinit var btnStartService: MaterialButton
     private lateinit var cardSettingsEntry: MaterialCardView
     private lateinit var btnOpenLog: MaterialButton
+
+    private val overlayPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            refreshUI()
+        }
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -145,10 +151,9 @@ class ControlFragment : Fragment() {
     private fun requestOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(requireContext())) {
             try {
-                startActivityForResult(
+                overlayPermissionLauncher.launch(
                     Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:${requireContext().packageName}")),
-                    1001
+                        Uri.parse("package:${requireContext().packageName}"))
                 )
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), R.string.toast_overlay_request_failed, Toast.LENGTH_SHORT).show()

@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.task
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
@@ -66,7 +67,7 @@ object AdRewardTask {
             val target = AdNodeKit.clickableSelfOrAncestor(node) ?: node
             val clicked = AdNodeKit.click(target)
             // target 若来自祖先回溯（非 node 自身），用后回收，避免节点池泄漏
-            if (target !== node) runCatching { target.recycle() }
+            if (target !== node) runCatching { target.recycleCompat() }
             if (clicked) {
                 Log.i(TAG, "已点击激励入口：$label")
                 label
@@ -90,7 +91,7 @@ object AdRewardTask {
         while (queue.isNotEmpty() && out.size < MAX_NODES) {
             val (node, depth) = queue.poll() ?: continue
             if (depth > MAX_DEPTH) {
-                if (node !== root) runCatching { node.recycle() }
+                if (node !== root) runCatching { node.recycleCompat() }
                 continue
             }
             // 仅收集真正可点击的节点，减少误命中正文文本
@@ -106,13 +107,13 @@ object AdRewardTask {
                 // 统一由「出队后未匹配即回收」与下方退出前清队回收兜底。
             }
             // 处理完当前节点后回收（保留 root 与候选）
-            if (node !== root && !match) runCatching { node.recycle() }
+            if (node !== root && !match) runCatching { node.recycleCompat() }
         }
         // M2 修复：达到 MAX_NODES 提前退出时，队列中残留的节点从未被处理，
         // 必须回收，否则 Android 13 以下节点池累积泄漏。
         while (queue.isNotEmpty()) {
             val (node, _) = queue.poll() ?: continue
-            if (node !== root) runCatching { node.recycle() }
+            if (node !== root) runCatching { node.recycleCompat() }
         }
     }
 

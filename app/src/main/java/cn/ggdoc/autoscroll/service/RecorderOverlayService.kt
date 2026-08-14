@@ -183,6 +183,9 @@ class RecorderOverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    @Suppress("DEPRECATION")
+    private fun legacyOverlayType(): Int = WindowManager.LayoutParams.TYPE_PHONE
+
     // ---------- 悬浮视图 ----------
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -198,7 +201,7 @@ class RecorderOverlayService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
-                WindowManager.LayoutParams.TYPE_PHONE,
+                legacyOverlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT

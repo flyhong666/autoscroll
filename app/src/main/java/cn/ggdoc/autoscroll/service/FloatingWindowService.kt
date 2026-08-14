@@ -16,6 +16,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
@@ -87,9 +90,9 @@ class FloatingWindowService : Service() {
         longPressTriggered = true
         isDragging = true
         try {
-            val vb = getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+            val vb = getVibrator()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vb?.vibrate(android.os.VibrationEffect.createOneShot(20L, 30))
+                vb?.vibrate(VibrationEffect.createOneShot(20L, 30))
             } else {
                 @Suppress("DEPRECATION")
                 vb?.vibrate(20L)
@@ -165,6 +168,18 @@ class FloatingWindowService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun getVibrator(): Vibrator? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Vibrator::class.java)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun legacyOverlayType(): Int = WindowManager.LayoutParams.TYPE_PHONE
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -231,7 +246,7 @@ class FloatingWindowService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
-                WindowManager.LayoutParams.TYPE_PHONE,
+                legacyOverlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT

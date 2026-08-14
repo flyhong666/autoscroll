@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.recorder
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Context
@@ -264,8 +265,8 @@ object ScriptPlayer {
             Log.w(TAG, "条件判定：扫描失败", e)
             null
         }
-        if (hit != null && hit !== root) runCatching { hit.recycle() }
-        runCatching { root.recycle() }
+        if (hit != null && hit !== root) runCatching { hit.recycleCompat() }
+        runCatching { root.recycleCompat() }
         return hit != null
     }
 

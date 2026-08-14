@@ -88,9 +88,6 @@ android {
             "PackageManagerGetSignatures",
             "UnusedResources"
         )
-        // HTML 报告更直观，CI 上传 artifact 便于排查
-        htmlReport = true
-        xmlReport = true
     }
 }
 

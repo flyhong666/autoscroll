@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.task
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.HashSet
 import java.util.LinkedList
@@ -35,7 +36,7 @@ object AdNodeKit {
         while (current != null && depth < 5) {
             if (current.isClickable) return current
             val parent = try { current.parent } catch (_: Exception) { null }
-            runCatching { current.recycle() }
+            runCatching { current.recycleCompat() }
             current = parent
             depth++
         }
@@ -52,7 +53,7 @@ object AdNodeKit {
         val parent = try { node.parent } catch (_: Exception) { null }
         val clicked = parent != null &&
             runCatching { parent.performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)
-        runCatching { parent?.recycle() }
+        runCatching { parent?.recycleCompat() }
         return clicked
     }
 
@@ -94,9 +95,9 @@ object AdNodeKit {
         }
         // 回收遍历过的所有节点：保留 root、best（调用方负责）与 bestSource（下方单独回收）
         visited.forEach { n ->
-            if (n !== root && n !== best && n !== bestSource) runCatching { n.recycle() }
+            if (n !== root && n !== best && n !== bestSource) runCatching { n.recycleCompat() }
         }
-        if (bestSource != null && bestSource !== best) runCatching { bestSource.recycle() }
+        if (bestSource != null && bestSource !== best) runCatching { bestSource.recycleCompat() }
         return best
     }
 
@@ -126,7 +127,7 @@ object AdNodeKit {
                 if (visited.add(child)) queue.offer(child)
             }
         }
-        visited.forEach { n -> if (n !== root && n !== found) runCatching { n.recycle() } }
+        visited.forEach { n -> if (n !== root && n !== found) runCatching { n.recycleCompat() } }
         return found
     }
 
@@ -134,7 +135,7 @@ object AdNodeKit {
     fun recycle(root: AccessibilityNodeInfo?, candidates: List<AccessibilityNodeInfo>) {
         // 修复：root 自身可能是候选节点（可点击且有文案）——若用 `root !in candidates`
         // 判断会漏回收 root。这里保证 root 恰好回收一次，候选列表里跳过它即可。
-        candidates.forEach { if (it !== root) runCatching { it.recycle() } }
-        root?.let { runCatching { it.recycle() } }
+        candidates.forEach { if (it !== root) runCatching { it.recycleCompat() } }
+        root?.let { runCatching { it.recycleCompat() } }
     }
 }

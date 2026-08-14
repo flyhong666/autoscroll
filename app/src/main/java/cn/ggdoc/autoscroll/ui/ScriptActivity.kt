@@ -34,6 +34,12 @@ class ScriptActivity : AppCompatActivity(), ScriptEditorDialogFragment.OnScriptE
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_script)
+        supportFragmentManager.setFragmentResultListener(
+            ScriptEditorDialogFragment.RESULT_KEY,
+            this
+        ) { _, _ ->
+            refreshList()
+        }
 
         rvScripts = findViewById(R.id.rvScripts)
         tvEmpty = findViewById(R.id.tvScriptEmpty)
@@ -80,9 +86,7 @@ class ScriptActivity : AppCompatActivity(), ScriptEditorDialogFragment.OnScriptE
 
     override fun openEditor(fileName: String) {
         if (isFinishing || isDestroyed) return
-        // M5 修复：Activity 无法 setTargetFragment，走 notifySaved 的
-        // activity 回退链（ScriptActivity 实现 OnScriptEditedListener）
-        ScriptEditorDialogFragment.newInstance(fileName) { refreshList() }
+        ScriptEditorDialogFragment.newInstance(fileName)
             .show(supportFragmentManager, "ScriptEditorDialog")
     }
 

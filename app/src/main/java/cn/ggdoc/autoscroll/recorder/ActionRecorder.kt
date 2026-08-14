@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.recorder
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.content.Context
 import android.content.Intent
 import android.graphics.Rect
@@ -174,7 +175,7 @@ object ActionRecorder {
         try {
             node.getBoundsInScreen(rect)
         } finally {
-            runCatching { node.recycle() }
+            runCatching { node.recycleCompat() }
         }
         return if (rect.width() > 0 && rect.height() > 0) rect else null
     }

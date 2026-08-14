@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import cn.ggdoc.autoscroll.util.NodePoolStats
@@ -78,13 +79,13 @@ object NodeFinder {
                 if (visited.add(child)) {
                     queue.offer(child)
                 } else {
-                    child.recycle()
+                    child.recycleCompat()
                     NodePoolStats.recordRecycled(1)
                 }
             }
             // 处理完当前节点后回收（保留 root 与 keep；keep 可能为 null 直到命中）
             if (current !== root && current !== keep) {
-                current.recycle()
+                current.recycleCompat()
                 NodePoolStats.recordRecycled(1)
             }
         }
@@ -93,7 +94,7 @@ object NodeFinder {
         while (queue.isNotEmpty()) {
             val node = queue.poll() ?: continue
             if (node !== root && node !== keep) {
-                runCatching { node.recycle() }
+                runCatching { node.recycleCompat() }
                 residualRecycled++
             }
         }
@@ -152,7 +153,7 @@ object NodeFinder {
                 if (visited.add(child)) {
                     queue.offer(child to depth + 1)
                 } else {
-                    child.recycle()
+                    child.recycleCompat()
                     NodePoolStats.recordRecycled(1)
                 }
             }
@@ -171,7 +172,7 @@ object NodeFinder {
         var recycledMid = 0
         visited.forEach { n ->
             if (n !== container && n !in keep) {
-                n.recycle()
+                n.recycleCompat()
                 recycledMid++
             }
         }
