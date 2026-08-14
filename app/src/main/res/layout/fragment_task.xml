@@ -12,31 +12,14 @@
         android:orientation="vertical"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="36dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/stats_dashboard"
-            android:textAppearance="@style/TextAppearance.Title"
-            android:textSize="18sp"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/stats_dashboard_subtitle"
-            android:textAppearance="@style/TextAppearance.Body"
-            android:textSize="13sp"
-            android:layout_marginBottom="@dimen/spacing_medium" />
+        android:paddingTop="16dp"
+        android:paddingBottom="28dp">
 
         <!-- 统计看板 -->
         <com.google.android.material.card.MaterialCardView
             style="@style/AutoScrollCard"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/spacing_medium">
+            android:layout_height="wrap_content">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -54,13 +37,14 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginBottom="14dp"
+                    android:layout_marginTop="3dp"
+                    android:layout_marginBottom="8dp"
                     android:text="@string/stats_dashboard_subtitle"
                     android:textAppearance="@style/TextAppearance.Body"
                     android:textSize="12sp"
                     android:textColor="@color/text_hint" />
 
+                <!-- 2x2 统计网格 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -72,16 +56,15 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingTop="6dp"
-                        android:paddingBottom="6dp">
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp">
 
                         <TextView
                             android:id="@+id/tvStatScroll"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="0"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.StatValue"
                             android:textColor="@color/purple_700" />
 
                         <TextView
@@ -89,9 +72,15 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="@string/stats_scroll"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint" />
+                            android:textAppearance="@style/TextAppearance.StatLabel" />
                     </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="@color/divider" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -99,16 +88,15 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingTop="6dp"
-                        android:paddingBottom="6dp">
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp">
 
                         <TextView
                             android:id="@+id/tvStatLike"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="0"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.StatValue"
                             android:textColor="@color/teal_700" />
 
                         <TextView
@@ -116,10 +104,14 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="@string/stats_like"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint" />
+                            android:textAppearance="@style/TextAppearance.StatLabel" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -132,16 +124,15 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingTop="6dp"
-                        android:paddingBottom="6dp">
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp">
 
                         <TextView
                             android:id="@+id/tvStatAdBlock"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="0"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.StatValue"
                             android:textColor="@color/purple_700" />
 
                         <TextView
@@ -149,9 +140,15 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="@string/stats_ad_block"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint" />
+                            android:textAppearance="@style/TextAppearance.StatLabel" />
                     </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="@color/divider" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -159,16 +156,15 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingTop="6dp"
-                        android:paddingBottom="6dp">
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp">
 
                         <TextView
                             android:id="@+id/tvStatAdReward"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="0"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.StatValue"
                             android:textColor="@color/danger" />
 
                         <TextView
@@ -176,47 +172,43 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="@string/stats_ad_reward"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint" />
+                            android:textAppearance="@style/TextAppearance.StatLabel" />
                     </LinearLayout>
                 </LinearLayout>
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider" />
+
+                <!-- 运行时长：整行高亮 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="6dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="2dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/stats_running_time"
+                        android:textAppearance="@style/TextAppearance.Title"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/tvStatTime"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="00:00"
-                        android:textSize="22sp"
-                        android:textStyle="bold"
+                        android:textAppearance="@style/TextAppearance.StatValue"
+                        android:textSize="20sp"
                         android:textColor="@color/text_primary" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/stats_running_time"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_hint" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/task_settings_moved_hint"
-            android:textAppearance="@style/TextAppearance.Body"
-            android:textSize="12sp"
-            android:textColor="@color/text_hint" />
 
     </LinearLayout>
 </ScrollView>

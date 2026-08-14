@@ -6,7 +6,21 @@
     android:orientation="vertical"
     android:background="@color/bg_page">
 
-    <!-- 顶部标题已移除，内容由各 fragment 自行控制顶部留白 -->
+    <!-- 顶部统一应用标题栏 -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/bg_page"
+        app:title="@string/app_name"
+        app:titleTextColor="@color/text_primary"
+        app:titleTextAppearance="@style/TextAppearance.AppTitle"
+        app:navigationIcon="@null" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border" />
 
     <!-- 内容区：ViewPager 占据剩余空间 -->
     <androidx.viewpager2.widget.ViewPager2
@@ -15,7 +29,7 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- 底边分割线 -->
+    <!-- 底部分割线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
@@ -31,7 +45,6 @@
         app:itemIconTint="@color/bottom_nav_text"
         app:itemTextColor="@color/bottom_nav_text"
         app:itemIconSize="22dp"
-        app:itemRippleColor="@color/purple_200"
         app:labelVisibilityMode="labeled"
         style="@style/Widget.MaterialComponents.BottomNavigationView" />
 

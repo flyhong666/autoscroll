@@ -12,7 +12,7 @@
         android:orientation="vertical"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="8dp"
+        android:paddingTop="16dp"
         android:paddingBottom="28dp">
 
         <!-- 使用说明卡片 -->

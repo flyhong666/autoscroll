@@ -68,4 +68,24 @@
         <item name="android:lineSpacingExtra">6dp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
+
+    <!-- 顶部应用栏标题 -->
+    <style name="TextAppearance.AppTitle" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 卡片内的统计数值 -->
+    <style name="TextAppearance.StatValue" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 卡片内的统计标签 -->
+    <style name="TextAppearance.StatLabel" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/text_hint</item>
+        <item name="android:textSize">12sp</item>
+    </style>
 </resources>
