@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 夜间模式：覆盖浅色主题下的表面 / 背景 / 文字色，其余语义色（主色、成功/警告/危险等）沿用 -->
+
+    <!-- 中性色（夜间） -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="bg_page">#10131B</color>
+    <color name="bg_card">#1A1E2A</color>
+    <color name="text_primary">#E8EAF2</color>
+    <color name="text_secondary">#A6ACC0</color>
+    <color name="text_hint">#6E7690</color>
+    <color name="border">#2B3140</color>
+    <color name="divider">#222736</color>
+
+    <!-- 主色系在深色背景下略微提亮，保证按钮文字对比度 -->
+    <color name="purple_200">#5B8CFF</color>
+    <color name="purple_500">#4D82FF</color>
+    <color name="purple_700">#7AA2FF</color>
+    <color name="purple_disabled">#5C76A8</color>
+
+    <!-- 提示卡片（夜间） -->
+    <color name="tip_bg">#3A2F17</color>
+    <color name="tip_stroke">#6B5520</color>
+    <color name="tip_text">#F0D088</color>
+
+    <!-- 错误底色（夜间） -->
+    <color name="danger_bg">#3A1F26</color>
+
+    <!-- 悬浮窗 / 小部件：自带背景色，无需随主题变化，沿用浅色定义 -->
+</resources>

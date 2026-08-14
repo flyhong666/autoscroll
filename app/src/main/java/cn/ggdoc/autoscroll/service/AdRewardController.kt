@@ -61,7 +61,19 @@ class AdRewardController(
 
         /** 点掉「关闭/领取」按钮后到结束观看的宽限：给奖励结算留时间，避免提前恢复滚动 */
         const val REWARD_SETTLE_GRACE_MS = 5_000L
+
+        /** 连续未命中激励入口达到该次数后进入冷静期（风控：避免高危动作无限高频重试） */
+        const val MAX_CONSECUTIVE_MISSES = 5
+
+        /** 冷静期时长（ms）：连续未命中后暂停尝试一段时间 */
+        const val MISS_COOLDOWN_MS = 30 * 60 * 1000L
     }
+
+    /** 连续未命中激励入口次数（无入口 / 点击失败均计） */
+    private var consecutiveMisses = 0
+
+    /** 冷静期截止时刻（elapsedRealtime），到达前不再尝试 */
+    private var cooldownUntil = 0L
 
     @Volatile
     private var watching = false
@@ -78,6 +90,17 @@ class AdRewardController(
     fun schedule() {
         if (!serviceProvider.isScrolling || !serviceProvider.adRewardEnabled) return
         scheduleJob?.cancel()
+        // 处于冷静期内：延后到冷静期结束再尝试，而不是继续按固定周期高频重试
+        val now = SystemClock.elapsedRealtime()
+        if (now < cooldownUntil) {
+            val waitMs = cooldownUntil - now
+            scheduleJob = scope.launch {
+                delay(waitMs)
+                tryEnter()
+            }
+            Log.w(serviceProvider.TAG, "激励任务处于冷静期，${waitMs / 1000}s 后再尝试")
+            return
+        }
         val intervalMs = serviceProvider.adRewardMinutes * 60_000L
         scheduleJob = scope.launch {
             delay(intervalMs)
@@ -103,6 +126,9 @@ class AdRewardController(
     fun onConfigChanged() {
         if (!serviceProvider.isScrolling) return
         if (serviceProvider.adRewardEnabled) {
+            // 用户主动改配置视为新的意图，重置连续未命中计数与冷静期
+            consecutiveMisses = 0
+            cooldownUntil = 0L
             scheduleJob?.cancel()
             scheduleJob = null
             schedule()
@@ -121,11 +147,21 @@ class AdRewardController(
         }
         val label = AdRewardTask.clickRewardEntry(service)
         if (label == null) {
-            Log.d(serviceProvider.TAG, "未找到激励入口，等待下个周期")
+            // 连续未命中达到阈值则进入冷静期，避免在无法命中的环境里反复触发高危点击
+            consecutiveMisses++
+            if (consecutiveMisses >= MAX_CONSECUTIVE_MISSES) {
+                consecutiveMisses = 0
+                cooldownUntil = SystemClock.elapsedRealtime() + MISS_COOLDOWN_MS
+                Log.w(serviceProvider.TAG, "连续 $MAX_CONSECUTIVE_MISSES 次未命中激励入口，进入冷静期")
+            } else {
+                Log.d(serviceProvider.TAG, "未找到激励入口（第 $consecutiveMisses 次），等待下个周期")
+            }
             schedule()
             return
         }
 
+        consecutiveMisses = 0
+        cooldownUntil = 0L
         serviceProvider.adRewardCount++
         setWatching(true)
         Log.i(serviceProvider.TAG, "已进入激励视频：$label（累计 ${serviceProvider.adRewardCount}）")

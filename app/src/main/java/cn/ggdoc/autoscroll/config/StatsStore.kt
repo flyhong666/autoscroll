@@ -140,7 +140,69 @@ object StatsStore {
         e.putLong(KEY_TODAY_SECONDS, p.getLong(KEY_TODAY_SECONDS, 0L) + delta.seconds)
         e.putLong(KEY_TOTAL_SECONDS, p.getLong(KEY_TOTAL_SECONDS, 0L) + delta.seconds)
         e.apply()
+
+        // 按天历史：累加增量到当天条目，并清理过期历史（供趋势页展示）
+        writeDailyHistory(context, dayKey(nowMillis), delta)
     }
+
+    // ===== 按天历史（趋势） =====
+    private const val KEY_HIST_PREFIX = "hist_"
+
+    /** 保留最近多少天的历史 */
+    const val HIST_KEEP_DAYS = 30
+
+    /** 当天已累计的 [delta] 合并进历史条目，并裁剪超过保留期的旧条目。 */
+    private fun writeDailyHistory(context: Context, day: Int, delta: Stats) {
+        val p = prefs(context)
+        val key = KEY_HIST_PREFIX + day
+        val merged = parseHist(p.getString(key, null)) + delta
+        p.edit().putString(key, serializeHist(merged)).apply()
+        trimHistory(context)
+    }
+
+    private fun serializeHist(s: Stats): String =
+        "${s.scrolls},${s.likes},${s.adBlocks},${s.adRewards},${s.details},${s.seconds}"
+
+    private fun parseHist(raw: String?): Stats {
+        if (raw.isNullOrBlank()) return Stats()
+        val f = raw.split(",")
+        if (f.size < 6) return Stats()
+        return try {
+            Stats(
+                f[0].toInt(), f[1].toInt(), f[2].toInt(),
+                f[3].toInt(), f[4].toInt(), f[5].toLong()
+            )
+        } catch (_: NumberFormatException) {
+            Stats()
+        }
+    }
+
+    /** 只保留最近 [HIST_KEEP_DAYS] 条历史，避免 prefs 无限膨胀。 */
+    private fun trimHistory(context: Context) {
+        val p = prefs(context)
+        val keys = p.all.keys.filter { it.startsWith(KEY_HIST_PREFIX) }
+        if (keys.size <= HIST_KEEP_DAYS) return
+        val remove = keys.sortedDescending().drop(HIST_KEEP_DAYS)
+        if (remove.isEmpty()) return
+        val e = p.edit()
+        remove.forEach { e.remove(it) }
+        e.apply()
+    }
+
+    /**
+     * 最近的按天历史（按日期倒序，最多 [HIST_KEEP_DAYS] 条）。
+     * @return 元素为 (dayKey, 当天累计)，dayKey 形如 20260811。
+     */
+    fun dailyHistory(context: Context): List<Pair<Int, Stats>> =
+        prefs(context).all
+            .filterKeys { it.startsWith(KEY_HIST_PREFIX) }
+            .mapNotNull { (k, v) ->
+                val day = k.removePrefix(KEY_HIST_PREFIX).toIntOrNull() ?: return@mapNotNull null
+                val s = parseHist(v as? String)
+                if (s.isEmpty) null else day to s
+            }
+            .sortedByDescending { it.first }
+            .take(HIST_KEEP_DAYS)
 
     /**
      * 今日统计。

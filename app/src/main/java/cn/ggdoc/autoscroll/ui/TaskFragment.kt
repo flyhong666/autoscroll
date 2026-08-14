@@ -8,9 +8,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import cn.ggdoc.autoscroll.R
+import cn.ggdoc.autoscroll.config.StatsStore
 import cn.ggdoc.autoscroll.service.AutoScrollAccessibilityService
 import cn.ggdoc.autoscroll.util.registerReceiverSafe
 
@@ -25,6 +28,8 @@ class TaskFragment : Fragment() {
     private lateinit var tvStatAdBlock: TextView
     private lateinit var tvStatAdReward: TextView
     private lateinit var tvStatTime: TextView
+    private lateinit var cardTrend: View
+    private lateinit var trendList: LinearLayout
 
     /** 监听无障碍服务状态广播，实时刷新统计看板 */
     private val stateReceiver = object : BroadcastReceiver() {
@@ -48,6 +53,8 @@ class TaskFragment : Fragment() {
         tvStatAdBlock = view.findViewById(R.id.tvStatAdBlock)
         tvStatAdReward = view.findViewById(R.id.tvStatAdReward)
         tvStatTime = view.findViewById(R.id.tvStatTime)
+        cardTrend = view.findViewById(R.id.cardTrend)
+        trendList = view.findViewById(R.id.trendList)
     }
 
     override fun onResume() {
@@ -68,6 +75,37 @@ class TaskFragment : Fragment() {
         tvStatAdBlock.text = AutoScrollAccessibilityService.adBlockCount.toString()
         tvStatAdReward.text = AutoScrollAccessibilityService.adRewardCount.toString()
         tvStatTime.text = formatDuration(AutoScrollAccessibilityService.runningSeconds)
+        refreshTrend()
+    }
+
+    /** 近 7 天趋势：无历史时隐藏整张卡片 */
+    private fun refreshTrend() {
+        if (!::cardTrend.isInitialized) return
+        val history = StatsStore.dailyHistory(requireContext()).take(7)
+        if (history.isEmpty()) {
+            cardTrend.visibility = View.GONE
+            return
+        }
+        cardTrend.visibility = View.VISIBLE
+        if (trendList.childCount == history.size) return
+        trendList.removeAllViews()
+        val ctx = requireContext()
+        val padV = (6 * resources.displayMetrics.density).toInt()
+        for ((day, stats) in history) {
+            val row = TextView(ctx)
+            row.text = getString(R.string.stats_history_row, formatDay(day), stats.scrolls)
+            row.textSize = 13f
+            row.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
+            row.setPadding(0, padV, 0, padV)
+            trendList.addView(row)
+        }
+    }
+
+    /** 20260811 → 8月11日 */
+    private fun formatDay(day: Int): String {
+        val m = (day % 10000) / 100
+        val d = day % 100
+        return "${m}月${d}日"
     }
 
     private fun formatDuration(sec: Long): String {

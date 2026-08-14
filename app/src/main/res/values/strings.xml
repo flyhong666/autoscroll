@@ -250,6 +250,9 @@
     <string name="stats_ad_block">关闭广告</string>
     <string name="stats_ad_reward">看广告激励</string>
     <string name="stats_running_time">运行时长</string>
+    <string name="stats_history_title">近 7 天</string>
+    <string name="stats_history_subtitle">最近每日滚动次数</string>
+    <string name="stats_history_row">%1$s · 滚动 %2$d 次</string>
 
     <!-- ========== 操作记录器 ========== -->
     <string name="script_subtitle">录制你的点击 / 长按 / 滑动，生成可回放脚本</string>

@@ -106,6 +106,22 @@ class StatsStorePersistenceTest {
     }
 
     @Test
+    fun `按天历史累计并倒序读取`() {
+        StatsStore.accumulate(context, StatsStore.Stats(scrolls = 5, seconds = 100L), dayStartMillis(1))
+        StatsStore.accumulate(context, StatsStore.Stats(scrolls = 3, seconds = 30L), dayStartMillis(1))
+        StatsStore.accumulate(context, StatsStore.Stats(scrolls = 7, seconds = 60L), dayStartMillis(2))
+
+        val hist = StatsStore.dailyHistory(context)
+        assertEquals(2, hist.size)
+        // 倒序：第二天在前
+        assertEquals(7, hist[0].second.scrolls)
+        assertEquals(60L, hist[0].second.seconds)
+        // 第一天为两次累加之和
+        assertEquals(8, hist[1].second.scrolls)
+        assertEquals(130L, hist[1].second.seconds)
+    }
+
+    @Test
     fun `dayKey 同日不同时一致`() {
         // 基准为 00:00 UTC，映射到任意时区（UTC-12 ~ UTC+14）本地都在 12:00~14:00 之间；
         // 再加 9 小时仍落在当天（21:00~23:00），不会跨过本地午夜，
