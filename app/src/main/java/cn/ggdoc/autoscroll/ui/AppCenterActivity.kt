@@ -52,7 +52,7 @@ class AppCenterActivity : AppCompatActivity() {
         spinnerFilterMode = findViewById(R.id.spinnerFilterMode)
 
         rvApps.layoutManager = LinearLayoutManager(this)
-        rvApps.adapter = AppAdapter(allApps, rotation, filter) { refreshCount() }
+        rvApps.adapter = AppAdapter(allApps, rotation, filter)
 
         rotation.addAll(AppConfig.getRotationApps(this))
         filter.addAll(AppConfig.getAppFilterList(this))
@@ -87,10 +87,6 @@ class AppCenterActivity : AppCompatActivity() {
                 }
                 override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
             }
-    }
-
-    private fun refreshCount() {
-        // 预留：展示已选数（可选实现）
     }
 
     private fun save() {
@@ -139,8 +135,7 @@ class AppCenterActivity : AppCompatActivity() {
     private class AppAdapter(
         private val all: MutableList<AppInfo>,
         private val rotation: MutableSet<String>,
-        private val filter: MutableSet<String>,
-        private val onChanged: () -> Unit
+        private val filter: MutableSet<String>
     ) : RecyclerView.Adapter<AppAdapter.VH>() {
 
         override fun getItemCount() = all.size
@@ -166,11 +161,9 @@ class AppCenterActivity : AppCompatActivity() {
             holder.cbFilter.isChecked = filter.contains(app.packageName)
             holder.cbRotation.setOnCheckedChangeListener { _, c ->
                 if (c) rotation.add(app.packageName) else rotation.remove(app.packageName)
-                onChanged()
             }
             holder.cbFilter.setOnCheckedChangeListener { _, c ->
                 if (c) filter.add(app.packageName) else filter.remove(app.packageName)
-                onChanged()
             }
         }
 
