@@ -396,8 +396,10 @@ class RecorderOverlayService : Service() {
             unregisterReceiver(receiver)
         } catch (_: Exception) {
         }
-        handler.removeCallbacks(longPressRunnable)
-        handler.removeCallbacks(blinkRunnable)
+        // 清空 handler 上所有待执行回调：除长按 / 闪烁外，snapToEdge() 还会 post
+        // 8 个匿名边缘吸附 Runnable（与 FloatingWindowService 一致的处理），
+        // 只移除具名 Runnable 会漏掉它们，销毁后仍可能在已移除的视图上执行更新。
+        handler.removeCallbacksAndMessages(null)
         // 回放期间获取的 WakeLock 在此释放（只释放自己获取的，避免误释放滚动任务的锁）
         if (playWakeLockAcquired) {
             cn.ggdoc.autoscroll.task.KeepAliveManager.release()

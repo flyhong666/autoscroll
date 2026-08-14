@@ -91,6 +91,13 @@ object AppConfig {
     const val DEFAULT_SCHEDULE_ENABLED = false
     const val DEFAULT_SCHEDULE_START_MIN = 480        // 08:00
     const val DEFAULT_SCHEDULE_END_MIN = 1200         // 20:00
+
+    /**
+     * 定时窗口最大数量。与 [cn.ggdoc.autoscroll.service.ScheduleController.cancelAlarms]
+     * 的取消防护上限保持一致：窗口数超过此值会导致多余窗口的闹钟永远无法被取消
+     * （残留闹钟在错误时刻触发），故读取时统一截断。
+     */
+    const val MAX_SCHEDULE_WINDOWS = 8
     const val DEFAULT_RECOVER_ENABLED = true
     const val DEFAULT_RECOVER_RUNNING = false
     const val DEFAULT_BATTERY_GUARD = false
@@ -284,7 +291,7 @@ object AppConfig {
                     if (s != null && e != null) s to e else null
                 } else null
             }
-            if (list.isNotEmpty()) return list
+            if (list.isNotEmpty()) return list.take(MAX_SCHEDULE_WINDOWS)
         }
         val s = prefs(context).getInt(KEY_SCHEDULE_START_MIN, DEFAULT_SCHEDULE_START_MIN).coerceIn(0, 1439)
         val e = prefs(context).getInt(KEY_SCHEDULE_END_MIN, DEFAULT_SCHEDULE_END_MIN).coerceIn(0, 1439)

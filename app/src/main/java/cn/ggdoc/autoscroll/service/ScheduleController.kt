@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import cn.ggdoc.autoscroll.R
+import cn.ggdoc.autoscroll.config.AppConfig
 import cn.ggdoc.autoscroll.human.ScheduleUtils
 
 /**
@@ -121,8 +122,9 @@ class ScheduleController(
 
     fun cancelAlarms() {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // 单窗口：取消 req 1/2；多时段上限设 8 对留余量，PIService 对不存在的 PendingIntent 取消是安全的
-        for (i in 0 until 8) {
+        // 取消上限与 AppConfig.MAX_SCHEDULE_WINDOWS 保持一致（AppConfig 读取时已截断，
+        // 保证不会出现「取消不到」的残留闹钟）；对不存在的 PendingIntent 取消是安全的
+        for (i in 0 until AppConfig.MAX_SCHEDULE_WINDOWS) {
             val startReq = 1 + i * 2
             val endReq = startReq + 1
             am.cancel(makePendingIntent(AutoScrollAccessibilityService.ACTION_SCHEDULE_START, startReq))

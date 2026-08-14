@@ -183,6 +183,11 @@ class AdRewardController(
 
     private fun finishWatch() {
         setWatching(false)
+        // 先取消正在运行的观看期轮询协程，再置空引用并重新排期。
+        // 否则当 finishWatch 由外部路径（到账 Toast / 关闭按钮扫描）触发时，
+        // 孤儿 watchJob 仍会继续轮询，可能再次命中关闭按钮并重复调用
+        // finishWatch → schedule，导致激励间隔被双重安排、到账次数虚高。
+        watchJob?.cancel()
         watchJob = null
         Log.d(serviceProvider.TAG, "激励视频观看结束，恢复滚动")
         serviceProvider.broadcastState()
