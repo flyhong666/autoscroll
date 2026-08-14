@@ -39,6 +39,16 @@ class RecorderFragment : Fragment(), ScriptEditorDialogFragment.OnScriptEditedLi
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View = inflater.inflate(R.layout.fragment_recorder, container, false)
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        parentFragmentManager.setFragmentResultListener(
+            ScriptEditorDialogFragment.RESULT_KEY,
+            this
+        ) { _, _ ->
+            if (isAdded) refreshList()
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         rvScripts = view.findViewById(R.id.rvScripts)
@@ -88,9 +98,7 @@ class RecorderFragment : Fragment(), ScriptEditorDialogFragment.OnScriptEditedLi
         if (!isAdded) return
         val fm = parentFragmentManager
         if (fm.isStateSaved) return
-        // M5 修复：setTargetFragment 后回调跨旋转重建存活（onSavedCallback 字段会丢）
-        ScriptEditorDialogFragment.newInstance(fileName) { refreshList() }
-            .also { it.setTargetFragment(this, 0) }
+        ScriptEditorDialogFragment.newInstance(fileName)
             .show(fm, "ScriptEditorDialog")
     }
 

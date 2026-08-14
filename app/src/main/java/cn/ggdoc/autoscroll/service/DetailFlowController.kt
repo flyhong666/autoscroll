@@ -7,6 +7,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import cn.ggdoc.autoscroll.human.HumanTiming
 import cn.ggdoc.autoscroll.human.PageClassifier
 import cn.ggdoc.autoscroll.util.AppLog
+import cn.ggdoc.autoscroll.util.recycleCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -163,11 +164,11 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             }
 
             // 释放本次未选中的其他候选条目节点（避免节点池占用）
-            items.forEach { if (it !== pick) runCatching { it.node.recycle() } }
+            items.forEach { if (it !== pick) runCatching { it.node.recycleCompat() } }
             nextMinTopY = pick.rect.bottom - 10
             cycleClicks++
             clickItem(pick)
-            pick.node.recycle()
+            pick.node.recycleCompat()
             service.countDetailBrowsed()
             Log.d(TAG, "点开条目 @(${pick.rect.centerX()}, ${pick.rect.centerY()})")
             nextDelay = Random.nextLong(1000, 1800)
@@ -176,12 +177,13 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             // S3 修复：回收 root 与 container。Android 13 以下节点池有限，
             // 不回收会导致 rootInActiveWindow 逐渐返回 null、详情流静默失效。
             // 必须在 delay 之前回收，否则节点在整个 delay 期间被持有。
-            runCatching { container.recycle() }
-            if (container !== root) runCatching { root.recycle() }
+            runCatching { container.recycleCompat() }
+            if (container !== root) runCatching { root.recycleCompat() }
         }
         // 节点已回收，安全进入 delay + 下一步骤
-        if (nextStep != null && proceedOrReturn(nextDelay)) {
-            nextStep!!()
+        val step = nextStep
+        if (step != null && proceedOrReturn(nextDelay)) {
+            step()
         }
     }
 
@@ -194,18 +196,18 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
                 runCatching { node.performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)
             val parent = try { node.parent } catch (_: Exception) { null }
             // 回收当前节点：item.node 归调用方（stepPickAndClick）回收，其余在此回收
-            if (node !== item.node) runCatching { node.recycle() }
+            if (node !== item.node) runCatching { node.recycleCompat() }
             if (clicked) {
                 // 点击成功：刚取出的 parent 本应成为下一轮 target，这里必须一并回收，
                 // 否则每次成功点击泄漏 1 个节点，Android 13 以下节点池会被耗尽
                 // （表现为 rootInActiveWindow 逐渐返回 null、详情流静默失效）。
-                if (parent != null && parent !== item.node) runCatching { parent.recycle() }
+                if (parent != null && parent !== item.node) runCatching { parent.recycleCompat() }
                 return
             }
             target = parent
             depth++
         }
-        if (target != null && target !== item.node) runCatching { target.recycle() }
+        if (target != null && target !== item.node) runCatching { target.recycleCompat() }
         // 兜底：手势点按条目中心
         service.tapScreen(item.rect.centerX().toFloat(), item.rect.centerY().toFloat())
     }
@@ -275,8 +277,8 @@ class DetailFlowController(private val service: AutoScrollAccessibilityService) 
             }
         } finally {
             // S3：回收本帧取到的 root 与 scrollable（必须在 delay 之前）
-            runCatching { scrollable?.recycle() }
-            if (scrollable !== root) runCatching { root?.recycle() }
+            runCatching { scrollable?.recycleCompat() }
+            if (scrollable !== root) runCatching { root?.recycleCompat() }
         }
         if (goBack) {
             if (proceedOrReturn(Random.nextLong(1200, 3500))) stepBack()

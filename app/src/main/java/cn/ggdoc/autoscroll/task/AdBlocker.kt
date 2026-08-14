@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.task
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
@@ -49,7 +50,7 @@ object AdBlocker {
                         Log.d(TAG, "关闭弹窗：text=$text desc=$desc")
                     }
                     // clickTarget 若来自祖先回溯（非 node 自身），用后回收，避免节点池泄漏
-                    if (clickTarget !== node) runCatching { clickTarget.recycle() }
+                    if (clickTarget !== node) runCatching { clickTarget.recycleCompat() }
                 }
             }
         } catch (e: Exception) {
@@ -92,7 +93,7 @@ object AdBlocker {
             val child = node.getChild(i) ?: continue
             val childCandidate = collectClickableNodes(child, out, depth + 1)
             // 非候选子节点在此处回收（候选子节点已在 out 中，由调用方回收）
-            if (!childCandidate) runCatching { child.recycle() }
+            if (!childCandidate) runCatching { child.recycleCompat() }
         }
         return isCandidate
     }

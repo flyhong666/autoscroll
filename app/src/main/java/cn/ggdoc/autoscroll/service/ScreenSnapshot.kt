@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import cn.ggdoc.autoscroll.human.PageClassifier
@@ -149,7 +150,7 @@ object ScreenSnapshot {
                         if (visited.add(child)) {
                             queue.offer(child to depth + 1)
                         } else {
-                            child.recycle()
+                            child.recycleCompat()
                         }
                     }
                 }
@@ -158,7 +159,7 @@ object ScreenSnapshot {
             // 遍历期间窗口可能被销毁，节点访问抛异常；用已采到的部分数据继续
         } finally {
             // 回收所有遍历过的节点（root 与 keep 归调用方所有，不得回收）
-            visited.forEach { n -> if (n !== root && n !== keep) runCatching { n.recycle() } }
+            visited.forEach { n -> if (n !== root && n !== keep) runCatching { n.recycleCompat() } }
             queue.clear()
         }
 

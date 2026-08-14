@@ -37,6 +37,8 @@ class ScriptEditorDialogFragment : DialogFragment() {
 
     companion object {
         private const val ARG_FILE_NAME = "file_name"
+        const val RESULT_KEY = "script_editor_result"
+        private const val RESULT_FILE_NAME = "result_file_name"
 
         fun newInstance(fileName: String, onSaved: (() -> Unit)? = null): ScriptEditorDialogFragment {
             return ScriptEditorDialogFragment().apply {
@@ -334,14 +336,14 @@ class ScriptEditorDialogFragment : DialogFragment() {
         }
     }
 
-    /** M5 修复：回调经 targetFragment 跨重建存活；普通字段回调优先（向后兼容） */
+    /** 保存后同时发 Fragment Result，并兼容旧式字段回调。 */
     private fun notifySaved() {
-        if (onSavedCallback != null) {
-            onSavedCallback?.invoke()
-            return
-        }
-        (targetFragment as? OnScriptEditedListener)?.onScriptEdited()
-            ?: (parentFragment as? OnScriptEditedListener)?.onScriptEdited()
+        parentFragmentManager.setFragmentResult(
+            RESULT_KEY,
+            Bundle().apply { putString(RESULT_FILE_NAME, fileName) }
+        )
+        onSavedCallback?.invoke()
+        (parentFragment as? OnScriptEditedListener)?.onScriptEdited()
             ?: (activity as? OnScriptEditedListener)?.onScriptEdited()
     }
 

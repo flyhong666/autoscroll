@@ -1,5 +1,6 @@
 package cn.ggdoc.autoscroll.service
 
+import cn.ggdoc.autoscroll.util.recycleCompat
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
@@ -673,7 +674,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         val snapshot = try {
             ScreenSnapshot.capture(root, getScreenSize().second)
         } finally {
-            runCatching { root?.recycle() }
+            runCatching { root?.recycleCompat() }
         }
         if (!snapshot.isValid) return
 
@@ -749,8 +750,8 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         } finally {
             // S3：回收本帧取到的节点（Android < 13 节点池有限）。
             // scrollableNode 可能是 rootNode 自身或其后裔，避免重复回收。
-            runCatching { scrollableNode?.recycle() }
-            if (scrollableNode !== rootNode) runCatching { rootNode.recycle() }
+            runCatching { scrollableNode?.recycleCompat() }
+            if (scrollableNode !== rootNode) runCatching { rootNode.recycleCompat() }
         }
     }
 
@@ -926,7 +927,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
             Log.e(TAG, "点击文本：扫描失败", e)
             null
         } finally {
-            runCatching { root.recycle() }
+            runCatching { root.recycleCompat() }
         }
         if (target == null) {
             Log.d(TAG, "点击文本：未找到「$keyword」，跳过本步")
@@ -942,7 +943,7 @@ class AutoScrollAccessibilityService : AccessibilityService() {
         } catch (e: Exception) {
             Log.e(TAG, "点击文本：执行失败", e)
         } finally {
-            if (target !== root) runCatching { target.recycle() }
+            if (target !== root) runCatching { target.recycleCompat() }
         }
     }
 
