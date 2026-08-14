@@ -142,9 +142,15 @@ object StatsStore {
         e.apply()
     }
 
-    /** 今日统计 */
-    fun today(context: Context): Stats {
-        rollOverIfNeeded(context)
+    /**
+     * 今日统计。
+     *
+     * @param nowMillis 用于跨天判定的时间戳，默认取真实系统时间。
+     * 与 [accumulate] 保持一致的语义：读取时用同一时刻判断是否归档，
+     * 否则「今天」会依据真实时钟被再次清零，导致读到 0。
+     */
+    fun today(context: Context, nowMillis: Long = System.currentTimeMillis()): Stats {
+        rollOverIfNeeded(context, nowMillis)
         val p = prefs(context)
         return Stats(
             scrolls = p.getInt(KEY_TODAY_SCROLLS, 0),

@@ -1,3 +1,5 @@
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 plugins {
     alias(libs.plugins.android.application)
 }
@@ -69,6 +71,17 @@ android {
         unitTests {
             // Robolectric 单元测试需要访问 Android 资源（Application/SharedPreferences）
             isIncludeAndroidResources = true
+            all { test ->
+                // 强制单元测试 JVM 使用 JDK 17，与 CI 的 JDK 17 / compileOptions 保持一致。
+                // 原因：AGP 9.3 会把 test JVM 默认指向本机可用的最高版本 JDK（如 JDK 25），
+                // 而 Robolectric 4.14.1 内置的 ASM 9.7.1 只支持到 Java 24（class file major 68）。
+                // 运行在 JDK 25（major 69）上时，Robolectric 对运行时类做字节码插桩会抛
+                // IllegalArgumentException: Unsupported class file major version 69，
+                // 导致所有 @RunWith(RobolectricTestRunner) 用例崩溃。
+                test.javaLauncher.set(javaToolchains.launcherFor {
+                    languageVersion.set(JavaLanguageVersion.of(17))
+                })
+            }
         }
     }
     buildFeatures {
