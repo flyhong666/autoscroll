@@ -9,7 +9,7 @@ on:
       - 'v*'
   release:
     types: [published]
-  workflow_dispatch: # 支持手动触发（用于调试）
+  workflow_dispatch: # 支持手动触发
 
 env:
   GRADLE_OPTS: "-Dorg.gradle.caching=true"
@@ -26,7 +26,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write # 上传 APK 到 Release 需要
-    # 通过 job env 把 secret 是否配置暴露给 if 判断
     env:
       HAS_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE_BASE64 != '' }}
 
@@ -34,8 +33,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # JDK 17：AGP 9.3 要求 JDK >= 17，Gradle 9.6.1 在 17 上兼容性最稳；
-      # 本地 JDK 25 可继续用（Gradle 9.6 已支持），CI 用 17 规避工具链兼容风险
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -50,7 +47,7 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ---- 质量门禁：单元测试 + Lint（在 release 构建前拦截编译/逻辑错误）----
+      # ---- 质量门禁：单元测试 + Lint ----
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
@@ -77,7 +74,7 @@ jobs:
             app/build/reports/lint-results-*.xml
           retention-days: 14
 
-      # 解密正式签名 keystore（仅当仓库配置了 SIGNING_KEYSTORE_BASE64 secret 时执行）
+      # 解密正式签名 keystore
       - name: Decode signing keystore
         if: ${{ env.HAS_KEYSTORE == 'true' }}
         env:
@@ -93,7 +90,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
-      # 从 app/build.gradle.kts 提取 versionName 并自动生成 Tag
+      # 从 app/build.gradle.kts 提取 versionName 并处理 APK 命名
       - name: Extract version and rename APK
         id: version
         shell: bash
@@ -101,30 +98,26 @@ jobs:
           mkdir -p output
           SHORT_SHA="${GITHUB_SHA::7}"
 
-          # 通过正则表达式从 app/build.gradle.kts 解析 versionName
           GRADLE_VERSION=$(sed -nE 's/.*versionName[[:space:]]*=[[:space:]]*["'\''"]([^"'\''"]+)["'\''"].*/\1/p' app/build.gradle.kts | head -n 1)
 
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             VERSION="${TAG#v}"
           else
-            # 未通过 Git Tag 触发时（如 workflow_dispatch），自动以 v+versionName 作为 Tag
             VERSION="${GRADLE_VERSION:-dev-${SHORT_SHA}}"
             TAG="v${VERSION}"
           fi
 
-          # 防止文件名包含非法字符
           VERSION_CLEAN="${VERSION//\//-}"
 
-          if [[ "$HAS_KEYSTORE" == "true" ]]; then SUFFIX=""; else SUFFIX="-debug"; fi
-
+          # 统一输出名为 release 包，不再追加 -debug 后缀
           cp app/build/outputs/apk/release/app-release.apk \
-             "output/autoscroll-${VERSION_CLEAN}${SUFFIX}.apk"
+             "output/autoscroll-${VERSION_CLEAN}.apk"
           ls -la output/
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION_CLEAN" >> "$GITHUB_OUTPUT"
-          echo "Resolved version: $VERSION_CLEAN (tag=$TAG, signed=$HAS_KEYSTORE)"
+          echo "Resolved version: $VERSION_CLEAN (tag=$TAG)"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -140,8 +133,9 @@ jobs:
         with:
           files: output/*.apk
           generate_release_notes: true
+          prerelease: false
 
-      # tag 推送但无 release 时，自动创建一个 release 并附带 APK
+      # tag 推送但无 release 时，自动创建一个正式 Release 并附带 APK
       - name: Create Release with APK
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -151,9 +145,9 @@ jobs:
           files: output/*.apk
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.tag, 'beta') || contains(steps.version.outputs.tag, 'rc') }}
+          prerelease: false
 
-      # 手动 Run workflow：自动创建 Release 并使用解析到的 versionName 对应的 Tag
+      # 手动 Run workflow：自动创建正式 Release
       - name: Create Manual Release with APK
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
@@ -161,11 +155,11 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.tag }}
           body: |
-            Automated APK build from GitHub Actions.
+            Automated APK release build from GitHub Actions.
 
             Workflow run: #${{ github.run_number }}
             Commit: ${{ github.sha }}
           files: output/*.apk
           generate_release_notes: true
           draft: false
-          prerelease: true
+          prerelease: false
