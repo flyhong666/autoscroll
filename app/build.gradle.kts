@@ -18,20 +18,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 统一判断 Release 签名配置所需的所有环境变量及文件状态
+    val keystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
+    val keystorePwd = System.getenv("SIGNING_STORE_PASSWORD")
+    val alias = System.getenv("SIGNING_KEY_ALIAS")
+    val keyPwd = System.getenv("SIGNING_KEY_PASSWORD")
+
+    val isReleaseSigningConfigured = !keystorePath.isNullOrBlank() &&
+            !keystorePwd.isNullOrBlank() &&
+            !alias.isNullOrBlank() &&
+            !keyPwd.isNullOrBlank() &&
+            file(keystorePath).exists()
+
     // 签名配置：优先读取环境变量（CI 注入），未配置则降级 debug 签名
     signingConfigs {
         create("release") {
-            val keystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
-            val keystorePwd = System.getenv("SIGNING_STORE_PASSWORD")
-            val alias = System.getenv("SIGNING_KEY_ALIAS")
-            val keyPwd = System.getenv("SIGNING_KEY_PASSWORD")
-            if (!keystorePath.isNullOrBlank() && !keystorePwd.isNullOrBlank() &&
-                !alias.isNullOrBlank() && !keyPwd.isNullOrBlank()
-            ) {
+            if (isReleaseSigningConfigured) {
                 storeFile = file(keystorePath)
                 storePassword = keystorePwd
                 keyAlias = alias
                 keyPassword = keyPwd
+            } else {
+                // 如果参数不齐，从 debug 签名继承配置，防止 release 节点为空引发静默降级或构建失败
+                initWith(getByName("debug"))
             }
         }
     }
@@ -54,9 +63,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // 环境变量齐全时使用正式签名，否则回退 debug 签名（保证 APK 可安装）
-            val hasReleaseSigning = System.getenv("SIGNING_KEYSTORE_PATH") != null
-            signingConfig = if (hasReleaseSigning) {
+            // 环境变量齐全且文件存在时使用正式签名，否则回退 debug 签名（保证 APK 可安装）
+            signingConfig = if (isReleaseSigningConfigured) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
